@@ -381,8 +381,8 @@ function onEvents(s: Sim, events: SimEvent[]) {
       case 'pickup': {
         audio.pickup(volAt(e.x, e.z));
         if (racing && s.cars[e.car].pid) {
-          const label = { repair: '+ OPRAVA', rocket: '+ RAKETY', mine: '+ MINY', nitro: '+ NITRO' }[e.kind];
-          hud.message(e.car, label, 'good small', 1.1);
+          const label = { repair: '+ OPRAVA', rocket: '+ RAKETY', mine: '+ MINY', nitro: 'BOOST ×1,7' }[e.kind];
+          hud.message(e.car, label, e.kind === 'nitro' ? 'gold small' : 'good small', 1.1);
         }
         break;
       }
@@ -429,11 +429,10 @@ function kbdInput(): InputState {
   const k = (...c: string[]) => c.some((x) => keys.has(x));
   return {
     s: (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0),
-    t: k('ArrowUp', 'KeyW') ? 1 : 0,
     b: k('ArrowDown', 'KeyS') ? 1 : 0,
     f: k('Space'),
     r: k('KeyF', 'KeyE'),
-    n: k('ShiftLeft', 'ShiftRight'),
+    d: k('ShiftLeft', 'ShiftRight'),
   };
 }
 
@@ -499,11 +498,12 @@ function frame(now: number) {
         if (!car || !car.human || car.finished) continue;
         const i = p.input;
         car.input.steer = +i.s || 0;
-        car.input.throttle = +i.t || 0;
         car.input.brake = +i.b || 0;
+        // plyn drží hra sama; pustí ho jen při brzdění (pak jde i couvat)
+        car.input.throttle = car.input.brake > 0 ? 0 : 1;
         car.input.fire = !!i.f;
         car.input.secondary = !!i.r;
-        car.input.nitro = !!i.n;
+        car.input.drift = !!i.d;
       }
     }
     if (phase !== 'results') {

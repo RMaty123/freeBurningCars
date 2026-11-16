@@ -69,7 +69,7 @@ export class Hud {
         <div class="v-speed"><b>0</b><span>km/h</span></div>
         <div class="v-bars">
           <div class="bar hp"><i></i><em>ZDRAVÍ</em></div>
-          <div class="bar nitro"><i></i><em>NITRO</em></div>
+          <div class="bar nitro"><i></i><em>BOOST</em></div>
         </div>
         <div class="v-weapon"><canvas width="64" height="64"></canvas><b>×0</b></div>
         <div class="v-msg"></div>

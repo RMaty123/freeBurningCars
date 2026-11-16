@@ -3,23 +3,21 @@
  * Server je jen přeposílá, takže tenhle soubor je jediná "smlouva" mezi oběma stranami.
  */
 
-/** Stav ovladače – posílá se ~30× za sekundu a při každé změně. */
+/** Stav ovladače – posílá se při každé změně. Plyn drží hra sama, hráč jen zatáčí, brzdí a střílí. */
 export interface InputState {
   /** zatáčení -1 (vlevo) … 1 (vpravo) */
   s: number;
-  /** plyn 0…1 */
-  t: number;
   /** brzda / zpátečka 0…1 */
   b: number;
-  /** kulomet */
+  /** FIRE 1 – kulomet */
   f: boolean;
-  /** sekundární zbraň (rakety / miny) */
+  /** FIRE 2 – rakety / miny */
   r: boolean;
-  /** nitro */
-  n: boolean;
+  /** drift */
+  d: boolean;
 }
 
-export const EMPTY_INPUT: InputState = { s: 0, t: 0, b: 0, f: false, r: false, n: false };
+export const EMPTY_INPUT: InputState = { s: 0, b: 0, f: false, r: false, d: false };
 
 /** Ovladač -> obrazovka (spolehlivé zprávy). */
 export type CtrlMsg =
@@ -55,6 +53,7 @@ export type HostMsg =
       lap: number;
       laps: number;
       hp: number;
+      /** zbývající boost 0…1 */
       nitro: number;
       sec: 'rocket' | 'mine';
       ammo: number;

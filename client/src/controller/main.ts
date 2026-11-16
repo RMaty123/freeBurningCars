@@ -1,6 +1,6 @@
 /**
  * Free Burning Cars – ovladač (telefon).
- * Levý palec zatáčí (tažením po ploše – analogově), pravý plyn / brzda / palba / raketa / nitro.
+ * Plyn drží hra sama. Tlačítka: FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa/mina), LEFT, BRAKE, RIGHT.
  * Stav tlačítek se posílá na obrazovku přes Socket.IO.
  */
 import { io } from 'socket.io-client';
@@ -107,8 +107,7 @@ socket.on('host:msg', (m: HostMsg) => {
     $('p-lap').textContent = `${m.lap}/${m.laps}`;
     $('p-hp').style.transform = `scaleX(${m.hp})`;
     $('p-nitro').style.transform = `scaleX(${m.nitro})`;
-    $('sec-label').textContent = m.sec === 'rocket' ? 'RAKETA' : 'MINA';
-    $('sec-ammo').textContent = '×' + m.ammo;
+    $('sec-ammo').textContent = (m.sec === 'rocket' ? 'raketa' : 'mina') + ' ×' + m.ammo;
     $('b-sec').classList.toggle('empty', m.ammo === 0);
     const ov = $('pad-overlay');
     ov.classList.toggle('show', m.dead || m.finished);
@@ -135,47 +134,35 @@ tap('start', () => send({ type: 'start' }));
 tap('continue', () => send({ type: 'continue' }));
 
 // ------------------------------------------------------------------ řízení (multi-touch)
-const input: InputState = { s: 0, t: 0, b: 0, f: false, r: false, n: false };
+type Key = 'f' | 'd' | 'r' | 'left' | 'b' | 'right';
+const input: InputState = { s: 0, b: 0, f: false, r: false, d: false };
 let lastSent = '';
 let lastSentAt = 0;
 const pointers = new Map<number, { x: number; y: number }>();
-const pad = $('s-pad');
-const steerEl = $('z-steer'), knob = $('knob');
-const btns: { el: HTMLElement; key: 't' | 'b' | 'f' | 'r' | 'n' }[] = [
-  { el: $('b-gas'), key: 't' }, { el: $('b-brake'), key: 'b' }, { el: $('b-fire'), key: 'f' }, { el: $('b-sec'), key: 'r' }, { el: $('b-nitro'), key: 'n' },
+const pad = $('pad');
+// pořadí = mřížka 3 × 2: nahoře FIRE 1 | DRIFT | FIRE 2, dole LEFT | BRAKE | RIGHT
+const btns: { el: HTMLElement; key: Key }[] = [
+  { el: $('b-fire'), key: 'f' }, { el: $('b-drift'), key: 'd' }, { el: $('b-sec'), key: 'r' },
+  { el: $('b-left'), key: 'left' }, { el: $('b-brake'), key: 'b' }, { el: $('b-right'), key: 'right' },
 ];
 
-function inside(r: DOMRect, x: number, y: number, grow = 0): boolean {
-  return x >= r.left - grow && x <= r.right + grow && y >= r.top - grow && y <= r.bottom + grow;
-}
-
 function recompute() {
-  let steer = 0, steering = false;
-  const sr = steerEl.getBoundingClientRect();
-  const down: Record<string, boolean> = { t: false, b: false, f: false, r: false, n: false };
+  const down: Record<Key, boolean> = { f: false, d: false, r: false, left: false, b: false, right: false };
   const rects = btns.map((b) => b.el.getBoundingClientRect());
+  // hranice sloupců a řádků leží uprostřed mezer, takže mezi tlačítky není hluché místo
+  const colA = (rects[0].right + rects[1].left) / 2, colB = (rects[1].right + rects[2].left) / 2;
+  const rowY = (rects[1].bottom + rects[4].top) / 2;
+  const top = pad.getBoundingClientRect().top;
   for (const p of pointers.values()) {
-    // levá polovina obrazovky = zatáčení: poloha palce vůči středu plochy
-    if (p.x < sr.right + 8) {
-      const half = sr.width * 0.36;
-      let v = (p.x - (sr.left + sr.width / 2)) / half;
-      v = Math.max(-1, Math.min(1, v));
-      // malá mrtvá zóna + jemnější střed
-      steer = Math.abs(v) < 0.06 ? 0 : Math.sign(v) * Math.pow(Math.abs(v), 1.25);
-      steering = true;
-      continue;
-    }
-    btns.forEach((b, i) => { if (inside(rects[i], p.x, p.y, 6)) down[b.key] = true; });
+    if (p.y < top) continue;
+    const col = p.x < colA ? 0 : p.x < colB ? 1 : 2;
+    const row = p.y < rowY ? 0 : 1;
+    down[btns[row * 3 + col].key] = true;
   }
-  input.s = Math.round(steer * 100) / 100;
-  input.t = down.t ? 1 : 0;
+  input.s = (down.right ? 1 : 0) - (down.left ? 1 : 0);
   input.b = down.b ? 1 : 0;
-  input.f = down.f; input.r = down.r; input.n = down.n;
+  input.f = down.f; input.r = down.r; input.d = down.d;
   btns.forEach((b) => b.el.classList.toggle('on', down[b.key]));
-  steerEl.classList.toggle('active', steering);
-  steerEl.classList.toggle('left', steer < -0.15);
-  steerEl.classList.toggle('right', steer > 0.15);
-  knob.style.transform = `translateX(${steer * sr.width * 0.36}px)`;
   flush(false);
 }
 
@@ -190,10 +177,8 @@ function flush(force: boolean) {
 
 function resetInput() {
   pointers.clear();
-  input.s = 0; input.t = 0; input.b = 0; input.f = false; input.r = false; input.n = false;
+  input.s = 0; input.b = 0; input.f = false; input.r = false; input.d = false;
   btns.forEach((b) => b.el.classList.remove('on'));
-  knob.style.transform = '';
-  steerEl.classList.remove('active', 'left', 'right');
   if (joined) socket.emit('ctrl:input', input);
 }
 

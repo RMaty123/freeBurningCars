@@ -16,7 +16,6 @@ export interface AIState {
   burstT: number;
   pause: number;
   secT: number;
-  nitroOn: boolean;
 }
 
 export function newAI(rnd: () => number, skill: number): AIState {
@@ -31,7 +30,6 @@ export function newAI(rnd: () => number, skill: number): AIState {
     burstT: 0,
     pause: 0.7 + rnd() * 1.0,
     secT: 3 + rnd() * 5,
-    nitroOn: false,
   };
 }
 
@@ -46,7 +44,7 @@ function angDiff(a: number, b: number): number {
 export function aiThink(sim: Sim, c: Car, dt: number) {
   const tr = sim.track, ai = c.ai, inp = c.input;
   if (c.dead) {
-    inp.steer = 0; inp.throttle = 0; inp.brake = 0; inp.fire = false; inp.secondary = false; inp.nitro = false;
+    inp.steer = 0; inp.throttle = 0; inp.brake = 0; inp.fire = false; inp.secondary = false; inp.drift = false;
     return;
   }
   const cruising = c.finished;
@@ -144,12 +142,6 @@ export function aiThink(sim: Sim, c: Car, dt: number) {
     }
   }
 
-  // --- nitro na rovinkách
-  if (!cruising && Math.abs(diff) < 0.12 && target > c.speed + 14) {
-    if (c.nitro > 0.6) ai.nitroOn = true;
-  } else ai.nitroOn = false;
-  if (c.nitro < 0.05) ai.nitroOn = false;
-
   inp.steer = steer; inp.throttle = throttle; inp.brake = brake;
-  inp.fire = fire; inp.secondary = sec; inp.nitro = ai.nitroOn && ai.reverseT <= 0;
+  inp.fire = fire; inp.secondary = sec; inp.drift = false;
 }

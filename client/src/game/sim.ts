@@ -14,7 +14,8 @@ export interface CarInput {
   brake: number;    // 0…1 (při stání = zpátečka)
   fire: boolean;
   secondary: boolean;
-  nitro: boolean;
+  /** tlačítko DRIFT – zadek auta ujede a auto se rychleji stáčí */
+  drift: boolean;
 }
 
 export type SecType = 'rocket' | 'mine';
@@ -49,6 +50,9 @@ export interface Car {
   wrongWay: number;
 
   hp: number;
+  /** zbývající čas zrychlení z modré bedny (s) */
+  boost: number;
+  /** boost jako 0…1 (pro ukazatel) */
   nitro: number;
   nitroOn: boolean;
   drifting: boolean;
@@ -146,6 +150,9 @@ const ROCKET_DMG = 58;
 const MINE_DMG = 52;
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
 const CAR_OFF = 1.0;
+/** modrá bedna: na BOOST_TIME sekund zrychlí auto BOOST_SPEED× */
+export const BOOST_TIME = 5;
+export const BOOST_SPEED = 1.7;
 
 export class Sim {
   track: Track;
@@ -187,13 +194,13 @@ export class Sim {
         name: e.name, color: e.color, typeIdx: e.typeIdx, stats: e.stats,
         human: e.human, pid: e.pid,
         ai: newAI(this.rnd, skill),
-        input: { steer: 0, throttle: 0, brake: 0, fire: false, secondary: false, nitro: false },
+        input: { steer: 0, throttle: 0, brake: 0, fire: false, secondary: false, drift: false },
         x: track.x[ti] + track.nx[ti] * off,
         z: track.z[ti] + track.nz[ti] * off,
         h: Math.atan2(track.tx[ti], track.tz[ti]),
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
-        hp: e.stats.hp, nitro: 0.6, nitroOn: false, drifting: false,
+        hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
         secType: 'rocket', secAmmo: 2, fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
         finished: false, finishTime: 0, place: 0, kills: 0, deaths: 0, bestLap: 0, lapStart: 0,
@@ -342,17 +349,17 @@ export class Sim {
     let fx = Math.sin(c.h), fz = Math.cos(c.h);
     let vf = c.vx * fx + c.vz * fz;
 
-    c.nitroOn = inp.nitro && c.nitro > 0.01;
-    if (c.nitroOn) c.nitro = Math.max(0, c.nitro - dt / 3.0);
-    else c.nitro = Math.min(1, c.nitro + dt / 40);
-    const throttle = c.nitroOn ? 1 : clamp(inp.throttle, 0, 1);
+    // zrychlení z modré bedny – žádné tlačítko, prostě běží, dokud nevyprší
+    c.boost = Math.max(0, c.boost - dt);
+    c.nitroOn = c.boost > 0;
+    c.nitro = c.boost / BOOST_TIME;
+    const throttle = clamp(inp.throttle, 0, 1);
     const brake = clamp(inp.brake, 0, 1);
 
-    c.drifting = brake > 0.3 && Math.abs(c.steer) > 0.3 && vf > 16;
-    if (c.drifting) c.nitro = Math.min(1, c.nitro + dt * 0.12); // drift dobíjí nitro
+    c.drifting = inp.drift && vf > 10;
 
-    const top = st.top * c.speedScale * (c.nitroOn ? 1.32 : 1);
-    const acc = st.accel * c.speedScale * (c.nitroOn ? 1.9 : 1);
+    const top = st.top * c.speedScale * (c.nitroOn ? BOOST_SPEED : 1);
+    const acc = st.accel * c.speedScale * (c.nitroOn ? 2.2 : 1);
     let a = 0;
     if (throttle > 0) {
       const r = vf / top;
@@ -668,7 +675,7 @@ export class Sim {
     if (c.lastHitBy >= 0 && this.time - c.lastHitT < 6) {
       by = c.lastHitBy;
       const k = this.cars[by];
-      if (k) { k.kills++; k.nitro = Math.min(1, k.nitro + 0.5); }
+      if (k) k.kills++;
     }
     this.events.push({ t: 'boom', x: c.x, z: c.z, size: 1.5 });
     this.events.push({ t: 'destroyed', car: c.id, by });
@@ -706,7 +713,7 @@ export class Sim {
           if (c.hp >= c.stats.hp) continue; // plné zdraví = nech bednu ostatním
           c.hp = Math.min(c.stats.hp, c.hp + c.stats.hp * 0.5);
         } else if (p.kind === 'nitro') {
-          c.nitro = 1;
+          c.boost = BOOST_TIME;
         } else {
           if (c.secType === p.kind) c.secAmmo = Math.min(6, c.secAmmo + 3);
           else { c.secType = p.kind; c.secAmmo = 3; }

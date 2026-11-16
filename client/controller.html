@@ -56,22 +56,17 @@
       <div class="tb-lap">KOLO <b id="p-lap">1/3</b></div>
       <div class="tb-bars">
         <div class="tbar hp"><i id="p-hp"></i></div>
-        <div class="tbar nitro"><i id="p-nitro"></i></div>
+        <div class="tbar nitro"><i id="p-nitro" style="transform:scaleX(0)"></i></div>
       </div>
     </div>
-    <div class="pad">
-      <div class="steer" id="z-steer">
-        <div class="steer-track"><span>◀</span><span>▶</span></div>
-        <div class="knob" id="knob"></div>
-        <small>ZATÁČENÍ – táhni palcem</small>
-      </div>
-      <div class="buttons">
-        <div class="btn nitro" id="b-nitro"><b>NITRO</b></div>
-        <div class="btn sec" id="b-sec"><b id="sec-label">RAKETA</b><small id="sec-ammo">×2</small></div>
-        <div class="btn fire" id="b-fire"><b>PALBA</b></div>
-        <div class="btn brake" id="b-brake"><b>BRZDA</b><small>zpátečka / drift</small></div>
-        <div class="btn gas" id="b-gas"><b>PLYN</b></div>
-      </div>
+    <!-- Plyn drží hra sama. Nahoře palba a drift, dole zatáčení a brzda. -->
+    <div class="pad" id="pad">
+      <div class="btn fire1" id="b-fire"><span><b>FIRE 1</b><small>kulomet</small></span></div>
+      <div class="btn drift" id="b-drift"><span><b>DRIFT</b></span></div>
+      <div class="btn fire2" id="b-sec"><span><b>FIRE 2</b><small id="sec-ammo">raketa ×2</small></span></div>
+      <div class="btn arrow-l" id="b-left"><b>LEFT</b></div>
+      <div class="btn brake" id="b-brake"><span><b>BRAKE</b></span></div>
+      <div class="btn arrow-r" id="b-right"><b>RIGHT</b></div>
     </div>
     <div class="overlay" id="pad-overlay"></div>
   </section>

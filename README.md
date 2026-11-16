@@ -5,7 +5,7 @@ Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + AI soupeři (vždy 6 aut na trati)
-- **kulomet, rakety, miny, nitro**, opravy – bedny na trati
+- **kulomet, rakety, miny**, opravy a zrychlení – bedny na trati
 - **3 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory)
 - **4 auta** s různými vlastnostmi (Viper GT, Brute V8, Dune Rat, Titan)
 - zničení soupeřů, respawn, pořadí, kola, body za umístění i za zničení
@@ -37,21 +37,24 @@ Bez telefonu: na obrazovce stiskni **ENTER** (přidá hráče na klávesnici) a 
 
 ## Ovládání
 
-**Telefon (na šířku):** levý palec táhne po ploše = zatáčení (analogové), vpravo PLYN, BRZDA (ve stoje zpátečka, v zatáčce drift), PALBA, RAKETA/MINA, NITRO.
+**Plyn drží hra sama** – jen zatáčíš, brzdíš a střílíš.
+
+**Telefon (na šířku):** nahoře FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa / mina); dole LEFT, BRAKE (podržením couvá), RIGHT.
 
 **Klávesnice:**
 
 | Klávesa | Akce |
 | --- | --- |
-| W A S D / šipky | plyn, brzda, zatáčení |
+| A D / šipky vlevo, vpravo | zatáčení |
+| S / šipka dolů | brzda, zpátečka |
 | MEZERNÍK | kulomet |
 | F nebo E | raketa / mina |
-| SHIFT | nitro |
+| SHIFT | drift |
 | ESC | ukončit závod |
 
 **V menu (klávesnice na PC):** `T` trať · `L` počet kol · `O` obtížnost AI · `←/→` výběr auta · `G` kvalita grafiky · `M` zvuk · `F11` celá obrazovka
 
-Tipy: drift (brzda + zatáčení) a zničení soupeře dobíjí nitro. Zelená bedna opravuje, modrá je nitro, červená rakety, oranžová miny.
+Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
 
 ## Struktura projektu
 

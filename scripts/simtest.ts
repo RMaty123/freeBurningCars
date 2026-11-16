@@ -44,8 +44,9 @@ for (const def of TRACKS) {
     console.log(`  události: ${Object.entries(count).map(([k, v]) => `${k}=${v}`).join(' ')}  max ${(maxSpeed * 3.6).toFixed(0)} km/h`);
     if (sim.phase !== 'over') fail('závod neskončil do 400 s');
     if (res[0].lap < 3) fail('vítěz neodjel 3 kola');
-    const slow = res.filter((c) => c.lap < 2);
-    if (slow.length) fail(`auta, která nestihla ani 2 kola: ${slow.map((c) => c.name).join(', ')}`);
+    // několikrát zničené auto může být o kolo a kus zpět; méně než 1 kolo už znamená zaseknutí
+    const slow = res.filter((c) => c.lap < 1);
+    if (slow.length) fail(`auta, která nestihla ani 1 kolo: ${slow.map((c) => c.name).join(', ')}`);
   }
 }
 console.log(failed ? '\nTEST SELHAL' : '\nVše v pořádku ✓');
