@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b0c11" />
+  <title>FBC ovladač</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0d12'/><path d='M17 3c1 5 7 7 7 15a8 8 0 0 1-16 0c0-4 2-6 3-8 1 2 1 3 3 4 0-4 1-7 3-11z' fill='%23ff6a00'/></svg>" />
+  <link rel="stylesheet" href="/src/styles/controller.css" />
+</head>
+<body>
+  <!-- 1) připojení -->
+  <section id="s-join" class="screen active">
+    <h1><span>FREE</span> BURNING <span>CARS</span></h1>
+    <p class="sub">ovladač</p>
+    <label>Tvoje jméno
+      <input id="name" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="JMÉNO" />
+    </label>
+    <label>Kód místnosti (na obrazovce)
+      <input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD" />
+    </label>
+    <button id="join" class="big">PŘIPOJIT</button>
+    <p id="join-err" class="err"></p>
+  </section>
+
+  <!-- 2) lobby: výběr auta -->
+  <section id="s-lobby" class="screen">
+    <div class="who"><span class="dot"></span><b id="l-name">HRÁČ</b><i id="l-slot">hráč 1</i></div>
+    <div class="carsel">
+      <button id="car-prev" class="arrow" aria-label="předchozí auto">◀</button>
+      <div class="carinfo">
+        <b id="car-name">VIPER GT</b>
+        <div class="stats">
+          <span>RYCHLOST</span><div class="pips" id="st-speed"></div>
+          <span>ZRYCHLENÍ</span><div class="pips" id="st-accel"></div>
+          <span>ŘÍZENÍ</span><div class="pips" id="st-handling"></div>
+          <span>PANCÍŘ</span><div class="pips" id="st-armor"></div>
+        </div>
+      </div>
+      <button id="car-next" class="arrow" aria-label="další auto">▶</button>
+    </div>
+    <div id="master-box">
+      <div class="row"><button id="trk-prev" class="arrow sm">◀</button><div class="val"><small>TRAŤ</small><b id="l-track">—</b></div><button id="trk-next" class="arrow sm">▶</button></div>
+      <div class="row"><button id="laps-dec" class="arrow sm">−</button><div class="val"><small>KOLA</small><b id="l-laps">3</b></div><button id="laps-inc" class="arrow sm">+</button></div>
+      <button id="start" class="big">START</button>
+    </div>
+    <p id="l-wait" class="wait">Čekej, až první hráč odstartuje závod…</p>
+  </section>
+
+  <!-- 3) řízení -->
+  <section id="s-pad" class="screen">
+    <div class="topbar">
+      <div class="tb-pos"><b id="p-pos">1</b><small id="p-total">/6</small></div>
+      <div class="tb-lap">KOLO <b id="p-lap">1/3</b></div>
+      <div class="tb-bars">
+        <div class="tbar hp"><i id="p-hp"></i></div>
+        <div class="tbar nitro"><i id="p-nitro"></i></div>
+      </div>
+    </div>
+    <div class="pad">
+      <div class="steer" id="z-steer">
+        <div class="steer-track"><span>◀</span><span>▶</span></div>
+        <div class="knob" id="knob"></div>
+        <small>ZATÁČENÍ – táhni palcem</small>
+      </div>
+      <div class="buttons">
+        <div class="btn nitro" id="b-nitro"><b>NITRO</b></div>
+        <div class="btn sec" id="b-sec"><b id="sec-label">RAKETA</b><small id="sec-ammo">×2</small></div>
+        <div class="btn fire" id="b-fire"><b>PALBA</b></div>
+        <div class="btn brake" id="b-brake"><b>BRZDA</b><small>zpátečka / drift</small></div>
+        <div class="btn gas" id="b-gas"><b>PLYN</b></div>
+      </div>
+    </div>
+    <div class="overlay" id="pad-overlay"></div>
+  </section>
+
+  <!-- 4) výsledky -->
+  <section id="s-results" class="screen">
+    <h2>ZÁVOD SKONČIL</h2>
+    <p class="sub">mrkni na obrazovku</p>
+    <button id="continue" class="big">POKRAČOVAT</button>
+    <p id="r-wait" class="wait">Čekej na prvního hráče…</p>
+  </section>
+
+  <div id="rotate"><div>↻</div>Otoč telefon na šířku</div>
+  <div id="offline" hidden>Obrazovka se odpojila – připojuji znovu…</div>
+  <script type="module" src="/src/controller/main.ts"></script>
+</body>
+</html>
