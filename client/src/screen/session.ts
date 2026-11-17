@@ -5,6 +5,7 @@
  */
 import { io, Socket } from 'socket.io-client';
 import { PLAYER_COLORS, hexCss } from '../game/cars';
+import { DEFAULT_GUN } from '../game/content/guns';
 import { CAR_TYPES } from '../game/content/cars';
 import { CtrlMsg, EMPTY_INPUT, HostMsg, InputState, MenuInfo, Phase } from '../shared/protocol';
 
@@ -17,7 +18,9 @@ export interface Player {
   name: string;
   slot: number;
   carIdx: number;
-  /** auto potvrzené ve výběru aut */
+  /** vybraná primární zbraň (index do GUNS) */
+  gunIdx: number;
+  /** výběr (auta nebo zbraně) potvrzený */
   ready: boolean;
   connected: boolean;
   input: InputState;
@@ -108,7 +111,7 @@ export class Session {
   }
 
   private makePlayer(pid: string, name: string, slot: number): Player {
-    return { pid, name, slot, carIdx: slot % CAR_TYPES.length, ready: false, connected: true, input: { ...EMPTY_INPUT }, points: 0, waiting: false, lastBuzz: 0 };
+    return { pid, name, slot, carIdx: slot % CAR_TYPES.length, gunIdx: DEFAULT_GUN, ready: false, connected: true, input: { ...EMPTY_INPUT }, points: 0, waiting: false, lastBuzz: 0 };
   }
 
   // ------------------------------------------------------------ dotazy
@@ -180,6 +183,7 @@ export class Session {
       color: hexCss(PLAYER_COLORS[p.slot]),
       name: p.name,
       carIdx: p.carIdx,
+      gunIdx: p.gunIdx,
       ready: p.ready,
       master: this.isMaster(p),
       waiting,

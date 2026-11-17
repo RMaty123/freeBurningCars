@@ -6,7 +6,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { CarStats } from '../game/cars';
+import type { GunStats } from '../game/guns';
 import { buildCar, CarVisual, disposeCar } from './carModel';
+import { buildGun, disposeGun, GunVisual } from './gunModel';
 
 export interface PxRect { x: number; y: number; w: number; h: number }
 
@@ -14,10 +16,17 @@ interface Slot {
   /** co je právě postavené ("id auta|barva"), ať se model nestaví zbytečně znovu */
   key: string;
   pivot: THREE.Group;
-  visual: CarVisual | null;
-  /** krátké "dosednutí" při výměně auta */
+  /** postavený model a jak ho uklidit (auto nebo zbraň) */
+  obj: THREE.Object3D | null;
+  free: (() => void) | null;
+  /** zbraň se rámuje a natáčí jinak než auto */
+  kind: 'car' | 'gun';
+  /** krátké "dosednutí" při výměně */
   pop: number;
 }
+
+/** Jak velký prostor musí kamera obsáhnout (šířka, výška, kam se dívá) – auto a zbraň. */
+const FRAME = { car: [3.6, 2.9, 0.25], gun: [1.75, 1.2, 0.44] } as const;
 
 function canvasTex(size: number, draw: (g: CanvasRenderingContext2D, s: number) => void, repeat?: [number, number]): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -172,52 +181,73 @@ export class Showroom {
     while (this.slots.length > n) {
       const s = this.slots.pop()!;
       this.scene.remove(s.pivot);
-      if (s.visual) disposeCar(s.visual);
+      s.free?.();
     }
     while (this.slots.length < n) {
       const pivot = new THREE.Group();
       this.scene.add(pivot);
-      this.slots.push({ key: '', pivot, visual: null, pop: 0 });
+      this.slots.push({ key: '', pivot, obj: null, free: null, kind: 'car', pop: 0 });
     }
   }
 
-  /** Postaví na místo `i` dané auto v dané barvě (nic nedělá, pokud tam už stojí). */
-  setCar(i: number, car: CarStats, color: number) {
+  /** Postaví na místo `i` nový model (nic nedělá, pokud tam už stojí ten samý). */
+  private put(i: number, key: string, kind: 'car' | 'gun', build: () => { root: THREE.Object3D; free: () => void }) {
     const s = this.slots[i];
-    if (!s) return;
-    const key = `${car.id}|${color}`;
-    if (s.key === key) return;
-    if (s.visual) { s.pivot.remove(s.visual.root); disposeCar(s.visual); }
-    s.visual = buildCar(car.shape, color);
-    s.pivot.add(s.visual.root);
+    if (!s || s.key === key) return;
+    s.free?.();
+    if (s.obj) s.pivot.remove(s.obj);
+    const made = build();
+    s.obj = made.root;
+    s.free = made.free;
+    s.kind = kind;
+    s.pivot.add(made.root);
     s.key = key;
     s.pop = 1;
+  }
+
+  /** Postaví na místo `i` dané auto v dané barvě. */
+  setCar(i: number, car: CarStats, color: number) {
+    this.put(i, `car|${car.id}|${color}`, 'car', () => {
+      const v: CarVisual = buildCar(car.shape, color);
+      return { root: v.root, free: () => disposeCar(v) };
+    });
+  }
+
+  /** Postaví na místo `i` danou zbraň. */
+  setGun(i: number, gun: GunStats) {
+    this.put(i, `gun|${gun.id}`, 'gun', () => {
+      const v: GunVisual = buildGun(gun.shape);
+      return { root: v.root, free: () => disposeGun(v) };
+    });
   }
 
   update(dt: number) {
     this.time += dt;
     for (const s of this.slots) {
       s.pop = Math.max(0, s.pop - dt * 3.2);
-      if (!s.visual) continue;
-      // auto stojí šikmo k divákovi a jen se zvolna natáčí sem a tam; nové auto krátce "dosedne"
-      s.visual.root.rotation.y = 0.72 + Math.sin(this.time * 0.3) * 0.22;
+      if (!s.obj) continue;
+      // model stojí šikmo k divákovi a jen se zvolna natáčí sem a tam; nový krátce "dosedne"
+      s.obj.rotation.y = s.kind === 'gun'
+        ? 0.95 + Math.sin(this.time * 0.45) * 0.5
+        : 0.72 + Math.sin(this.time * 0.3) * 0.22;
       const k = s.pop * s.pop;
-      s.visual.root.position.y = k * 0.35;
-      s.visual.root.scale.setScalar(1 - k * 0.08);
+      s.obj.position.y = k * 0.35;
+      s.obj.scale.setScalar(1 - k * 0.08);
     }
   }
 
   // ------------------------------------------------------------ vykreslení
-  private aim(aspect: number) {
+  private aim(aspect: number, kind: 'car' | 'gun' = 'car') {
     const cam = this.cam;
     cam.aspect = aspect;
     cam.updateProjectionMatrix();
-    // vzdálenost tak, aby se auto vešlo na šířku i na výšku výřezu
+    // vzdálenost tak, aby se model vešel na šířku i na výšku výřezu
+    const [fw, fh, look] = FRAME[kind];
     const v = Math.tan((cam.fov * Math.PI) / 360);
-    const dist = Math.max(3.6 / (v * aspect), 2.9 / v);
+    const dist = Math.max(fw / (v * aspect), fh / v);
     cam.position.set(0, dist * 0.24 + 0.55, dist);
-    // míří se kousek pod auto, takže auto vyjde nad jmenovku se staty
-    cam.lookAt(0, 0.25, 0);
+    // míří se kousek pod model, takže vyjde nad jmenovku se staty
+    cam.lookAt(0, look, 0);
   }
 
   /** Přepne mezi garáží (obrazovka) a tmavým studiem (náhledy). */
@@ -258,7 +288,7 @@ export class Showroom {
       const y = Math.round(size.y - r.y - r.h); // WebGL má počátek vlevo dole
       rn.setViewport(x, y, w, h);
       rn.setScissor(x, y, w, h);
-      this.aim(w / h);
+      this.aim(w / h, this.slots[i].kind);
       rn.render(this.scene, this.cam);
     });
     rn.setScissorTest(false);
@@ -266,12 +296,12 @@ export class Showroom {
   }
 
   /**
-   * Náhled auta jako obrázek (data URL) – pro nabídku aut na telefonu.
-   * Výsledek se pamatuje, takže se každé auto v každé barvě kreslí jen jednou.
+   * Náhled modelu jako obrázek (data URL) – pro nabídku na telefonu.
+   * Výsledek se pamatuje, takže se každý model kreslí jen jednou.
    */
-  thumbnail(car: CarStats, color: number, width = 320, height = 200): string {
-    const key = `${car.id}|${color}|${width}x${height}`;
-    const hit = this.thumbs.get(key);
+  private shot(key: string, kind: 'car' | 'gun', build: () => { root: THREE.Object3D; free: () => void }, width: number, height: number): string {
+    const full = `${key}|${width}x${height}`;
+    const hit = this.thumbs.get(full);
     if (hit) return hit;
 
     const rn = this.renderer;
@@ -282,9 +312,9 @@ export class Showroom {
     const vh = Math.floor((vw * height) / width);
     if (vw < 8 || vh < 8) return '';
 
-    const visual = buildCar(car.shape, color);
-    visual.root.rotation.y = 0.75;
-    this.scene.add(visual.root);
+    const made = build();
+    made.root.rotation.y = kind === 'gun' ? 1.0 : 0.75;
+    this.scene.add(made.root);
     this.slots.forEach((s) => (s.pivot.visible = false));
     const exposure = rn.toneMappingExposure;
     rn.toneMappingExposure = 1.05;
@@ -293,7 +323,7 @@ export class Showroom {
     rn.setScissorTest(true);
     rn.setViewport(0, 0, vw, vh);
     rn.setScissor(0, 0, vw, vh);
-    this.aim(width / height);
+    this.aim(width / height, kind);
     rn.render(this.scene, this.cam);
     rn.setScissorTest(false);
     rn.toneMappingExposure = exposure;
@@ -305,9 +335,25 @@ export class Showroom {
     out.getContext('2d')!.drawImage(src, 0, src.height - vh * pr, vw * pr, vh * pr, 0, 0, width, height);
     const url = out.toDataURL('image/jpeg', 0.85);
 
-    this.scene.remove(visual.root);
-    disposeCar(visual);
-    this.thumbs.set(key, url);
+    this.scene.remove(made.root);
+    made.free();
+    this.thumbs.set(full, url);
     return url;
+  }
+
+  /** Náhled auta v dané barvě. */
+  thumbnail(car: CarStats, color: number, width = 320, height = 200): string {
+    return this.shot(`car|${car.id}|${color}`, 'car', () => {
+      const v: CarVisual = buildCar(car.shape, color);
+      return { root: v.root, free: () => disposeCar(v) };
+    }, width, height);
+  }
+
+  /** Náhled zbraně. */
+  gunThumbnail(gun: GunStats, width = 320, height = 200): string {
+    return this.shot(`gun|${gun.id}`, 'gun', () => {
+      const v: GunVisual = buildGun(gun.shape);
+      return { root: v.root, free: () => disposeGun(v) };
+    }, width, height);
   }
 }

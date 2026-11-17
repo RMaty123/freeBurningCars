@@ -9,7 +9,6 @@
  */
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
 import { CAR_TYPES, carRatings, colorPicker } from '../../game/content/cars';
-import { Showroom } from '../../render/showroom';
 import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, Screen } from '../app';
 import { KBD, Player } from '../session';
@@ -31,16 +30,15 @@ interface Panel {
 }
 
 export class CarSelectScreen implements Screen {
-  private showroom: Showroom | null = null;
   private panels: Panel[] = [];
   /** odpočet do startu, když mají všichni potvrzeno (-1 = neběží) */
   private startT = -1;
 
   constructor(private app: App) {}
 
-  private get room(): Showroom {
-    // garáž se staví až při prvním použití
-    return (this.showroom ??= new Showroom(this.app.view.renderer));
+  /** garáž sdílená s výběrem zbraní */
+  private get room() {
+    return this.app.showroom;
   }
 
   // ------------------------------------------------------------ panely hráčů
@@ -51,7 +49,7 @@ export class CarSelectScreen implements Screen {
     if (same) return;
     const stage = $('cs-stage');
     stage.innerHTML = '';
-    stage.className = 'n' + Math.min(4, players.length);
+    stage.className = 'pick-stage n' + Math.min(4, players.length);
     this.panels = players.map((p) => {
       const el = document.createElement('article');
       el.className = 'cs-panel';
@@ -100,7 +98,7 @@ export class CarSelectScreen implements Screen {
     if (all && this.startT < 0) this.startT = START_DELAY;
     if (!all) this.startT = -1;
     const waiting = players.filter((p) => !p.ready).map((p) => p.name);
-    $('cs-hint').textContent = all ? 'VŠICHNI POTVRDILI – STARTUJEME!' : `POTVRĎ AUTO NA TELEFONU! ČEKÁ SE NA: ${waiting.join(', ')}`;
+    $('cs-hint').textContent = all ? 'VŠICHNI POTVRDILI – TEĎ ZBRAŇ!' : `POTVRĎ AUTO NA TELEFONU! ČEKÁ SE NA: ${waiting.join(', ')}`;
   }
 
   private allReady(): boolean {
@@ -112,9 +110,11 @@ export class CarSelectScreen implements Screen {
   private sendCatalog(p: Player) {
     if (p.pid === KBD) return;
     CAR_TYPES.forEach((car, idx) => {
+      const r = carRatings(car);
       this.app.session.send(p, {
-        type: 'catalog', idx, total: CAR_TYPES.length, name: car.name, tagline: car.tagline,
-        img: this.room.thumbnail(car, car.color), ratings: carRatings(car),
+        type: 'catalog', kind: 'car', idx, total: CAR_TYPES.length, name: car.name, tagline: car.tagline,
+        img: this.room.thumbnail(car, car.color),
+        ratings: [{ l: 'RYCHLOST', v: r.speed }, { l: 'ZRYCHLENÍ', v: r.accel }, { l: 'ŘÍZENÍ', v: r.handling }, { l: 'PANCÍŘ', v: r.armor }],
       });
     });
   }
@@ -151,7 +151,7 @@ export class CarSelectScreen implements Screen {
     this.room.update(dt);
     if (this.startT >= 0) {
       this.startT -= dt;
-      if (this.startT <= 0) { this.startT = -1; if (this.allReady()) app.show('race'); }
+      if (this.startT <= 0) { this.startT = -1; if (this.allReady()) app.show('guns'); }
     }
   }
 

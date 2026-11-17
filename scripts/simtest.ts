@@ -7,6 +7,7 @@
 import { buildTrack } from '../client/src/game/track';
 import { TRACKS } from '../client/src/game/content/tracks';
 import { CAR_TYPES } from '../client/src/game/content/cars';
+import { GUNS } from '../client/src/game/content/guns';
 import { Sim, CarEntry } from '../client/src/game/sim';
 import { aiThink } from '../client/src/game/ai';
 
@@ -21,7 +22,11 @@ for (const def of TRACKS) {
     for (let i = 0; i < 6; i++) {
       // napříč závody se protočí všechny typy aut, ať se každé někdy projede
       const t = (i + offset) % CAR_TYPES.length;
-      entries.push({ name: 'AI' + i, color: CAR_TYPES[t].color, tagColor: CAR_TYPES[t].color, typeIdx: t, stats: CAR_TYPES[t], human: withHuman && i === 0, pid: null });
+      // zbraně se střídají taky, ať se v testu projede kulomet i laser
+      entries.push({
+        name: 'AI' + i, color: CAR_TYPES[t].color, tagColor: CAR_TYPES[t].color, typeIdx: t, stats: CAR_TYPES[t],
+        gun: GUNS[(i + offset) % GUNS.length], human: withHuman && i === 0, pid: null,
+      });
     }
     offset += 6;
     const sim = new Sim(track, entries, { laps: 3, seed: 1234 + def.id.length });

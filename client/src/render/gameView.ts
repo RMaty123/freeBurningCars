@@ -55,6 +55,10 @@ export class GameView {
   private envRT: THREE.WebGLRenderTarget | null = null;
 
   private bullets: THREE.InstancedMesh;
+  /** paprsky laseru – jeden na auto, staví se až když je potřeba */
+  private beams: THREE.Mesh[] = [];
+  private beamGeo: THREE.BufferGeometry | null = null;
+  private tmpColor = new THREE.Color();
   private rockets: THREE.InstancedMesh;
   private mines: THREE.InstancedMesh;
   private mineMat: THREE.MeshStandardMaterial;
@@ -85,7 +89,7 @@ export class GameView {
 
     // střely
     const bulletGeo = new THREE.BoxGeometry(0.1, 0.1, 2.8);
-    this.bullets = new THREE.InstancedMesh(bulletGeo, new THREE.MeshBasicMaterial({ color: 0xffe6a0, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), 400);
+    this.bullets = new THREE.InstancedMesh(bulletGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), 400);
     const rocketGeo = mergeGeometries([
       new THREE.CylinderGeometry(0.14, 0.14, 1.1, 8).rotateX(Math.PI / 2),
       new THREE.ConeGeometry(0.14, 0.4, 8).rotateX(Math.PI / 2).translate(0, 0, 0.75),
@@ -230,6 +234,21 @@ export class GameView {
     return this.rigs.map((r) => ({ x: r.rect.x * this.width, y: r.rect.y * this.height, w: r.rect.w * this.width, h: r.rect.h * this.height, carId: r.carId }));
   }
 
+  /** Mesh paprsku pro auto `i` (válec podél osy Z o jednotkové délce). */
+  private beam(i: number): THREE.Mesh {
+    let m = this.beams[i];
+    if (m) return m;
+    this.beamGeo ??= new THREE.CylinderGeometry(1, 1, 1, 8, 1).rotateX(Math.PI / 2);
+    m = new THREE.Mesh(this.beamGeo, new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending,
+      depthWrite: false, toneMapped: false, fog: false,
+    }));
+    m.frustumCulled = false;
+    this.scene.add(m);
+    this.beams[i] = m;
+    return m;
+  }
+
   // ------------------------------------------------------------ události → efekty
   handleEvents(sim: Sim, events: SimEvent[]) {
     const fx = this.effects;
@@ -245,6 +264,11 @@ export class GameView {
           this.shakeCar(e.car, 0.12);
           break;
         case 'spark': fx.sparks(e.x, 0.7, e.z, 4, 7); break;
+        case 'beam': {
+          const c = sim.cars[e.car];
+          fx.flash(c.x + Math.sin(c.h) * 2.2, this.cars[e.car].v.shoulder + 0.1, c.z + Math.cos(c.h) * 2.2, 2.4, 1.2, 2.4, 3.2, 0.2);
+          break;
+        }
         case 'wall':
           fx.sparks(e.x, 0.6, e.z, Math.min(16, 4 + e.force), 6 + e.force * 0.4);
           this.shakeCar(e.car, Math.min(0.7, e.force * 0.04));
@@ -354,12 +378,39 @@ export class GameView {
       if (n >= 400) break;
       d.position.set(b.x, 0.85, b.z);
       d.rotation.set(0, Math.atan2(b.vx, b.vz), 0);
-      d.scale.set(1, 1, 1);
+      // těžší kulomet má větší a delší stopu
+      d.scale.set(b.gun.tracer, b.gun.tracer, 0.7 + b.gun.tracer * 0.5);
       d.updateMatrix();
-      this.bullets.setMatrixAt(n++, d.matrix);
+      this.bullets.setMatrixAt(n, d.matrix);
+      this.bullets.setColorAt(n, this.tmpColor.setHex(b.gun.color));
+      n++;
     }
     this.bullets.count = n;
     this.bullets.instanceMatrix.needsUpdate = true;
+    if (this.bullets.instanceColor) this.bullets.instanceColor.needsUpdate = true;
+
+    // paprsky laseru: vedou z nosu auta a končí tam, kam dosáhly
+    this.beams.forEach((m) => (m.visible = false));
+    sim.cars.forEach((c, i) => {
+      if (c.beam <= 0 || c.dead) return;
+      const m = this.beam(i);
+      const len = Math.max(1, c.beamLen);
+      const fade = Math.min(1, c.beam * 3);                     // na konci dohasne
+      const r = (0.17 + Math.sin(t * 48 + i) * 0.015) * fade;   // lehce pulzuje
+      const fx2 = Math.sin(c.h), fz2 = Math.cos(c.h);
+      const y = this.cars[i].v.shoulder + 0.08;
+      m.visible = true;
+      m.position.set(c.x + fx2 * (1.6 + len / 2), y, c.z + fz2 * (1.6 + len / 2));
+      m.rotation.set(0, c.h, 0);
+      m.scale.set(r, r, len);
+      const mat = m.material as THREE.MeshBasicMaterial;
+      mat.color.setHex(c.gun.color);
+      mat.opacity = 0.5 + 0.35 * fade;
+      fx.flash(c.x + fx2 * 2.1, y, c.z + fz2 * 2.1, 1.1 * fade, 1.4, 2.6, 3.0, 0.06);
+      if (c.beamLen < c.gun.range - 0.5) {
+        fx.sparks(c.x + fx2 * (1.6 + len), y, c.z + fz2 * (1.6 + len), 2, 6, 1.6, 2.6, 3.2);
+      }
+    });
 
     n = 0;
     for (const r of sim.rockets) {

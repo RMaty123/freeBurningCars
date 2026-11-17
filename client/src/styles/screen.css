@@ -144,33 +144,33 @@ kbd {
 /* ------------------------------------------------------------------ výběr aut */
 /* 3D garáž (render/showroom.ts) se kreslí přes celou plochu každého panelu; HTML je jen nadpis nahoře
    a jmenovka se staty dole uprostřed. */
-#carselect { position: fixed; inset: 0; z-index: 30; overflow: hidden; --wide: 'Arial Black', 'Segoe UI Black', Arial, sans-serif; }
-#carselect[hidden] { display: none; }
+.pickscreen { position: fixed; inset: 0; z-index: 30; overflow: hidden; --wide: 'Arial Black', 'Segoe UI Black', Arial, sans-serif; }
+.pickscreen[hidden] { display: none; }
 /* černý pruh s potrhaným spodním okrajem */
-#carselect > header {
+.pickscreen > header {
   position: absolute; left: 0; right: 0; top: 0; z-index: 3; padding: 1.2vh 1.2vw 5vh; background: #0b0b0b; pointer-events: none;
   clip-path: polygon(0 0, 100% 0, 100% 74%, 97% 80%, 94% 73%, 90% 79%, 86% 72%, 83% 77%, 79% 71%, 75% 78%, 71% 73%, 67% 80%, 62% 74%, 58% 79%, 54% 72%, 50% 78%, 46% 73%, 42% 81%, 38% 75%, 34% 80%, 30% 73%, 26% 79%, 22% 74%, 18% 82%, 14% 76%, 10% 83%, 6% 78%, 3% 86%, 0 80%);
 }
-#carselect h1 {
+.pickscreen h1 {
   font-family: var(--wide); font-weight: 900; font-size: clamp(34px, 9.6vh, 120px); line-height: 1; letter-spacing: 0.01em; color: #fff;
   transform: scaleX(1.18); transform-origin: left; white-space: nowrap; text-shadow: 0 0.05em 0 rgba(0, 0, 0, 0.8);
 }
-#cs-hint {
+.pick-hint {
   font-family: var(--wide); font-weight: 900; color: #fff; font-size: clamp(12px, 3.4vh, 42px); letter-spacing: 0.02em; margin-top: 0.4vh;
   transform: scaleX(1.12); transform-origin: left; white-space: nowrap; text-shadow: 0 0.08em 0 rgba(0, 0, 0, 0.9);
 }
 /* Mřížka výřezů. Bez pozadí (pod ní je 3D plátno) a s pevnou výškou řádků – obsah panelů je umístěný
    absolutně, takže by jinak panely měly nulovou výšku. Mezery mezi výřezy vyplní černé plátno. */
-#cs-stage { position: absolute; inset: 0; display: grid; gap: 3px; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
-#cs-stage.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-#cs-stage.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pick-stage { position: absolute; inset: 0; display: grid; gap: 3px; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.pick-stage.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pick-stage.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 /* čtyři hráči: dva řádky začínají až pod nadpisem, ať horní auta nezakrývá černý pruh */
-#cs-stage.n4 { top: 13vh; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.pick-stage.n4 { top: 13vh; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
 /* panel je průhledný – pod ním je vidět 3D auto */
 .cs-panel { position: relative; min-width: 0; min-height: 0; overflow: hidden; --u: 1vh; }
-#cs-stage.n2 .cs-panel { --u: 0.85vh; }
-#cs-stage.n3 .cs-panel { --u: 0.68vh; }
-#cs-stage.n4 .cs-panel { --u: 0.56vh; }
+.pick-stage.n2 .cs-panel { --u: 0.85vh; }
+.pick-stage.n3 .cs-panel { --u: 0.68vh; }
+.pick-stage.n4 .cs-panel { --u: 0.56vh; }
 .cs-panel::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 0 #58e36a; transition: box-shadow 0.25s; }
 .cs-panel.ready::after { box-shadow: inset 0 0 0 calc(var(--u) * 0.9) #58e36a; }
 /* jmenovka + staty dole uprostřed */
@@ -198,12 +198,17 @@ kbd {
   transition: transform 0.22s cubic-bezier(0.2, 1.4, 0.4, 1), opacity 0.18s; background: rgba(6, 10, 8, 0.6);
 }
 .cs-panel.ready .cs-stamp { opacity: 1; transform: rotate(-9deg) scale(1); }
-#cs-banner {
+.pick-banner {
   position: absolute; left: 0; right: 0; top: 44%; z-index: 4; text-align: center; font-family: var(--wide); font-weight: 900; font-size: 8.5vh; letter-spacing: 0.02em;
   color: #fff; background: linear-gradient(90deg, transparent, rgba(20, 150, 50, 0.92) 18%, rgba(20, 150, 50, 0.92) 82%, transparent); padding: 1vh 0;
   text-shadow: 0 0.5vh 0 rgba(0, 0, 0, 0.5); animation: csBanner 0.3s ease-out;
 }
-#cs-banner[hidden] { display: none; }
+.pick-banner[hidden] { display: none; }
+/* řádek "jak se zbraň chová" ve výběru zbraní */
+.gs-how {
+  text-align: center; margin-top: calc(var(--u) * 0.8); color: #ffd24a; font-family: var(--body); font-weight: 800;
+  font-size: calc(var(--u) * 2.1); letter-spacing: 0.03em; text-shadow: 0 0 0.6em #000, 0 0.1em 0.2em #000; white-space: nowrap;
+}
 @keyframes csBanner { from { opacity: 0; transform: scaleX(0.6); } }
 
 /* ------------------------------------------------------------------ HUD */
@@ -230,6 +235,12 @@ kbd {
 .bar.nitro { width: 78%; }
 .bar.nitro i { background: linear-gradient(90deg, #1470ff, #38d6ff); }
 .bar.nitro i.on { background: linear-gradient(90deg, #7fe6ff, #fff); }
+/* nabíjení a vypalování laseru (jen když má hráč PRISM) */
+.bar.laser { width: 78%; }
+.bar.laser i { background: linear-gradient(90deg, #0b6f86, #6ff0ff); }
+.bar.laser i.full { background: linear-gradient(90deg, #6ff0ff, #fff); }
+.bar.laser i.fire { background: linear-gradient(90deg, #fff, #6ff0ff); transition: none; }
+.bar.laser.hide { display: none; }
 .v-weapon { position: absolute; left: calc(var(--u) * 3.2); bottom: calc(var(--u) * 13.5); display: flex; align-items: center; gap: calc(var(--u) * 1.2); background: rgba(0, 0, 0, 0.5); padding: calc(var(--u) * 0.8) calc(var(--u) * 1.8) calc(var(--u) * 0.8) calc(var(--u) * 1); border-radius: calc(var(--u) * 1.2); border: 1px solid rgba(255, 255, 255, 0.2); }
 .v-weapon canvas { width: calc(var(--u) * 7); height: calc(var(--u) * 7); }
 .v-weapon b { font-weight: 400; font-size: calc(var(--u) * 6.4); }

@@ -11,7 +11,7 @@ interface Panel {
   carId: number;
   el: HTMLElement;
   pos: HTMLElement; total: HTMLElement; lap: HTMLElement; speed: HTMLElement;
-  hp: HTMLElement; nitro: HTMLElement; ammo: HTMLElement; icon: HTMLCanvasElement;
+  hp: HTMLElement; nitro: HTMLElement; laser: HTMLElement; laserBar: HTMLElement; ammo: HTMLElement; icon: HTMLCanvasElement;
   msg: HTMLElement; warn: HTMLElement; dmg: HTMLElement;
   msgT: number; lastSec: string; lastHp: number;
 }
@@ -70,6 +70,7 @@ export class Hud {
         <div class="v-bars">
           <div class="bar hp"><i></i><em>ZDRAVÍ</em></div>
           <div class="bar nitro"><i></i><em>BOOST</em></div>
+          <div class="bar laser hide"><i></i><em>LASER</em></div>
         </div>
         <div class="v-weapon"><canvas width="64" height="64"></canvas><b>×0</b></div>
         <div class="v-msg"></div>
@@ -81,7 +82,8 @@ export class Hud {
       this.panels.push({
         carId: r.carId, el,
         pos: q('.v-pos .n'), total: q('.v-pos .t'), lap: q('.v-lap b'), speed: q('.v-speed b'),
-        hp: q('.bar.hp i'), nitro: q('.bar.nitro i'), ammo: q('.v-weapon b'), icon: q('.v-weapon canvas') as HTMLCanvasElement,
+        hp: q('.bar.hp i'), nitro: q('.bar.nitro i'), laser: q('.bar.laser i'), laserBar: q('.bar.laser'),
+        ammo: q('.v-weapon b'), icon: q('.v-weapon canvas') as HTMLCanvasElement,
         msg: q('.v-msg'), warn: q('.v-warn'), dmg: q('.v-dmg'),
         msgT: 0, lastSec: '', lastHp: c.hp,
       });
@@ -129,6 +131,15 @@ export class Hud {
       p.hp.className = hk < 0.3 ? 'low' : '';
       p.nitro.style.transform = `scaleX(${c.nitro})`;
       p.nitro.className = c.nitroOn ? 'on' : '';
+      // laser: dokud se nabíjí, ukazuje nabití; když pálí, ubývající paprsek
+      const beamGun = c.gun.kind === 'beam';
+      p.laserBar.classList.toggle('hide', !beamGun);
+      if (beamGun) {
+        const full = c.gun.chargeMax ?? 1;
+        const k = c.beam > 0 ? (c.beamT ? c.beam / c.beamT : 0) : c.charge / full;
+        p.laser.style.transform = `scaleX(${k})`;
+        p.laser.className = c.beam > 0 ? 'fire' : c.charge >= full ? 'full' : '';
+      }
       p.ammo.textContent = '×' + c.secAmmo;
       if (p.lastSec !== c.secType) {
         p.lastSec = c.secType;

@@ -4,6 +4,7 @@
  */
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
 import { CAR_TYPES, colorPicker } from '../../game/content/cars';
+import { gunAt } from '../../game/content/guns';
 import { TRACKS } from '../../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../../game/sim';
 import { CtrlMsg, EMPTY_INPUT, InputState } from '../../shared/protocol';
@@ -33,7 +34,7 @@ export class RaceScreen implements Screen {
     const pick = colorPicker();
     const entries: CarEntry[] = humans.map((p) => ({
       name: p.name, color: pick(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
-      typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], human: true, pid: p.pid,
+      typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), human: true, pid: p.pid,
     }));
     entries.push(...app.aiEntries(TOTAL_CARS - humans.length, Math.floor(Math.random() * 6), pick));
     const sim = new Sim(app.track(idx), entries, { laps: app.settings.laps, aiSkill: DIFFS[app.settings.diff].skill });
@@ -186,6 +187,8 @@ export class RaceScreen implements Screen {
         app.session.sendHud(p, {
           type: 'hud', pos: car.rank, total: sim.cars.length, lap: Math.min(sim.laps, Math.max(1, car.lap + 1)), laps: sim.laps,
           hp: Math.max(0, car.hp / car.stats.hp), nitro: car.nitro, sec: car.secType, ammo: car.secAmmo, dead: car.dead, finished: car.finished,
+          charge: car.gun.chargeMax ? car.charge / car.gun.chargeMax : 0,
+          beam: car.beamT > 0 ? car.beam / car.beamT : 0,
         });
       }
     }

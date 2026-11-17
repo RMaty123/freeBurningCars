@@ -5,6 +5,7 @@
  * Souřadnice: rovina X/Z, Y je nahoru. Směr auta h: dopředu = (sin h, cos h).
  */
 import { CarStats } from './cars';
+import { BEAM_MIN_CHARGE, beamTime, type GunStats } from './guns';
 import { Track, lateral, locate, wrapIdx } from './track';
 import { aiThink, AIState, newAI } from './ai';
 
@@ -61,6 +62,16 @@ export interface Car {
   drifting: boolean;
   secType: SecType;
   secAmmo: number;
+  /** primární zbraň (FIRE 1) */
+  gun: GunStats;
+  /** nabití laseru (s) – u ostatních zbraní 0 */
+  charge: number;
+  /** jak dlouho ještě svítí paprsek (s) */
+  beam: number;
+  /** jak dlouho svítit měl (pro ukazatel) */
+  beamT: number;
+  /** délka paprsku po první zásah (m) – jen pro vykreslení */
+  beamLen: number;
   fireCd: number;
   secCd: number;
   gunSide: number;
@@ -84,7 +95,7 @@ export interface Car {
   speedScale: number;
 }
 
-export interface Bullet { x: number; z: number; vx: number; vz: number; life: number; owner: number; ti: number; }
+export interface Bullet { x: number; z: number; vx: number; vz: number; life: number; owner: number; ti: number; gun: GunStats; }
 export interface Rocket { x: number; z: number; h: number; speed: number; life: number; owner: number; target: number; ti: number; id: number; }
 export interface Mine { x: number; z: number; owner: number; age: number; id: number; }
 export interface Pickup { x: number; z: number; kind: PickupKind; cooldown: number; id: number; }
@@ -99,6 +110,8 @@ export type SimEvent =
   | { t: 'crash'; a: number; b: number; x: number; z: number; force: number }
   | { t: 'boom'; x: number; z: number; size: number }
   | { t: 'launch'; car: number; kind: SecType }
+  /** laser vystřelil – `len` je, jak dlouho bude svítit (s) */
+  | { t: 'beam'; car: number; len: number }
   | { t: 'destroyed'; car: number; by: number }
   | { t: 'respawn'; car: number }
   | { t: 'pickup'; car: number; kind: PickupKind; x: number; z: number }
@@ -113,6 +126,8 @@ export interface CarEntry {
   tagColor: number;
   typeIdx: number;
   stats: CarStats;
+  /** vybraná primární zbraň */
+  gun: GunStats;
   human: boolean;
   pid: string | null;
 }
@@ -150,8 +165,6 @@ export function mulberry(seed: number) {
 }
 
 export const COUNTDOWN_TIME = 3.6;
-const BULLET_SPEED = 150;
-const BULLET_DMG = 2.7;
 const ROCKET_DMG = 58;
 const MINE_DMG = 52;
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
@@ -238,7 +251,8 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        secType: 'rocket', secAmmo: 2, fireCd: 0, secCd: 0, gunSide: 1,
+        secType: 'rocket', secAmmo: 2, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: 0,
+        fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
         finished: false, finishTime: 0, place: 0, kills: 0, deaths: 0, bestLap: 0, lapStart: 0,
         speedScale: 1,
@@ -457,8 +471,11 @@ export class Sim {
 
     // zbraně
     if (!c.finished && this.phase === 'racing') {
-      if (inp.fire && c.fireCd <= 0) this.fireGun(c);
+      if (c.gun.kind === 'beam') this.stepCharge(c, inp.fire, dt);
+      else if (inp.fire && c.fireCd <= 0) this.fireGun(c);
       if (inp.secondary && c.secCd <= 0 && c.secAmmo > 0) this.fireSecondary(c);
+    } else if (c.gun.kind === 'beam') {
+      c.charge = 0;
     }
   }
 
@@ -579,25 +596,80 @@ export class Sim {
   }
 
   private fireGun(c: Car) {
-    c.fireCd = 0.085;
+    const g = c.gun;
+    c.fireCd = g.cd;
     c.gunSide = -c.gunSide;
     const fx = Math.sin(c.h), fz = Math.cos(c.h);
     const sx = c.x + fx * 1.6 - fz * 0.5 * c.gunSide, sz = c.z + fz * 1.6 + fx * 0.5 * c.gunSide;
     let dir = c.h;
-    const tgt = this.findTarget(c, 0.16, 95);
+    const tgt = g.cone > 0 && g.aim > 0 ? this.findTarget(c, g.cone, g.range) : null;
     if (tgt) {
-      // míření s předstihem
+      // míření s předstihem – ale jen část opravy a nejvýš o `aimMax`
       const d = Math.hypot(tgt.x - sx, tgt.z - sz);
-      const tt = d / (BULLET_SPEED + Math.max(0, c.speed));
-      dir = Math.atan2(tgt.x + tgt.vx * tt - sx, tgt.z + tgt.vz * tt - sz);
-      // míření jen jemně dorovnává – ne víc než pár stupňů
-      dir = c.h + clamp(angDiff(dir, c.h), -0.17, 0.17);
+      const tt = d / (g.speed + Math.max(0, c.speed));
+      const want = Math.atan2(tgt.x + tgt.vx * tt - sx, tgt.z + tgt.vz * tt - sz);
+      dir = c.h + clamp(angDiff(want, c.h) * g.aim, -g.aimMax, g.aimMax);
     }
-    const spread = c.human ? 0.012 : c.ai.spread;
+    const spread = c.human ? g.spread : Math.max(g.spread, c.ai.spread);
     dir += (this.rnd() - 0.5) * 2 * spread;
-    const sp = BULLET_SPEED + Math.max(0, c.speed);
-    this.bullets.push({ x: sx, z: sz, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp, life: 0.75, owner: c.id, ti: c.ti });
+    const sp = g.speed + Math.max(0, c.speed);
+    this.bullets.push({
+      x: sx, z: sz, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
+      life: g.range / sp, owner: c.id, ti: c.ti, gun: g,
+    });
     this.events.push({ t: 'shot', car: c.id, x: sx, z: sz });
+  }
+
+  /**
+   * Laser: drženým FIRE 1 se nabíjí, puštěním vystřelí.
+   * Čím déle se nabíjel, tím déle paprsek svítí (nejvýš BEAM_MAX sekund).
+   */
+  private stepCharge(c: Car, held: boolean, dt: number) {
+    const g = c.gun;
+    if (c.beam > 0 || c.fireCd > 0) { c.charge = 0; return; } // během paprsku ani prodlevy se nenabíjí
+    if (held) {
+      c.charge = Math.min(g.chargeMax ?? 1, c.charge + dt);
+      // bot nedrží donekonečna – jakmile je plno, pálí
+      if (!c.human && c.charge >= (g.chargeMax ?? 1)) this.fireBeam(c);
+    } else if (c.charge > 0) {
+      if (c.charge >= BEAM_MIN_CHARGE) this.fireBeam(c);
+      else c.charge = 0; // ťuknutí nestačí
+    }
+  }
+
+  private fireBeam(c: Car) {
+    c.beamT = beamTime(c.gun, c.charge);
+    c.beam = c.beamT;
+    c.beamLen = c.gun.range;
+    c.charge = 0;
+    this.events.push({ t: 'beam', car: c.id, len: c.beamT });
+  }
+
+  /** Paprsek: pálí rovně z nosu auta a ubírá život prvnímu autu v cestě. */
+  private stepBeams(dt: number) {
+    for (const c of this.cars) {
+      if (c.beam <= 0) continue;
+      const g = c.gun;
+      if (c.dead || c.finished || this.phase !== 'racing') { c.beam = 0; c.fireCd = g.cd; continue; }
+      c.beam = Math.max(0, c.beam - dt);
+      if (c.beam <= 0) { c.fireCd = g.cd; c.beamLen = g.range; continue; }
+      const fx = Math.sin(c.h), fz = Math.cos(c.h);
+      const ox = c.x + fx * 1.6, oz = c.z + fz * 1.6;
+      let hit: Car | null = null, hitT = g.range;
+      for (const o of this.cars) {
+        if (o === c || o.dead || o.finished) continue;
+        const dx = o.x - ox, dz = o.z - oz;
+        const t = dx * fx + dz * fz;                    // jak daleko podél paprsku
+        if (t < 0 || t > hitT) continue;
+        if (Math.abs(dx * fz - dz * fx) > (g.beamR ?? 1.6)) continue; // kolmá odchylka
+        hit = o; hitT = t;
+      }
+      c.beamLen = hitT;
+      if (!hit) continue;
+      // AI pálí do lidí slabším paprskem, ať to není frustrující
+      this.damage(hit, g.dmg * dt * (!c.human && hit.human ? 0.55 : 1), c.id);
+      if (this.rnd() < dt * 12) this.events.push({ t: 'hit', car: hit.id, x: hit.x, z: hit.z });
+    }
   }
 
   private fireSecondary(c: Car) {
@@ -620,6 +692,7 @@ export class Sim {
 
   private stepWeapons(dt: number) {
     const tr = this.track;
+    this.stepBeams(dt);
     // --- kulky
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
@@ -635,7 +708,7 @@ export class Sim {
           if (d1 < 3.0 || d2 < 3.0) {
             const owner = this.cars[b.owner];
             // AI střílí do lidí o něco slabším kalibrem, ať to není frustrující
-            const dmg = BULLET_DMG * (owner && !owner.human && c.human ? 0.55 : 1);
+            const dmg = b.gun.dmg * (owner && !owner.human && c.human ? 0.55 : 1);
             this.damage(c, dmg, b.owner);
             this.events.push({ t: 'hit', car: c.id, x: b.x, z: b.z });
             gone = true;

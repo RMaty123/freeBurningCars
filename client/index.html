@@ -70,13 +70,23 @@
   </section>
 
   <!-- Výběr aut (panely hráčů staví screens/carSelect.ts, 3D auta kreslí render/showroom.ts) -->
-  <section id="carselect" hidden>
+  <section id="carselect" class="pickscreen" hidden>
     <header>
       <h1>VYBER AUTO</h1>
-      <p id="cs-hint"></p>
+      <p id="cs-hint" class="pick-hint"></p>
     </header>
-    <div id="cs-stage"></div>
-    <div id="cs-banner" hidden>VŠICHNI PŘIPRAVENI</div>
+    <div id="cs-stage" class="pick-stage"></div>
+    <div id="cs-banner" class="pick-banner" hidden>VŠICHNI PŘIPRAVENI</div>
+  </section>
+
+  <!-- Výběr zbraně (FIRE 1) -->
+  <section id="gunselect" class="pickscreen" hidden>
+    <header>
+      <h1>VYBER ZBRAŇ</h1>
+      <p id="gs-hint" class="pick-hint"></p>
+    </header>
+    <div id="gs-stage" class="pick-stage"></div>
+    <div id="gs-banner" class="pick-banner" hidden>VŠICHNI PŘIPRAVENI</div>
   </section>
 
   <!-- Výsledky -->

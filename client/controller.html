@@ -58,7 +58,7 @@
   <section id="s-cars" class="screen">
     <div class="cs-top">
       <button id="cs-back" class="cs-backbtn" aria-label="Zpět"><i></i></button>
-      <div class="cs-box cs-who"><b id="cs-player">HRÁČ</b></div>
+      <div class="cs-box cs-who"><b id="cs-player">HRÁČ</b><em id="cs-what">VYBER AUTO</em></div>
       <div class="cs-box cs-pick">
         <span id="cs-carname">—</span>
         <button id="cs-confirm">POTVRDIT</button>
@@ -66,6 +66,7 @@
       </div>
     </div>
     <div class="cs-grid" id="cs-grid"></div>
+    <div class="cs-grid" id="gs-grid" hidden></div>
   </section>
 
   <!-- 3) řízení -->
@@ -80,7 +81,7 @@
     </div>
     <!-- Plyn drží hra sama. Nahoře palba a drift, dole zatáčení a brzda. -->
     <div class="pad" id="pad">
-      <div class="btn fire1" id="b-fire"><span><b>FIRE 1</b><small>kulomet</small></span></div>
+      <div class="btn fire1" id="b-fire"><i class="chg" id="fire-chg"></i><span><b>FIRE 1</b><small id="fire-name">kulomet</small></span></div>
       <div class="btn drift" id="b-drift"><span><b>DRIFT</b></span></div>
       <div class="btn fire2" id="b-sec"><span><b>FIRE 2</b><small id="sec-ammo">raketa ×2</small></span></div>
       <div class="btn arrow-l" id="b-left"><b>LEFT</b></div>

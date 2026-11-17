@@ -11,10 +11,12 @@
  */
 import { AI_NAMES } from '../game/cars';
 import { CAR_TYPES, colorPicker } from '../game/content/cars';
+import { GUNS } from '../game/content/guns';
 import { TRACKS } from '../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../game/sim';
 import { Track, buildTrack } from '../game/track';
 import { GameView } from '../render/gameView';
+import { Showroom } from '../render/showroom';
 import type { CtrlMsg, MenuInfo, Phase } from '../shared/protocol';
 import { GameAudio } from './audio';
 import { Hud } from './hud';
@@ -30,7 +32,7 @@ export const DIFFS = [
 export const $ = (id: string) => document.getElementById(id)!;
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-export type ScreenName = 'lobby' | 'track' | 'cars' | 'race';
+export type ScreenName = 'lobby' | 'track' | 'cars' | 'guns' | 'race';
 
 export interface Screen {
   /** obrazovka se právě zobrazila */
@@ -79,6 +81,8 @@ export class App {
   readonly keys = new Set<string>();
 
   private screens = {} as Record<ScreenName, Screen>;
+  /** garáž pro výběr aut i zbraní – staví se až při prvním použití a sdílí ji obě obrazovky */
+  private showroomRef: Showroom | null = null;
   private current: Screen | null = null;
   private trackCache = new Map<string, Track>();
   private toastTimer = 0;
@@ -111,6 +115,11 @@ export class App {
     this.session.changed();
   }
 
+  /** Scéna s modelem (auto / zbraň) pro výběrové obrazovky. */
+  get showroom(): Showroom {
+    return (this.showroomRef ??= new Showroom(this.view.renderer));
+  }
+
   get racing(): boolean {
     return this.phase === 'countdown' || this.phase === 'race' || this.phase === 'results';
   }
@@ -140,7 +149,9 @@ export class App {
       const k = (i + startAt) % AI_NAMES.length;
       const typeIdx = (i + startAt + 1) % CAR_TYPES.length;
       const color = pick(typeIdx);
-      out.push({ name: AI_NAMES[k], color, tagColor: color, typeIdx, stats: CAR_TYPES[typeIdx], human: false, pid: null });
+      // boti mají zbraně na střídačku, ať je v závodě vidět všechno
+      const gun = GUNS[(i + startAt) % GUNS.length];
+      out.push({ name: AI_NAMES[k], color, tagColor: color, typeIdx, stats: CAR_TYPES[typeIdx], gun, human: false, pid: null });
     }
     return out;
   }
@@ -199,6 +210,7 @@ export class App {
           break;
         }
         case 'respawn': { const c = s.cars[e.car]; a.respawn(this.volAt(c.x, c.z)); break; }
+        case 'beam': { const c = s.cars[e.car]; a.beam(this.volAt(c.x, c.z), e.len); break; }
       }
     }
   }

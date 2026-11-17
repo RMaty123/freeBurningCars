@@ -2,12 +2,12 @@
  * Free Burning Cars – ovladač (telefon).
  * V závodě: plyn drží hra sama, tlačítka FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa/mina), LEFT, BRAKE, RIGHT.
  * V menu (výběr tratě…): LEFT / SELECT / RIGHT / zpět – co se vybírá, říká obrazovka (HostMsg.menu).
- * Výběr auta: lišta (zpět | jméno | potvrzení) a mřížka aut; nabídku s náhledy posílá obrazovka.
- * Ťuknutím auto vybereš, tlačítkem POTVRDIT potvrdíš.
+ * Výběr auta i zbraně (FIRE 1): stejná obrazovka – lišta (zpět | jméno | potvrzení) a mřížka;
+ * nabídku s náhledy posílá obrazovka. Ťuknutím vybereš, tlačítkem POTVRDIT potvrdíš.
  * Stav tlačítek se posílá na obrazovku přes Socket.IO.
  */
 import { io } from 'socket.io-client';
-import type { CtrlMsg, HostMsg, InputState, Phase } from '../shared/protocol';
+import type { CtrlMsg, HostMsg, InputState, Phase, PickKind } from '../shared/protocol';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -204,7 +204,8 @@ socket.on('host:msg', (m: HostMsg) => {
     }
     if (m.phase === 'lobby') show('s-lobby');
     else if (m.phase === 'track') show('s-menu');
-    else if (m.phase === 'cars') { carState(m.carIdx, m.ready, m.master, m.name); show('s-cars'); }
+    else if (m.phase === 'cars') { pickState('car', m.carIdx, m.ready, m.master, m.name); show('s-cars'); }
+    else if (m.phase === 'guns') { pickState('gun', m.gunIdx, m.ready, m.master, m.name); show('s-cars'); }
     else if (m.phase === 'results') show('s-results');
     else show('s-pad');
   } else if (m.type === 'hud') {
@@ -215,6 +216,11 @@ socket.on('host:msg', (m: HostMsg) => {
     $('p-nitro').style.transform = `scaleX(${m.nitro})`;
     $('sec-ammo').textContent = (m.sec === 'rocket' ? 'raketa' : 'mina') + ' ×' + m.ammo;
     $('b-sec').classList.toggle('empty', m.ammo === 0);
+    const chg = $('fire-chg');
+    const lvl = m.beam > 0 ? m.beam : m.charge;
+    chg.classList.toggle('on', lvl > 0.001);
+    chg.classList.toggle('fire', m.beam > 0);
+    chg.style.transform = `scaleX(${lvl})`;
     const ov = $('pad-overlay');
     ov.classList.toggle('show', m.dead || m.finished);
     ov.classList.toggle('fin', m.finished);
@@ -245,17 +251,22 @@ tap('mn-right', () => send({ type: 'nav', dir: 1 }));
 tap('mn-select', () => send({ type: 'select' }));
 tap('mn-back', () => send({ type: 'back' }));
 
-// ------------------------------------------------------------------ výběr auta
+// ------------------------------------------------------------------ výběr auta a zbraně
+// Obojí vypadá a funguje stejně, jen jiná mřížka a jiný nadpis.
 type CatalogMsg = Extract<HostMsg, { type: 'catalog' }>;
-const catalog: CatalogMsg[] = [];
-let carPick = 0;      // auto zvýrazněné v nabídce
-let carReady = false; // už potvrzeno?
+const GRID: Record<PickKind, string> = { car: 'cs-grid', gun: 'gs-grid' };
+const TITLE: Record<PickKind, string> = { car: 'VYBER AUTO', gun: 'VYBER ZBRAŇ · FIRE 1' };
+const catalog: Record<PickKind, CatalogMsg[]> = { car: [], gun: [] };
+const picked: Record<PickKind, number> = { car: 0, gun: 0 };
+let pickKind: PickKind = 'car'; // co se zrovna vybírá
+let pickReady = false;          // už potvrzeno?
 
 /** Přišla (nebo se změnila) jedna položka nabídky → vytvoř / aktualizuj dlaždici. */
 function catalogItem(m: CatalogMsg) {
-  catalog[m.idx] = m;
-  catalog.length = m.total;
-  const grid = $('cs-grid');
+  const list = catalog[m.kind];
+  list[m.idx] = m;
+  list.length = m.total;
+  const grid = $(GRID[m.kind]);
   let tile = grid.querySelector<HTMLElement>(`[data-i="${m.idx}"]`);
   if (!tile) {
     tile = document.createElement('button');
@@ -263,9 +274,9 @@ function catalogItem(m: CatalogMsg) {
     tile.dataset.i = String(m.idx);
     tile.innerHTML = '<img alt="" /><span></span>';
     tile.addEventListener('click', () => {
-      if (carReady) return;
-      carPick = m.idx; // hned zvýrazni, obrazovka to potvrdí stavem
-      renderCars();
+      if (pickReady || pickKind !== m.kind) return;
+      picked[m.kind] = m.idx; // hned zvýrazni, obrazovka to potvrdí stavem
+      renderPick();
       send({ type: 'pick', idx: m.idx });
     });
     // dlaždice drž v pořadí podle indexu, i kdyby zprávy přišly napřeskáčku
@@ -275,30 +286,39 @@ function catalogItem(m: CatalogMsg) {
   (tile.querySelector('img') as HTMLImageElement).src = m.img;
   (tile.querySelector('span') as HTMLElement).textContent = m.name;
   for (const c of [...grid.children]) if (Number((c as HTMLElement).dataset.i) >= m.total) c.remove();
-  renderCars();
+  grid.classList.toggle('few', m.total <= 6);
+  renderPick();
 }
 
-function carState(idx: number, ready: boolean, master: boolean, name: string) {
-  carPick = idx;
-  carReady = ready;
+function pickState(kind: PickKind, idx: number, ready: boolean, master: boolean, name: string) {
+  pickKind = kind;
+  picked[kind] = idx;
+  pickReady = ready;
   $('cs-player').textContent = name;
-  // zpět na výběr tratě může jen první hráč
+  $('cs-what').textContent = TITLE[kind];
+  // o krok zpět může poprosit jen první hráč
   $('cs-back').style.visibility = master ? 'visible' : 'hidden';
-  renderCars();
+  renderPick();
 }
 
-function renderCars() {
-  for (const t of $('cs-grid').children) t.classList.toggle('on', Number((t as HTMLElement).dataset.i) === carPick);
-  // po potvrzení se nabídka zamkne: ostatní auta zešednou a místo POTVRDIT je ZMĚNIT
-  $('s-cars').classList.toggle('locked', carReady);
-  $('cs-confirm').hidden = carReady;
-  $('cs-change').hidden = !carReady;
-  const car = catalog[carPick];
-  $('cs-carname').textContent = car ? (carReady ? '✔ ' : '') + car.name : '—';
+function renderPick() {
+  const kind = pickKind;
+  for (const k of ['car', 'gun'] as PickKind[]) $(GRID[k]).hidden = k !== kind;
+  const idx = picked[kind];
+  for (const t of $(GRID[kind]).children) t.classList.toggle('on', Number((t as HTMLElement).dataset.i) === idx);
+  // po potvrzení se nabídka zamkne: ostatní dlaždice zešednou a místo POTVRDIT je ZMĚNIT
+  $('s-cars').classList.toggle('locked', pickReady);
+  $('cs-confirm').hidden = pickReady;
+  $('cs-change').hidden = !pickReady;
+  const item = catalog[kind][idx];
+  $('cs-carname').textContent = item ? (pickReady ? '✔ ' : '') + item.name : '—';
+  // na tlačítku FIRE 1 ať je vidět, s čím se jede
+  const gun = catalog.gun[picked.gun];
+  if (gun) $('fire-name').textContent = gun.name.toLowerCase();
 }
 
-tap('cs-confirm', () => { carReady = true; renderCars(); send({ type: 'ready', on: true }); });
-tap('cs-change', () => { carReady = false; renderCars(); send({ type: 'ready', on: false }); });
+tap('cs-confirm', () => { pickReady = true; renderPick(); send({ type: 'ready', on: true }); });
+tap('cs-change', () => { pickReady = false; renderPick(); send({ type: 'ready', on: false }); });
 tap('cs-back', () => send({ type: 'back' }));
 
 // ------------------------------------------------------------------ řízení (multi-touch)

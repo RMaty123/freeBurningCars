@@ -115,6 +115,14 @@ export class GameAudio {
     this.tone(vol * 0.2, 0.05, 'square', 190, 70);
   }
   hit(vol: number) { this.burst(vol * 0.2, 0.05, 'highpass', 3000, 5000, 0.5); }
+  /** Výstřel laseru: krátký "pshh" a klesající tón, délka podle toho, jak dlouho bude svítit. */
+  beam(vol: number, len: number) {
+    this.burst(vol * 0.3, Math.min(0.6, 0.15 + len * 0.1), 'bandpass', 900, 3200, 1.6);
+    this.tone(vol * 0.45, Math.min(0.9, 0.2 + len * 0.15), 'sawtooth', 1200, 260);
+    this.tone(vol * 0.25, Math.min(0.9, 0.2 + len * 0.15), 'square', 600, 130, 0.02);
+  }
+  /** Tiché cvaknutí, když je laser nabitý. */
+  charged(vol: number) { this.tone(vol * 0.2, 0.08, 'square', 1500, 1900); }
   boom(vol: number, size: number) {
     this.burst(vol * 0.95, 0.5 + size * 0.5, 'lowpass', 1400, 60, 0.7);
     this.tone(vol * 0.8, 0.45 + size * 0.3, 'sine', 110, 28);

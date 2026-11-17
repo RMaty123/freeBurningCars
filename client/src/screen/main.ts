@@ -4,11 +4,12 @@
  * Tenhle soubor jen všechno propojí: vytvoří App, zaregistruje obrazovky a spustí hlavní smyčku.
  *   app.ts        společný kontext (grafika, zvuk, simulace na pozadí, přepínání obrazovek)
  *   session.ts    hráči a spojení s ovladači
- *   screens/      lobby → výběr tratě → výběr aut → závod (+ výsledky) → výběr tratě …
+ *   screens/      lobby → výběr tratě → výběr aut → výběr zbraně → závod (+ výsledky) → výběr tratě …
  */
 import { $, App } from './app';
 import { loadPreviews } from './previews';
 import { CarSelectScreen } from './screens/carSelect';
+import { GunSelectScreen } from './screens/gunSelect';
 import { LobbyScreen } from './screens/lobby';
 import { RaceScreen } from './screens/race';
 import { TrackSelectScreen } from './screens/trackSelect';
@@ -18,6 +19,7 @@ const trackSelect = new TrackSelectScreen(app);
 app.register('lobby', new LobbyScreen(app));
 app.register('track', trackSelect);
 app.register('cars', new CarSelectScreen(app));
+app.register('guns', new GunSelectScreen(app));
 app.register('race', new RaceScreen(app));
 
 // náhledy tratí (poprvé se vyrenderují, příště se vezmou z úložiště prohlížeče)

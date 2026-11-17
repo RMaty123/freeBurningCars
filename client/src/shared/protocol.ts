@@ -29,13 +29,16 @@ export type CtrlMsg =
   | { type: 'nav'; dir: 1 | -1 }
   | { type: 'select' }
   | { type: 'back' }
-  /** výběr auta: ťuknutí na auto v nabídce (ještě nepotvrzeno) */
+  /** výběr auta / zbraně: ťuknutí na položku v nabídce (ještě nepotvrzeno) */
   | { type: 'pick'; idx: number }
-  /** výběr auta: potvrzení / zrušení potvrzení */
+  /** výběr auta / zbraně: potvrzení / zrušení potvrzení */
   | { type: 'ready'; on: boolean };
 
-/** lobby → track (výběr tratě) → cars (výběr aut) → countdown → race → results → track … */
-export type Phase = 'lobby' | 'track' | 'cars' | 'countdown' | 'race' | 'results';
+/** lobby → track (trať) → cars (auta) → guns (zbraň FIRE 1) → countdown → race → results → track … */
+export type Phase = 'lobby' | 'track' | 'cars' | 'guns' | 'countdown' | 'race' | 'results';
+
+/** Co se zrovna vybírá – nabídka na telefonu je pro obojí stejná. */
+export type PickKind = 'car' | 'gun';
 
 /** Co má ovladač ukázat na obrazovce menu (LEFT / SELECT / RIGHT). */
 export interface MenuInfo {
@@ -57,8 +60,9 @@ export type HostMsg =
       slot: number;
       color: string;
       name: string;
-      /** vybrané auto (index do nabídky) a jestli už je potvrzené */
+      /** vybrané auto a zbraň (indexy do nabídky) a jestli je výběr potvrzený */
       carIdx: number;
+      gunIdx: number;
       ready: boolean;
       master: boolean;
       /** připojil se během závodu a čeká na další */
@@ -80,18 +84,23 @@ export type HostMsg =
       ammo: number;
       dead: boolean;
       finished: boolean;
+      /** nabití laseru 0…1 (u ostatních zbraní 0) */
+      charge: number;
+      /** zbývající paprsek 0…1 */
+      beam: number;
     }
-  /** jedna položka nabídky aut (posílá se při vstupu do výběru aut, auto po autu) */
+  /** jedna položka nabídky (aut nebo zbraní) – posílá se při vstupu do výběru, kus po kuse */
   | {
       type: 'catalog';
+      kind: PickKind;
       idx: number;
       total: number;
       name: string;
       tagline: string;
-      /** náhled auta v barvě hráče (data URL) */
+      /** náhled (data URL) */
       img: string;
-      /** hodnocení 1–10 */
-      ratings: { speed: number; accel: number; handling: number; armor: number };
+      /** ukazatele 1–10 s popiskem, co je co */
+      ratings: { l: string; v: number }[];
     }
   | { type: 'buzz'; ms: number }
   | { type: 'kicked'; reason: string };

@@ -5,7 +5,7 @@ Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + AI soupeři (vždy 6 aut na trati)
-- **kulomet, rakety, miny**, opravy a zrychlení – bedny na trati
+- **3 primární zbraně na výběr** (kulomet, těžký kulomet, nabíjecí laser), k tomu rakety, miny, opravy a zrychlení z beden
 - **3 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
 - dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
@@ -54,7 +54,7 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 
 **Plyn drží hra sama** – jen zatáčíš, brzdíš a střílíš.
 
-**Telefon (na šířku):** nahoře FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa / mina); dole LEFT, BRAKE (podržením couvá), RIGHT.
+**Telefon (na šířku):** nahoře FIRE 1 (vybraná zbraň), DRIFT, FIRE 2 (raketa / mina); dole LEFT, BRAKE (podržením couvá), RIGHT.
 
 **Klávesnice:**
 
@@ -62,12 +62,26 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 | --- | --- |
 | A D / šipky vlevo, vpravo | zatáčení |
 | S / šipka dolů | brzda, zpátečka |
-| MEZERNÍK | kulomet |
+| MEZERNÍK | FIRE 1 (u laseru držením nabíjíš, puštěním vystřelíš) |
 | F nebo E | raketa / mina |
 | SHIFT | drift |
 | ESC | ukončit závod |
 
 **V lobby (klávesnice na PC):** `L` počet kol · `O` obtížnost AI · `G` kvalita grafiky · `M` zvuk
+
+### Primární zbraně (FIRE 1)
+
+Po výběru auta přijde **výběr zbraně** – na telefonu mřížka s náhledy, na obrazovce model zbraně a její ukazatele. Zbraň si vybírá každý hráč zvlášť, boti ji dostanou na střídačku.
+
+| Zbraň | Jak střílí | Čísla |
+| --- | --- | --- |
+| **VULCAN** | rychlopalný kulomet, dobře si doměřuje cíl | 2,7 dmg / ránu, 12 ran za sekundu (≈ 32 dmg/s) |
+| **BREAKER** | pomalý těžký kulomet, slabší doměřování, velké rány | 13 dmg / ránu, 2,5 rány za sekundu (≈ 32 dmg/s) |
+| **PRISM** | laser: **držením FIRE 1 se nabíjí, puštěním vystřelí** | 28 dmg/s, nabíjení až 2,5 s |
+
+PRISM svítí tak dlouho, jak dlouho se nabíjel – každá sekunda nabíjení je dvě sekundy paprsku, nejvýš **5 sekund** (`BEAM_MAX` v `game/guns.ts`). Paprsek letí rovně z nosu auta (žádné doměřování), zastaví se o první auto v cestě a ubírá život po celou dobu, co na něm drží – takže se jím dá "přejíždět" po soupeři. Na obrazovce i na tlačítku FIRE 1 je vidět ukazatel nabití.
+
+**Doměřování u kulometů:** zbraň si najde cíl v kuželu před autem (`cone`) a natočí hlaveň na místo, kam auto doletí – ale jen částí opravy (`aim`) a nejvýš o `aimMax`. Střely samotné pak letí rovně. Všechno jsou to čísla v `game/content/guns.ts`, takže se dá doměřování komukoli přitvrdit i vypnout (`aim: 0`).
 
 Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
 
@@ -109,12 +123,15 @@ client/src/shared/           protokol zpráv mezi obrazovkou a ovladačem
 client/src/game/             čistá herní logika bez grafiky
     content/tracks.ts        DATA: seznam tratí (sem se přidávají nové)
     content/cars.ts          DATA: seznam aut (sem se přidávají nová)
+    content/guns.ts          DATA: seznam zbraní FIRE 1 (sem se přidávají nové)
     cars.ts                  typy pro auta, paleta barev
+    guns.ts                  typy pro zbraně (+ pravidla paprsku)
     track.ts                 geometrie trati (křivka, vzorky, nejbližší bod)
     sim.ts                   fyzika, zbraně, bedny, kola, pořadí
     ai.ts                    AI soupeři
 client/src/render/           Three.js (svět, modely aut, částice, textury, kamery, split-screen)
-    showroom.ts              garáž pro výběr aut + náhledy aut pro telefon
+    gunModel.ts              procedurální modely zbraní do nabídky
+    showroom.ts              garáž pro výběr aut i zbraní + náhledy pro telefon
 client/src/screen/           obrazovka na PC
     main.ts                  jen propojení: vytvoří App, zaregistruje obrazovky, hlavní smyčka
     app.ts                   společný kontext: grafika, zvuk, ukázka na pozadí, přepínání obrazovek
@@ -123,6 +140,7 @@ client/src/screen/           obrazovka na PC
     screens/lobby.ts         připojení hráčů
     screens/trackSelect.ts   výběr tratě (karty)
     screens/carSelect.ts     výběr aut (panel s 3D autem pro každého hráče)
+    screens/gunSelect.ts     výběr zbraně FIRE 1 (stejné panely, model zbraně)
     screens/race.ts          odpočet, závod, výsledky
     hud.ts, audio.ts         HUD a zvuky
 client/src/controller/       logika ovladače
@@ -154,7 +172,8 @@ Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přepos�
 
 - **Barvy:** každý typ auta má **svoji pevnou barvu** (`color` v `content/cars.ts`) – stejnou pro hráče i pro boty, takže VIPER GT je vždy červená, HYPERION světle modrý, HAULER bílý atd. Když si dva hráči vyberou stejné auto, `colorPicker()` dá druhému volnou barvu z palety `CAR_COLORS` (přednost mají barvy, které nejsou ničí vlastní), aby se nepletli. Kdo je kdo se pozná podle barvy jména nad autem, tečky na minimapě a rámečku v HUD – to je `tagColor` (barva slotu hráče z `PLAYER_COLORS`), která je oddělená od barvy laku. K hlavní barvě má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`, `spine`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION grafitový hřbet (`spine` = klín na kapotě + víko motoru, k tomu střecha). `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
 - **Maska a světla** sedí na šikmém čele samy: `noseAt()` v `carModel.ts` spočítá bod a sklon přídě, takže ani u ostrého klínu nic netrčí z karoserie.
-- **Nový krok v menu (výběr zbraní…):** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `trackSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Ovladač se měnit nemusí – obrazovka LEFT / SELECT / RIGHT je obecná a co se vybírá, jí posílá hra (`MenuInfo` v `shared/protocol.ts`).
+- **Nová zbraň:** další záznam v `game/content/guns.ts`. Objeví se sama ve výběru na PC i na telefonu (model se poskládá podle `shape`: tělo, hlaveň, chladicí plášť s dírami, úsťová brzda, bedna s municí, energetické prstence) a simulace si z ní vezme čísla. `kind: 'bullet'` střílí projektily, `kind: 'beam'` se nabíjí a pak drží paprsek.
+- **Nový krok v menu:** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `gunSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Nabídka na telefonu je obecná – mřížka s náhledy se staví ze zpráv `catalog` (`kind` říká, co se vybírá), takže pro výběr další věci stačí posílat jiný katalog.
 - **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 
 ## Další příkazy
