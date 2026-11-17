@@ -3,9 +3,20 @@
  * Seznam aut je v content/cars.ts; karoserie se generuje procedurálně v render/carModel.ts.
  */
 
+/** Styl světel. */
+export type LightStyle = 'slim' | 'round' | 'quad' | 'strip';
+/** Lak: pruhy přes kapotu a střechu, dvojité pruhy, boční blesk, nic. */
+export type Livery = 'center' | 'twin' | 'flash' | 'none';
+/** Zadní křídlo. */
+export type Wing = 0 | 1 | 2 | 3; // 0 nic, 1 lipa, 2 GT křídlo, 3 vysoké křídlo na labutích krcích
+/** Díly, které se obarví druhou barvou. */
+export type AccentPart = 'hood' | 'roof' | 'flares' | 'wing' | 'mirrors' | 'lower' | 'bed';
+/** Povrch laku. */
+export type Finish = 'gloss' | 'matte' | 'metallic' | 'pearl';
+
 /**
  * Tvar karoserie. Model se z těchhle čísel postaví sám – vytažením bočního profilu
- * do šířky, takže stačí měnit rozměry a pár přepínačů a auto vypadá úplně jinak.
+ * do šířky a doplněním detailů, takže stačí měnit rozměry a přepínače a auto vypadá úplně jinak.
  */
 export interface CarShape {
   /** délka, šířka (m) */
@@ -23,12 +34,14 @@ export interface CarShape {
   rearGlass: number;
   wheelR: number;
   wheelW: number;
-  /** zadní křídlo: 0 žádné, 1 lipa, 2 velké */
-  spoiler: 0 | 1 | 2;
-  /** offroad výbava: rám vpředu, oblouk za kabinou, světelná rampa */
-  rugged: boolean;
   /** příď: 0 tupá a vysoká (dodávka) … 1 nízká klínová (supersport) */
   nose: number;
+  /** zadní křídlo */
+  spoiler: Wing;
+  /** offroad výbava: rám vpředu, oblouk za kabinou, světelná rampa */
+  rugged: boolean;
+
+  // ---- nepovinné doplňky
   /** kola mimo karoserii (bugina, formule) */
   openWheels?: boolean;
   /** bez střechy – jen ochranný oblouk (hot rod, formule) */
@@ -37,6 +50,31 @@ export interface CarShape {
   bed?: boolean;
   /** rezerva na korbě / na zádi */
   spare?: boolean;
+  /** rozšířené blatníky 0…1 */
+  flares?: number;
+  /** boční sání před zadními koly */
+  intakes?: boolean;
+  /** 0 nic, 1 nasávání na kapotě, 2 kompresor trčící z kapoty */
+  scoop?: 0 | 1 | 2;
+  /** přední splitter a zadní difuzor se žebry */
+  splitter?: boolean;
+  /** boční výfuky za předními koly místo zadních */
+  sideExhaust?: boolean;
+  lights?: LightStyle;
+  livery?: Livery;
+  /** barva pruhů (jinak bílá / černá podle laku) */
+  liveryColor?: number;
+  /** které díly dostanou druhou barvu */
+  accent?: AccentPart[];
+  /** druhá barva (jinak ztmavená hlavní) */
+  accentColor?: number;
+  /** povrch laku */
+  finish?: Finish;
+  /** barva brzdových třmenů (vidět mezi paprsky) */
+  caliperColor?: number;
+  /** počet paprsků kol a jejich barva */
+  rimSpokes?: number;
+  rimColor?: number;
 }
 
 export interface CarStats {
@@ -71,6 +109,14 @@ export const AI_NAMES = [
   'BLAZE', 'REX', 'NOVA', 'DIESEL', 'VIXEN', 'GHOST',
   'TURBO', 'SMILEY', 'CRUSHER', 'ZIGGY', 'BANDIT', 'SHADOW',
 ];
+
+/** Barvy disků pro content/cars.ts. */
+export const RIM = { chrome: 0xd4d9e2, dark: 0x26282e, gold: 0xd9a93c, bronze: 0xa6713a, white: 0xeceae4, red: 0xb52a20 };
+/** Pojmenované barvy laku pro druhou barvu a pruhy. */
+export const PAINT = {
+  carbon: 0x1b1d22, black: 0x101216, white: 0xf2f0ea, silver: 0xb9bec7, gunmetal: 0x4a4f58,
+  gold: 0xd9a93c, orange: 0xff7a1a, red: 0xc0392b, blue: 0x1f6fd6, lime: 0x9ad42a, cream: 0xe8dcb5,
+};
 
 export function hexCss(c: number): string {
   return '#' + c.toString(16).padStart(6, '0');

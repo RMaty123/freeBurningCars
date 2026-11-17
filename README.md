@@ -7,7 +7,8 @@ Vlastní server v Node.js – není potřeba AirConsole ani internet.
 - až **4 hráči** ve split-screenu + AI soupeři (vždy 6 aut na trati)
 - **kulomet, rakety, miny**, opravy a zrychlení – bedny na trati
 - **3 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory)
-- **10 aut**, která se opravdu jinak řídí – od formule po náklaďák (rozdíl v kole je až 1,5×)
+- **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
+- dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
 - zničení soupeřů, respawn, pořadí, kola, body za umístění i za zničení
 - veškerá grafika i zvuk jsou procedurální (žádné stažené modely, textury ani zvuky)
 
@@ -76,9 +77,12 @@ Auta se liší tak, aby to bylo poznat hned v první zatáčce:
 
 | | nejlepší | nejhorší |
 | --- | --- | --- |
-| rychlost | NEEDLE 245 km/h | HAULER 180 km/h |
-| zatáčení | DUNE RAT (poloměr 12 m při 108 km/h) | HAULER (51 m při stejné rychlosti) |
+| rychlost | HYPERION 259 km/h | HAULER 180 km/h |
+| zatáčení | DUNE RAT a NEEDLE | HAULER |
 | pancíř | HAULER 200 | NEEDLE 70 |
+
+**HYPERION** je hypersport – nejvyšší rychlost a špička skoro ve všem, platí za to jen průměrným
+pancířem. **NEEDLE** (formule) s ním na klikaté trati drží krok, ale rozbije se po pár zásazích.
 
 Klíčová je hodnota `steerRef` v `game/content/cars.ts`: **nad touhle rychlostí auto začne nedotáčet**.
 Formule zatáčí i ve dvou stech, náklaďák se v té samé zatáčce jen vzepře a jede rovně – před zatáčkou se
@@ -130,7 +134,24 @@ Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přepos�
 ### Jak se to rozšiřuje
 
 - **Nová trať:** další záznam v `game/content/tracks.ts`. Karta ve výběru, náhled i obrys vzniknou samy.
-- **Nové auto:** další záznam v `game/content/cars.ts`. Ve výběru aut se objeví samo – 3D model, dlaždice na telefonu i ukazatele se spočítají z dat. Tvar karoserie řídí pár čísel v `shape`: `nose` (0 tupá příď dodávky … 1 nízký klín supersportu), `spoiler` 0/1/2, `rugged` (offroad rám a rampa), `bed` (korba), `roofless` (otevřený kokpit), `openWheels` (kola mimo karoserii).
+- **Nové auto:** další záznam v `game/content/cars.ts`. Ve výběru aut se objeví samo – 3D model, dlaždice na telefonu i ukazatele se spočítají z dat. Vzhled skládá `shape` z dílů, žádný soubor s modelem není potřeba:
+
+  | přepínač | co udělá |
+  | --- | --- |
+  | `nose` | 0 tupá příď dodávky … 1 nízký klín supersportu |
+  | `spoiler` | 0 nic, 1 lipa, 2 velké GT křídlo, 3 křídlo na labutích krcích |
+  | `flares` | rozšířené blatníky (0–1) |
+  | `intakes` | boční sání s lamelami před zadními koly |
+  | `scoop` | 1 nasávání na kapotě, 2 kompresor trčící ven |
+  | `splitter` | přední splitter a difuzor se žebry |
+  | `sideExhaust` | trojice bočních výfuků místo zadních |
+  | `rugged` / `bed` / `spare` | offroad rám a rampa / korba / rezerva |
+  | `roofless` / `openWheels` | otevřený kokpit / kola mimo karoserii |
+  | `lights` | `slim`, `round`, `quad`, `strip` |
+  | `livery` | `center`, `twin`, `flash`, `none` (+ `liveryColor`) |
+  | `rimSpokes`, `rimColor` | kola (barvy jsou v `RIM` v `game/cars.ts`) |
+
+- **Barvy:** hlavní barva auta je barva hráče, aby šlo poznat, kdo je kdo. K ní má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION karbonové prahy a blatníky. `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
 - **Nový krok v menu (výběr zbraní…):** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `trackSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Ovladač se měnit nemusí – obrazovka LEFT / SELECT / RIGHT je obecná a co se vybírá, jí posílá hra (`MenuInfo` v `shared/protocol.ts`).
 - **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 
