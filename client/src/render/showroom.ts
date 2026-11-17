@@ -86,7 +86,7 @@ export class Showroom {
   private garage = new THREE.Group();
   /** holé tmavé "studio" – jen pro náhledy aut na telefon */
   private studio = new THREE.Group();
-  private fog = new THREE.Fog(BG, 22, 70);
+  private fog = new THREE.Fog(BG, 38, 90);
   private slots: Slot[] = [];
   private thumbs = new Map<string, string>();
   private time = 0;
@@ -214,9 +214,10 @@ export class Showroom {
     cam.updateProjectionMatrix();
     // vzdálenost tak, aby se auto vešlo na šířku i na výšku výřezu
     const v = Math.tan((cam.fov * Math.PI) / 360);
-    const dist = Math.max(3.4 / (v * aspect), 2.1 / v);
+    const dist = Math.max(3.6 / (v * aspect), 2.9 / v);
     cam.position.set(0, dist * 0.24 + 0.55, dist);
-    cam.lookAt(0, 0.55, 0);
+    // míří se kousek pod auto, takže auto vyjde nad jmenovku se staty
+    cam.lookAt(0, 0.25, 0);
   }
 
   /** Přepne mezi garáží (obrazovka) a tmavým studiem (náhledy). */
@@ -226,8 +227,8 @@ export class Showroom {
     const c = studio ? STUDIO_BG : BG;
     (this.scene.background as THREE.Color).setHex(c);
     this.fog.color.setHex(c);
-    this.fog.near = studio ? 12 : 22;
-    this.fog.far = studio ? 28 : 70;
+    this.fog.near = studio ? 12 : 38;
+    this.fog.far = studio ? 28 : 90;
   }
 
   private syncShadows() {
