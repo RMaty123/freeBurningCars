@@ -142,52 +142,63 @@ kbd {
 #ts-room { grid-column: 3; grid-row: 1; text-align: right; }
 
 /* ------------------------------------------------------------------ výběr aut */
-/* Pozadí je průhledné: pod panely se kreslí 3D garáž (render/showroom.ts) přesně do oblastí .cs-view. */
-#carselect { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; overflow: hidden; }
+/* 3D garáž (render/showroom.ts) se kreslí přes celou plochu každého panelu; HTML je jen nadpis nahoře
+   a jmenovka se staty dole uprostřed. */
+#carselect { position: fixed; inset: 0; z-index: 30; overflow: hidden; --wide: 'Arial Black', 'Segoe UI Black', Arial, sans-serif; }
 #carselect[hidden] { display: none; }
-#carselect > header { padding: 3vh 3.4vw 1.6vh; background: linear-gradient(180deg, #07070b 60%, rgba(7, 7, 11, 0)); }
-#carselect h1 {
-  font-family: var(--display); font-style: italic; font-weight: 400; font-size: clamp(36px, 9vh, 110px); line-height: 0.95; letter-spacing: 0.03em;
-  color: #fff; text-shadow: 0 0.06em 0 rgba(0, 0, 0, 0.6); transform: skewX(-6deg); transform-origin: left;
+/* černý pruh s potrhaným spodním okrajem */
+#carselect > header {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 3; padding: 1.2vh 1.2vw 5vh; background: #0b0b0b; pointer-events: none;
+  clip-path: polygon(0 0, 100% 0, 100% 74%, 97% 80%, 94% 73%, 90% 79%, 86% 72%, 83% 77%, 79% 71%, 75% 78%, 71% 73%, 67% 80%, 62% 74%, 58% 79%, 54% 72%, 50% 78%, 46% 73%, 42% 81%, 38% 75%, 34% 80%, 30% 73%, 26% 79%, 22% 74%, 18% 82%, 14% 76%, 10% 83%, 6% 78%, 3% 86%, 0 80%);
 }
-#cs-hint { color: var(--dim); font-size: clamp(12px, 2.1vh, 22px); margin-top: 0.8vh; letter-spacing: 0.04em; }
-#cs-stage { flex: 1; min-height: 0; display: grid; gap: 1.2vh; padding: 0 1.2vw 1.6vh; grid-template-columns: 1fr; }
+#carselect h1 {
+  font-family: var(--wide); font-weight: 900; font-size: clamp(34px, 9.6vh, 120px); line-height: 1; letter-spacing: 0.01em; color: #fff;
+  transform: scaleX(1.18); transform-origin: left; white-space: nowrap; text-shadow: 0 0.05em 0 rgba(0, 0, 0, 0.8);
+}
+#cs-hint {
+  font-family: var(--wide); font-weight: 900; color: #fff; font-size: clamp(12px, 3.4vh, 42px); letter-spacing: 0.02em; margin-top: 0.4vh;
+  transform: scaleX(1.12); transform-origin: left; white-space: nowrap; text-shadow: 0 0.08em 0 rgba(0, 0, 0, 0.9);
+}
+#cs-stage { position: absolute; inset: 0; display: grid; gap: 3px; background: #000; grid-template-columns: 1fr; }
 #cs-stage.n2 { grid-template-columns: 1fr 1fr; }
 #cs-stage.n3 { grid-template-columns: 1fr 1fr 1fr; }
 #cs-stage.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.cs-panel {
-  position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; --u: 1vh;
-  border: 0.5vh solid rgba(255, 255, 255, 0.14); border-top: 1vh solid var(--pc); transition: border-color 0.25s, box-shadow 0.25s;
+/* panel je průhledný – pod ním je vidět 3D auto */
+.cs-panel { position: relative; min-width: 0; min-height: 0; overflow: hidden; --u: 1vh; }
+#cs-stage.n2 .cs-panel { --u: 0.85vh; }
+#cs-stage.n3 .cs-panel { --u: 0.68vh; }
+#cs-stage.n4 .cs-panel { --u: 0.56vh; }
+.cs-panel::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 0 #58e36a; transition: box-shadow 0.25s; }
+.cs-panel.ready::after { box-shadow: inset 0 0 0 calc(var(--u) * 0.9) #58e36a; }
+/* jmenovka + staty dole uprostřed */
+.cs-plate { position: absolute; left: 50%; bottom: calc(var(--u) * 3); transform: translateX(-50%); width: calc(var(--u) * 42); display: flex; flex-direction: column; font-family: var(--wide); }
+.cs-car { text-align: center; color: #fff; font-weight: 900; font-size: calc(var(--u) * 3); letter-spacing: 0.06em; text-shadow: 0 0.1em 0.3em #000, 0 0 1em #000; margin-bottom: calc(var(--u) * 0.8); white-space: nowrap; }
+.cs-name {
+  border: calc(var(--u) * 0.55) solid #fff; text-align: center; color: #fff; font-weight: 900; font-size: calc(var(--u) * 5); line-height: 1.35; letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #505050 0%, #2a2a2a 46%, #050505 52%, #1c1c1c 100%); text-shadow: 0 0.06em 0.12em #000;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 calc(var(--u) * 0.5) calc(var(--u) * 2) rgba(0, 0, 0, 0.6);
 }
-#cs-stage.n1 .cs-panel { flex-direction: row; }
-#cs-stage.n4 .cs-panel { flex-direction: row; --u: 0.72vh; }
-#cs-stage.n3 .cs-panel { --u: 0.86vh; }
-.cs-panel.ready { border-color: #58e36a; box-shadow: inset 0 0 6vh rgba(60, 220, 90, 0.18); }
-.cs-view { position: relative; flex: 1; min-height: 0; min-width: 0; }
+.cs-panel.ready .cs-name { border-color: #58e36a; }
+.cs-stats {
+  margin-top: calc(var(--u) * 1.3); background: rgba(8, 8, 8, 0.9); border: calc(var(--u) * 0.3) solid #000; padding: calc(var(--u) * 0.9) calc(var(--u) * 1.1);
+  display: grid; grid-template-columns: auto 1fr; gap: calc(var(--u) * 0.7) calc(var(--u) * 1.6); align-items: center;
+  color: #fff; font-weight: 900; font-size: calc(var(--u) * 2.5); letter-spacing: 0.02em;
+}
+.cs-pips { display: grid; grid-template-columns: repeat(10, 1fr); gap: calc(var(--u) * 0.35); }
+.cs-pips i { height: calc(var(--u) * 2); background: #3a3a3a; }
+.cs-pips i.on { background: linear-gradient(180deg, #ffc21a, #f39a00); }
+.cs-status { text-align: center; margin-top: calc(var(--u) * 1); font-family: var(--body); font-weight: 800; font-size: calc(var(--u) * 2.3); letter-spacing: 0.06em; color: #fff; text-shadow: 0 0 0.6em #000, 0 0.1em 0.2em #000; }
+.cs-panel.ready .cs-status { color: #58e36a; }
 .cs-stamp {
-  position: absolute; right: 6%; top: 10%; font-family: var(--display); font-style: italic; font-size: calc(var(--u) * 7); letter-spacing: 0.06em;
-  color: #58e36a; border: calc(var(--u) * 0.6) solid #58e36a; padding: 0 calc(var(--u) * 1.6); transform: rotate(-9deg) scale(1.6); opacity: 0;
-  transition: transform 0.22s cubic-bezier(0.2, 1.4, 0.4, 1), opacity 0.18s; text-shadow: 0 0 2vh rgba(0, 0, 0, 0.8); background: rgba(8, 10, 12, 0.55);
+  position: absolute; right: 7%; top: 34%; z-index: 1; font-family: var(--wide); font-weight: 900; font-size: calc(var(--u) * 6.5); letter-spacing: 0.04em;
+  color: #58e36a; border: calc(var(--u) * 0.7) solid #58e36a; padding: 0 calc(var(--u) * 1.8); transform: rotate(-9deg) scale(1.7); opacity: 0;
+  transition: transform 0.22s cubic-bezier(0.2, 1.4, 0.4, 1), opacity 0.18s; background: rgba(6, 10, 8, 0.6);
 }
 .cs-panel.ready .cs-stamp { opacity: 1; transform: rotate(-9deg) scale(1); }
-.cs-info { background: rgba(10, 11, 16, 0.92); padding: calc(var(--u) * 2) calc(var(--u) * 2.6) calc(var(--u) * 2.2); display: flex; flex-direction: column; gap: calc(var(--u) * 0.9); }
-#cs-stage.n1 .cs-info, #cs-stage.n4 .cs-info { width: 38%; justify-content: center; }
-.cs-name {
-  align-self: flex-start; font-weight: 900; font-size: calc(var(--u) * 3.6); letter-spacing: 0.06em; padding: calc(var(--u) * 0.5) calc(var(--u) * 2);
-  background: var(--pc); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); border: calc(var(--u) * 0.4) solid #fff;
-}
-.cs-car { font-family: var(--display); font-style: italic; font-weight: 400; font-size: calc(var(--u) * 8); line-height: 1; letter-spacing: 0.02em; }
-.cs-tag { color: var(--dim); font-size: calc(var(--u) * 2.5); line-height: 1.3; min-height: 2.6em; }
-.cs-stats { display: grid; grid-template-columns: auto 1fr; gap: calc(var(--u) * 0.9) calc(var(--u) * 2); align-items: center; font-family: var(--display); font-size: calc(var(--u) * 2.8); letter-spacing: 0.08em; }
-.cs-pips { display: grid; grid-template-columns: repeat(10, 1fr); gap: calc(var(--u) * 0.5); }
-.cs-pips i { height: calc(var(--u) * 2.2); background: #2a2c36; }
-.cs-pips i.on { background: linear-gradient(180deg, #ffd24a, #ff9d00); }
-.cs-status { margin-top: calc(var(--u) * 0.6); font-weight: 800; font-size: calc(var(--u) * 2.6); letter-spacing: 0.08em; color: var(--dim); }
-.cs-panel.ready .cs-status { color: #58e36a; }
 #cs-banner {
-  position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-family: var(--display); font-style: italic; font-size: 11vh; letter-spacing: 0.04em;
-  color: #fff; background: linear-gradient(90deg, transparent, rgba(20, 150, 50, 0.9) 20%, rgba(20, 150, 50, 0.9) 80%, transparent); padding: 1vh 0;
-  text-shadow: 0 0.6vh 0 rgba(0, 0, 0, 0.5); animation: csBanner 0.3s ease-out;
+  position: absolute; left: 0; right: 0; top: 44%; z-index: 4; text-align: center; font-family: var(--wide); font-weight: 900; font-size: 8.5vh; letter-spacing: 0.02em;
+  color: #fff; background: linear-gradient(90deg, transparent, rgba(20, 150, 50, 0.92) 18%, rgba(20, 150, 50, 0.92) 82%, transparent); padding: 1vh 0;
+  text-shadow: 0 0.5vh 0 rgba(0, 0, 0, 0.5); animation: csBanner 0.3s ease-out;
 }
 #cs-banner[hidden] { display: none; }
 @keyframes csBanner { from { opacity: 0; transform: scaleX(0.6); } }

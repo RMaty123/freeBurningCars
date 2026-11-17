@@ -54,36 +54,18 @@
     </div>
   </section>
 
-  <!-- 2c) výběr auta: ťuknutím vybereš, tlačítkem POTVRDIT potvrdíš -->
+  <!-- 2c) výběr auta: lišta (zpět | jméno | potvrzení) a pod ní mřížka aut. Ťuknutím vybereš, POTVRDIT potvrdí. -->
   <section id="s-cars" class="screen">
     <div class="cs-top">
-      <button id="cs-back" class="mn-back sm" aria-label="Zpět"><i></i></button>
-      <b id="cs-player">HRÁČ</b>
-      <span id="cs-state">ťukni na auto a potvrď ho</span>
-    </div>
-    <div class="cs-body">
-      <div class="cs-grid" id="cs-grid"></div>
-      <div class="cs-detail">
-        <img id="cs-img" alt="" />
-        <b id="cs-carname">—</b>
-        <div class="cs-dstats" id="cs-dstats">
-          <span>RYCHLOST</span><div class="pips10" data-k="speed"></div>
-          <span>ZRYCHLENÍ</span><div class="pips10" data-k="accel"></div>
-          <span>ŘÍZENÍ</span><div class="pips10" data-k="handling"></div>
-          <span>PANCÍŘ</span><div class="pips10" data-k="armor"></div>
-        </div>
-        <button id="cs-confirm" class="big">POTVRDIT</button>
+      <button id="cs-back" class="cs-backbtn" aria-label="Zpět"><i></i></button>
+      <div class="cs-box cs-who"><b id="cs-player">HRÁČ</b></div>
+      <div class="cs-box cs-pick">
+        <span id="cs-carname">—</span>
+        <button id="cs-confirm">POTVRDIT</button>
+        <button id="cs-change" hidden>ZMĚNIT</button>
       </div>
     </div>
-    <div class="cs-ready" id="cs-ready" hidden>
-      <img id="cs-ready-img" alt="" />
-      <div>
-        <h2>PŘIPRAVEN</h2>
-        <p id="cs-ready-car"></p>
-        <button id="cs-change" class="mbtn">ZMĚNIT AUTO</button>
-        <p class="wait">Čekej na ostatní hráče…</p>
-      </div>
-    </div>
+    <div class="cs-grid" id="cs-grid"></div>
   </section>
 
   <!-- 3) řízení -->

@@ -1,5 +1,5 @@
 /**
- * Výběr aut – každý hráč má na obrazovce vlastní panel s 3D autem a jeho staty.
+ * Výběr aut – každý hráč má na obrazovce vlastní výřez garáže s 3D autem; dole je jmenovka hráče a staty auta.
  *
  * Na telefonu si hráč ťukne na auto v nabídce (auto se hned ukáže na obrazovce) a pak ho musí POTVRDIT –
  * ťuknout vedle je snadné, proto dva kroky. Potvrzení jde vzít zpět. Když mají potvrzeno všichni, startuje závod.
@@ -17,14 +17,15 @@ import { KBD, Player } from '../session';
 /** jak dlouho po potvrzení posledního hráče se čeká, než začne závod (s) */
 const START_DELAY = 1.3;
 
+/** řádky ukazatelů pod jmenovkou */
 const STAT_ROWS: [keyof ReturnType<typeof carRatings>, string][] = [
-  ['speed', 'RYCHLOST'], ['accel', 'ZRYCHLENÍ'], ['handling', 'ŘÍZENÍ'], ['armor', 'PANCÍŘ'],
+  ['speed', 'RYCHLOST'], ['armor', 'PANCÍŘ'], ['handling', 'ŘÍZENÍ'],
 ];
 
 interface Panel {
   pid: string;
+  /** panel = zároveň oblast, do které se kreslí 3D auto */
   el: HTMLElement;
-  view: HTMLElement;
   /** co je v panelu vypsané ("index auta|potvrzeno"), ať se nepřepisuje zbytečně */
   shown: string;
 }
@@ -56,17 +57,16 @@ export class CarSelectScreen implements Screen {
       el.className = 'cs-panel';
       el.style.setProperty('--pc', hexCss(PLAYER_COLORS[p.slot]));
       el.innerHTML = `
-        <div class="cs-view"><div class="cs-stamp">PŘIPRAVEN</div></div>
-        <div class="cs-info">
+        <div class="cs-stamp">PŘIPRAVEN</div>
+        <div class="cs-plate">
+          <div class="cs-car"></div>
           <div class="cs-name"></div>
-          <h2 class="cs-car"></h2>
-          <p class="cs-tag"></p>
           <div class="cs-stats">${STAT_ROWS.map(([k, label]) => `<span>${label}</span><div class="cs-pips" data-k="${k}">${'<i></i>'.repeat(10)}</div>`).join('')}</div>
           <div class="cs-status"></div>
         </div>`;
       (el.querySelector('.cs-name') as HTMLElement).textContent = p.name;
       stage.appendChild(el);
-      return { pid: p.pid, el, view: el.querySelector('.cs-view') as HTMLElement, shown: '' };
+      return { pid: p.pid, el, shown: '' };
     });
     this.room.setCount(players.length);
   }
@@ -84,21 +84,20 @@ export class CarSelectScreen implements Screen {
       panel.shown = key;
       const q = (s: string) => panel.el.querySelector(s) as HTMLElement;
       q('.cs-car').textContent = car.name;
-      q('.cs-tag').textContent = car.tagline;
       const r = carRatings(car);
       panel.el.querySelectorAll<HTMLElement>('.cs-pips').forEach((row) => {
         const n = r[row.dataset.k as keyof typeof r];
         Array.from(row.children).forEach((pip, k) => pip.classList.toggle('on', k < n));
       });
       panel.el.classList.toggle('ready', p.ready);
-      q('.cs-status').textContent = p.ready ? '✔ PŘIPRAVEN' : p.pid === KBD ? '←/→ vyber · ENTER potvrď' : 'vybírá na telefonu…';
+      q('.cs-status').textContent = p.ready ? '✔ POTVRZENO' : p.pid === KBD ? '←/→ vyber · ENTER potvrď' : 'vybírá na telefonu…';
     });
     const all = this.allReady();
     $('cs-banner').hidden = !all;
     if (all && this.startT < 0) this.startT = START_DELAY;
     if (!all) this.startT = -1;
     const waiting = players.filter((p) => !p.ready).map((p) => p.name);
-    $('cs-hint').textContent = all ? 'Všichni mají potvrzeno – startujeme!' : `Vyber auto na telefonu a potvrď ho. Čeká se na: ${waiting.join(', ')}`;
+    $('cs-hint').textContent = all ? 'VŠICHNI POTVRDILI – STARTUJEME!' : `POTVRĎ AUTO NA TELEFONU! ČEKÁ SE NA: ${waiting.join(', ')}`;
   }
 
   private allReady(): boolean {
@@ -157,7 +156,7 @@ export class CarSelectScreen implements Screen {
   /** Místo trati se kreslí garáž – pro každý panel jeden výřez. */
   render(): boolean {
     this.room.render(this.panels.map((p) => {
-      const r = p.view.getBoundingClientRect();
+      const r = p.el.getBoundingClientRect();
       return { x: r.left, y: r.top, w: r.width, h: r.height };
     }));
     return true;

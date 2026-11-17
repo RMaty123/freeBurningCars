@@ -2,7 +2,8 @@
  * Free Burning Cars – ovladač (telefon).
  * V závodě: plyn drží hra sama, tlačítka FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa/mina), LEFT, BRAKE, RIGHT.
  * V menu (výběr tratě…): LEFT / SELECT / RIGHT / zpět – co se vybírá, říká obrazovka (HostMsg.menu).
- * Výběr auta: mřížka aut (nabídku s náhledy posílá obrazovka), ťuknutím vybrat, tlačítkem POTVRDIT potvrdit.
+ * Výběr auta: lišta (zpět | jméno | potvrzení) a mřížka aut; nabídku s náhledy posílá obrazovka.
+ * Ťuknutím auto vybereš, tlačítkem POTVRDIT potvrdíš.
  * Stav tlačítek se posílá na obrazovku přes Socket.IO.
  */
 import { io } from 'socket.io-client';
@@ -288,17 +289,12 @@ function carState(idx: number, ready: boolean, master: boolean, name: string) {
 
 function renderCars() {
   for (const t of $('cs-grid').children) t.classList.toggle('on', Number((t as HTMLElement).dataset.i) === carPick);
+  // po potvrzení se nabídka zamkne: ostatní auta zešednou a místo POTVRDIT je ZMĚNIT
+  $('s-cars').classList.toggle('locked', carReady);
+  $('cs-confirm').hidden = carReady;
+  $('cs-change').hidden = !carReady;
   const car = catalog[carPick];
-  $('cs-ready').hidden = !carReady;
-  if (!car) return;
-  ($('cs-img') as HTMLImageElement).src = car.img;
-  $('cs-carname').textContent = car.name;
-  for (const row of $('cs-dstats').querySelectorAll<HTMLElement>('.pips10')) {
-    const n = car.ratings[row.dataset.k as keyof CatalogMsg['ratings']];
-    row.innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
-  }
-  ($('cs-ready-img') as HTMLImageElement).src = car.img;
-  $('cs-ready-car').textContent = car.name;
+  $('cs-carname').textContent = car ? (carReady ? '✔ ' : '') + car.name : '—';
 }
 
 tap('cs-confirm', () => { carReady = true; renderCars(); send({ type: 'ready', on: true }); });
