@@ -1,7 +1,7 @@
 # Free Burning Cars
 
 3D akční závodní hra do obýváku inspirovaná **Burnin' Rubber 5 Air** z AirConsole.
-Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače** (připojí se přes QR kód po domácí Wi-Fi).
+Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače** – naskenují QR kód a jsou ve hře, nic se nikam neopisuje.
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
@@ -24,18 +24,20 @@ npm run dev
 Pak na PC otevři **http://localhost:3000** (Chrome nebo Edge).
 
 1. Na obrazovce uvidíš QR kód – naskenuj ho telefonem (telefon musí být na **stejné Wi-Fi** jako PC).
-2. Zadej jméno. První připojený hráč ovládá menu.
+2. Zadej jméno a dej PŘIPOJIT – **žádný kód místnosti se nikam neopisuje**. Telefon se připojí k běžící hře sám; kdyby na síti běželo víc her naráz, rozliší je QR kód. První připojený hráč ovládá menu.
 3. **VYBRAT TRAŤ** → na obrazovce se objeví velké karty tratí. Telefonem je posouváš (LEFT / RIGHT), **SELECT** potvrdí, šipka zpět vrací do lobby.
 4. **Výběr auta** → každý hráč má na obrazovce vlastní panel s 3D autem a jeho staty. Na telefonu ťukneš na auto v nabídce a pak ho musíš **POTVRDIT** (ZMĚNIT AUTO potvrzení zruší). Až mají potvrzeno všichni, začne závod.
 5. Po závodě se hra vrací na výběr tratě.
 
 Bez telefonu: **ENTER** přidá hráče na klávesnici, další **ENTER** otevře výběr tratě a pak výběr auta (všude ←/→, ENTER potvrdí, ESC zpět).
 
-### Adresa v QR kódu
+### Adresa v QR kódu a přepínání sítí
 
-Server se podívá do směrovací tabulky (`route print`) a do QR kódu dá adresu té síťovky, která má **výchozí bránu** – tedy té, kterou je PC připojené k routeru. Virtuální adaptéry (VirtualBox, WSL, Hyper-V…) se tím přeskočí. Pod QR kódem je vidět, která síťovka a brána se použila; totéž vypíše server do konzole.
+Server se podívá do směrovací tabulky (`route print`) a do QR kódu dá adresu té síťovky, která má **výchozí bránu** – tedy té, kterou je PC připojené k routeru. Virtuální adaptéry (VirtualBox, WSL, Hyper-V…) jdou až za ní.
 
-Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev`
+Když má PC víc síťovek (Wi-Fi + kabel, VPN, WSL…), je pod QR kódem nenápadné **„jiná síť ▾"** – rozbalí seznam všech adres a kliknutím (nebo klávesou `N`) přepneš, kterou adresu QR kód nese. Každá síťovka má svůj vlastní QR kód, takže když se telefon přes jednu nepřipojí, zkusíš druhou bez restartu hry. S jedinou síťovkou se přepínač vůbec neukáže.
+
+Adresu jde pořád i vynutit: `set HOST_IP=192.168.1.50 && npm run dev`
 
 ### Celá obrazovka
 
@@ -47,6 +49,7 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 
 - Windows Firewall: při prvním spuštění povol Node.js přístup do **soukromé sítě**.
 - PC i telefon musí být ve stejné síti (ne „síť pro hosty", ne mobilní data).
+- Zkus pod QR kódem jinou síťovku (dlaždice nebo klávesa `N`).
 - Adresu jde zadat i ručně: `http://IP-ADRESA-PC:3000/controller.html` (server ji vypíše do konzole).
 - Jiný port: `set PORT=3001 && npm run dev`
 
@@ -125,7 +128,7 @@ Ničí se **zbraněmi**, ne ježděním do zdi.
 
 ```
 server/index.ts              Express + Socket.IO + Vite; místnosti, přeposílání vstupů z telefonů
-server/net.ts                výběr IP adresy pro QR kód (síťovka s výchozí bránou)
+server/net.ts                IP adresy pro QR kódy (první je síťovka s výchozí bránou)
 client/index.html            obrazovka (PC / TV)
 client/controller.html       ovladač (telefon)
 client/public/               manifest a ikony ovladače

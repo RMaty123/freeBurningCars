@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { Server, Socket } from 'socket.io';
 import QRCode from 'qrcode';
-import { allAddresses, primaryAddress, PrimaryAddress } from './net';
+import { allAddresses, primaryAddress, type LanAddress } from './net';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -78,25 +78,44 @@ async function main() {
       role = 'host';
       room = r;
 
-      // adresa pro QR kód = síťovka s výchozí bránou (zjišťuje se pokaždé znovu, kdyby se PC přepojilo na jinou síť)
+      // Pro každou síťovku se pošle vlastní adresa i QR kód, ať jde na obrazovce přepnout,
+      // kdyby PC viselo na víc sítích (Wi-Fi + kabel, VPN, virtuální adaptéry…).
+      // První je ta s výchozí bránou – zjišťuje se pokaždé znovu, kdyby se PC přepojilo jinam.
       const primary = await primaryAddress();
-      const others = allAddresses().map((a) => a.ip).filter((ip) => ip !== primary?.ip);
-      const ips = primary ? [primary.ip, ...others] : ['localhost'];
-      const urls = ips.map((ip) => `http://${ip}:${PORT}/controller.html?room=${r!.code}`);
-      let qr = '';
-      try {
-        qr = await QRCode.toDataURL(urls[0], { margin: 1, width: 360, color: { dark: '#0b0d14', light: '#ffffff' } });
-      } catch { /* QR není kritický */ }
-      ack?.({ room: r.code, urls, qr, net: primary satisfies PrimaryAddress | null, players: [...r.players.keys()] });
+      const rest = allAddresses().filter((a) => a.ip !== primary?.ip);
+      const list: LanAddress[] = primary ? [primary, ...rest] : rest.length ? rest : [{ ip: 'localhost', iface: 'localhost' }];
+      const nets = await Promise.all(list.map(async (a, i) => {
+        const url = `http://${a.ip}:${PORT}/controller.html?room=${r!.code}`;
+        let qr = '';
+        try {
+          qr = await QRCode.toDataURL(url, { margin: 1, width: 360, color: { dark: '#0b0d14', light: '#ffffff' } });
+        } catch { /* QR není kritický */ }
+        return {
+          ip: a.ip, iface: a.iface, url, qr,
+          primary: i === 0 && !!primary,
+          gateway: i === 0 ? primary?.gateway : undefined,
+          source: i === 0 ? primary?.source : undefined,
+        };
+      }));
+      ack?.({ room: r.code, nets, players: [...r.players.keys()] });
       // ovladače, které přežily reload obrazovky, se ohlásí znovu
       for (const s of r.players.values()) s.emit('host:back');
     });
 
     // Telefon se připojuje do místnosti.
-    socket.on('ctrl:join', (data: { room: string; pid: string; name: string }, ack?: (r: unknown) => void) => {
+    socket.on('ctrl:join', (data: { room?: string; pid: string; name: string }, ack?: (r: unknown) => void) => {
       const code = String(data?.room ?? '').toUpperCase().trim();
-      const r = rooms.get(code);
-      if (!r || !r.host) return ack?.({ ok: false, error: 'Místnost neexistuje. Zkontroluj kód na obrazovce.' });
+      // Bez kódu (telefon ho nikde nezadává) se bere jediná běžící hra; víc her naráz rozliší QR kód.
+      const live = [...rooms.values()].filter((x) => x.host?.connected);
+      const r = code ? rooms.get(code) : live.length === 1 ? live[0] : null;
+      if (!r || !r.host) {
+        return ack?.({
+          ok: false,
+          error: live.length > 1
+            ? 'Na síti běží víc her – naskenuj QR kód z obrazovky.'
+            : 'Hra neběží. Spusť ji na počítači a naskenuj QR kód z obrazovky.',
+        });
+      }
       const id = String(data.pid || '').slice(0, 40);
       if (!id) return ack?.({ ok: false, error: 'Chybí ID hráče.' });
       if (!r.players.has(id) && r.players.size >= MAX_PLAYERS) {

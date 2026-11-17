@@ -51,8 +51,31 @@ kbd {
 .url { font-family: Consolas, 'Courier New', monospace; font-size: clamp(11px, 1.7vh, 18px); color: #fff; margin-top: 1.2vh; word-break: break-all; }
 .net { color: var(--dim); font-size: clamp(10px, 1.45vh, 15px); margin-top: 0.4vh; }
 #fs-hint { color: var(--fire2); }
-.room { margin-top: auto; padding-top: 1.2vh; color: var(--dim); letter-spacing: 0.16em; font-size: clamp(11px, 1.6vh, 16px); }
-.room b { font-family: var(--display); font-weight: 400; font-size: clamp(22px, 4.4vh, 48px); color: #fff; letter-spacing: 0.14em; margin-left: 0.4em; vertical-align: middle; }
+/* přepínač síťovek pod QR kódem – zabalený do nenápadného odkazu, rozbalí se až po kliknutí */
+.net-pick { margin-top: auto; padding-top: 1.2vh; width: 100%; }
+.net-toggle {
+  background: none; border: 0; padding: 0.3vh 0.6vw; color: var(--dim); font-family: var(--body);
+  font-size: clamp(10px, 1.45vh, 15px); letter-spacing: 0.06em; cursor: pointer; opacity: 0.75; transition: color 0.15s, opacity 0.15s;
+}
+.net-toggle:hover { color: var(--fire2); opacity: 1; }
+.net-toggle[hidden] { display: none; }
+.net-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6vh 0.6vw; width: 100%; margin-top: 0.8vh; }
+.net-list[hidden] { display: none; }
+.net-list .net { flex: 1 0 100%; margin-top: 0.2vh; }
+.net-list kbd { font-size: 0.9em; }
+.net-opt {
+  flex: 1 1 auto; min-width: 7.5vw; max-width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.2vh;
+  padding: 0.8vh 0.8vw; border: 1px solid var(--line); border-radius: 0.9vh; background: rgba(255, 255, 255, 0.04);
+  color: var(--dim); font-family: var(--body); cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.net-opt b { font-weight: 700; font-size: clamp(10px, 1.6vh, 16px); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.net-opt small { font-family: Consolas, 'Courier New', monospace; font-size: clamp(9px, 1.35vh, 14px); opacity: 0.85; }
+.net-opt:hover { border-color: rgba(255, 179, 0, 0.5); color: var(--text); }
+.net-opt.on {
+  border-color: var(--fire2); background: linear-gradient(180deg, rgba(255, 179, 0, 0.22), rgba(255, 61, 0, 0.12));
+  color: #fff; box-shadow: 0 0 2.4vh rgba(255, 179, 0, 0.25);
+}
+.net-opt.on b { color: var(--fire2); }
 .warn { color: #ffb84d; font-size: clamp(11px, 1.6vh, 16px); margin-top: 1vh; }
 
 #slots { list-style: none; display: grid; gap: 1.1vh; flex: 1; }

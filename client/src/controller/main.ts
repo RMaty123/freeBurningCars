@@ -20,9 +20,10 @@ function store(key: string, value?: string): string {
 
 const pid = store('fbc-pid') || store('fbc-pid', Math.random().toString(36).slice(2) + Date.now().toString(36));
 const params = new URLSearchParams(location.search);
-const nameEl = $<HTMLInputElement>('name'), roomEl = $<HTMLInputElement>('room');
+const nameEl = $<HTMLInputElement>('name');
 nameEl.value = store('fbc-name');
-roomEl.value = (params.get('room') ?? store('fbc-room')).toUpperCase();
+// kód místnosti se nikde neopisuje – buď přijde z QR kódu, nebo se vezme jediná běžící hra
+let room = (params.get('room') ?? '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
 
 const socket = io({ transports: ['websocket', 'polling'] });
 let joined = false;
@@ -45,13 +46,12 @@ function send(m: CtrlMsg) { socket.emit('ctrl:msg', m); }
 
 function join(auto = false) {
   const name = (nameEl.value.trim() || 'HRÁČ').toUpperCase().slice(0, 12);
-  const room = roomEl.value.trim().toUpperCase();
-  if (room.length !== 4) { if (!auto) $('join-err').textContent = 'Zadej 4 písmena kódu místnosti z obrazovky.'; return; }
-  store('fbc-name', name); store('fbc-room', room);
+  store('fbc-name', name);
   $('join-err').textContent = auto ? '' : 'Připojuji…';
   if (!socket.connected) socket.connect(); // po "Odejít ze hry" je socket odpojený (zpráva počká ve frontě)
-  socket.emit('ctrl:join', { room, pid, name }, (r: { ok: boolean; error?: string }) => {
+  socket.emit('ctrl:join', { room, pid, name }, (r: { ok: boolean; error?: string; room?: string }) => {
     if (r.ok) {
+      room = r.room ?? room; // ať se po výpadku vracíme do té samé hry
       joined = true;
       $('menu-btn').hidden = false;
       armBack();
@@ -160,9 +160,7 @@ $('join').addEventListener('click', () => {
   goFullscreen();
   join();
 });
-roomEl.addEventListener('input', () => { roomEl.value = roomEl.value.toUpperCase().replace(/[^A-Z]/g, ''); });
-nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') roomEl.focus(); });
-roomEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { roomEl.blur(); join(); } });
+nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { nameEl.blur(); join(); } });
 
 function rejoinLoop() {
   if (!joined) return;
@@ -393,5 +391,5 @@ for (const ev of ['contextmenu', 'gesturestart', 'dblclick']) document.addEventL
 document.addEventListener('touchmove', (e) => { if (document.body.classList.contains('playing')) e.preventDefault(); }, { passive: false });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible') resetInput(); });
 
-// kód místnosti z QR → rovnou se připoj, pokud už známe jméno
-if (roomEl.value.length === 4 && nameEl.value) socket.once('connect', () => join(true));
+// jméno už známe (z minula) → připoj se rovnou, ať se nikde neťuká
+if (nameEl.value) socket.once('connect', () => join(true));

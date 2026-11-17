@@ -30,11 +30,22 @@ export interface Player {
   lastBuzz: number;
 }
 
+/** Jedna síťovka počítače: adresa pro telefon i hotový QR kód. */
+export interface NetOption {
+  ip: string;
+  /** název síťovky, např. "Wi-Fi" */
+  iface: string;
+  url: string;
+  qr: string;
+  /** tahle je ta se skutečnou bránou do sítě – nabízí se první */
+  primary: boolean;
+  gateway?: string;
+  source?: string;
+}
+
 export interface RoomInfo {
   room: string;
-  urls: string[];
-  qr: string;
-  net: { ip: string; iface: string; gateway: string; source: string } | null;
+  nets: NetOption[];
 }
 
 export interface SessionHooks {

@@ -5,15 +5,23 @@
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
 import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, DIFFS, MAX_BOTS, MAX_CARS, Screen, esc } from '../app';
-import { KBD, MAX_PLAYERS, Player, RoomInfo } from '../session';
+import { KBD, MAX_PLAYERS, NetOption, Player, RoomInfo } from '../session';
 
 export class LobbyScreen implements Screen {
+  /** adresy, na kterých je hra vidět (jedna na síťovku) a která je zrovna v QR kódu */
+  private nets: NetOption[] = [];
+  private netIdx = 0;
+  /** rozbalený seznam síťovek pod QR kódem */
+  private netOpen = false;
+
   constructor(private app: App) {}
 
   enter() {
     this.app.phase = 'lobby';
     this.app.startAttract();
     $('lobby').hidden = false;
+    this.netOpen = false; // seznam sítí se vždy vrací zabalený
+    this.showNet();
     this.refresh();
   }
 
@@ -24,20 +32,50 @@ export class LobbyScreen implements Screen {
   update() { /* lobby je statické */ }
 
   onRoom(r: RoomInfo) {
-    $('room-code').textContent = r.room;
-    ($('qr') as HTMLImageElement).src = r.qr;
-    $('join-url').textContent = r.urls[0].replace(/^http:\/\//, '').replace(/\?room=.*/, '');
-    const net = r.net;
-    $('net-info').textContent = !net ? '' : net.source === 'route' ? `síť: ${net.iface} · brána ${net.gateway}` : net.source === 'env' ? `adresa z HOST_IP (${net.iface})` : `síť: ${net.iface}`;
-    const warn = $('net-warn');
+    this.nets = r.nets;
+    // drž se stejné síťovky i po obnovení stránky, jinak ber tu s bránou do sítě
+    const keep = this.nets.findIndex((n) => n.ip === this.nets[this.netIdx]?.ip);
+    this.netIdx = keep >= 0 ? keep : 0;
+    this.showNet();
+  }
+
+  /** Přepne QR kód a adresu na jinou síťovku (telefon může viset na jiné síti než PC). */
+  private pickNet(i: number) {
+    if (this.nets.length < 2) return;
+    this.netIdx = (i + this.nets.length) % this.nets.length;
+    this.netOpen = false;
+    this.showNet();
+    this.app.audio.ui();
+  }
+
+  private showNet() {
+    const net = this.nets[this.netIdx];
+    const qr = $('qr') as HTMLImageElement;
+    const toggle = $('net-toggle'), list = $('net-switch'), warn = $('net-warn');
     if (!net) {
+      qr.removeAttribute('src');
+      $('join-url').textContent = 'PC není připojené k síti';
+      toggle.hidden = list.hidden = true;
       warn.hidden = false;
       warn.textContent = 'PC není připojené k síti – telefon se nepřipojí. Připoj PC k Wi-Fi a obnov stránku.';
-    } else if (net.source === 'guess' && r.urls.length > 1) {
-      // výchozí bránu se nepodařilo najít → nabídni i ostatní adresy
-      warn.hidden = false;
-      warn.textContent = 'Nejde to? Zkus i: ' + r.urls.slice(1, 3).map((u) => u.replace(/^http:\/\//, '').replace(/\/controller.*/, '')).join(' , ');
-    } else warn.hidden = true;
+      return;
+    }
+    qr.src = net.qr;
+    $('join-url').textContent = net.url.replace(/^http:\/\//, '').replace(/\?room=.*/, '');
+    warn.hidden = true;
+    // s jedinou síťovkou není co přepínat – přepínač se vůbec neukáže
+    toggle.hidden = this.nets.length < 2;
+    toggle.textContent = (this.netOpen ? 'jiná síť ▴' : 'jiná síť ▾');
+    toggle.onclick = () => { this.netOpen = !this.netOpen; this.showNet(); };
+    list.hidden = !this.netOpen || this.nets.length < 2;
+    if (list.hidden) return;
+    list.innerHTML = this.nets.map((n, i) => `
+      <button class="net-opt${i === this.netIdx ? ' on' : ''}" data-i="${i}">
+        <b>${esc(n.iface)}</b><small>${esc(n.ip)}</small>
+      </button>`).join('') + '<p class="net">přepínat jde i klávesou <kbd>N</kbd></p>';
+    for (const el of list.querySelectorAll<HTMLElement>('.net-opt')) {
+      el.onclick = () => this.pickNet(Number(el.dataset.i));
+    }
   }
 
   command(p: Player, m: CtrlMsg) {
@@ -77,6 +115,8 @@ export class LobbyScreen implements Screen {
       app.settings.bots = app.settings.bots >= max ? 0 : app.settings.bots + 1;
       app.audio.ui();
       s.changed();
+    } else if (e.code === 'KeyN') {
+      this.pickNet(this.netIdx + 1); // další síťovka v QR kódu
     } else if (e.code === 'KeyO') {
       app.settings.diff = (app.settings.diff + 1) % DIFFS.length;
       app.audio.ui();

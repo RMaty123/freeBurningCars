@@ -8,7 +8,7 @@
 import { THEME_LABEL, TRACKS } from '../../game/content/tracks';
 import type { Track } from '../../game/track';
 import type { CtrlMsg, MenuInfo } from '../../shared/protocol';
-import { $, App, DIFFS, Screen, TOTAL_CARS, esc } from '../app';
+import { $, App, DIFFS, Screen, esc } from '../app';
 import { KBD, Player } from '../session';
 
 /** Obrys trati jako SVG (pohled shora). */
@@ -97,8 +97,10 @@ export class TrackSelectScreen implements Screen {
       : `<kbd>←</kbd><kbd>→</kbd> výběr · <kbd>ENTER</kbd> potvrdit · <kbd>ESC</kbd> zpět`;
     const humans = app.session.active().length;
     const laps = app.settings.laps;
-    $('ts-info').textContent = `${laps} ${laps === 1 ? 'kolo' : laps < 5 ? 'kola' : 'kol'} · ${humans} ${humans === 1 ? 'hráč' : humans < 5 ? 'hráči' : 'hráčů'} + ${Math.max(0, TOTAL_CARS - humans)} AI · obtížnost ${DIFFS[app.settings.diff].name}`;
-    $('ts-room').textContent = app.roomInfo ? `připojení: ${app.roomInfo.urls[0].replace(/^http:\/\//, '').replace(/\/controller.*/, '')} · kód ${app.roomInfo.room}` : '';
+    const bots = app.settings.bots;
+    $('ts-info').textContent = `${laps} ${laps === 1 ? 'kolo' : laps < 5 ? 'kola' : 'kol'} · ${humans} ${humans === 1 ? 'hráč' : humans < 5 ? 'hráči' : 'hráčů'} + ${bots} AI · obtížnost ${DIFFS[app.settings.diff].name}`;
+    const net = app.roomInfo?.nets[0];
+    $('ts-room').textContent = net ? `připojení: ${net.url.replace(/^http:\/\//, '').replace(/\/controller.*/, '')}` : '';
   }
 
   // ------------------------------------------------------------ Screen
