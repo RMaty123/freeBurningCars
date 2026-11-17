@@ -150,6 +150,37 @@ const ROCKET_DMG = 58;
 const MINE_DMG = 52;
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
 const CAR_OFF = 1.0;
+
+/**
+ * Arkádové zatáčení: volant funguje naplno jen do rychlosti "steerRef" auta,
+ * nad ní účinek klesá – auto nedotáčí a jede rovně. STEER_FALLOFF říká, jak prudce.
+ * Díky tomu je mezi auty opravdu poznat rozdíl: formule zatáčí i ve dvou stech,
+ * náklaďák se v té samé zatáčce jen vzepře.
+ */
+export const STEER_MULT = 1.08;
+export const STEER_FALLOFF = 1.5;
+
+/** Náraz do jiného auta: od jaké síly vůbec ubírá životy a jak málo. */
+const RAM_MIN = 10;
+const RAM_DAMAGE = 0.25;
+
+/** Jak rychle se auto stáčí při dané rychlosti a plném volantu (rad/s). */
+export function yawAt(st: CarStats, v: number): number {
+  const sf = clamp(Math.abs(v) / 6, 0, 1);
+  return (st.turn * STEER_MULT * sf) / (1 + Math.pow(Math.abs(v) / st.steerRef, STEER_FALLOFF));
+}
+
+/** Nejvyšší rychlost, při které auto ještě projede zatáčku s křivostí k (1/m). Používá AI. */
+export function maxCornerSpeed(st: CarStats, k: number): number {
+  if (k < 1e-4) return Infinity;
+  // yawAt klesá s rychlostí, k*v roste – průsečík najdeme půlením intervalu
+  let lo = 0, hi = st.top * 1.7;
+  for (let i = 0; i < 14; i++) {
+    const mid = (lo + hi) / 2;
+    if (yawAt(st, mid) >= k * mid) lo = mid; else hi = mid;
+  }
+  return lo;
+}
 /** modrá bedna: na BOOST_TIME sekund zrychlí auto BOOST_SPEED× */
 export const BOOST_TIME = 5;
 export const BOOST_SPEED = 1.7;
@@ -334,7 +365,9 @@ export class Sim {
       c.h += c.yawRate * dt;
       c.yawRate *= Math.exp(-1.2 * dt);
       c.speed = 0; c.accel = 0; c.nitroOn = false; c.drifting = false;
+      const prevDead = c.ti;
       this.keepInside(c, dt, true);
+      this.lapCheck(c, prevDead); // i vrak, který se dosune přes cíl, má kolo započítané
       c.deadT -= dt;
       if (c.deadT <= 0) this.respawn(c);
       return;
@@ -356,7 +389,7 @@ export class Sim {
     const throttle = clamp(inp.throttle, 0, 1);
     const brake = clamp(inp.brake, 0, 1);
 
-    c.drifting = inp.drift && vf > 10;
+    c.drifting = inp.drift && vf > 8;
 
     const top = st.top * c.speedScale * (c.nitroOn ? BOOST_SPEED : 1);
     const acc = st.accel * c.speedScale * (c.nitroOn ? 2.2 : 1);
@@ -373,34 +406,61 @@ export class Sim {
     if (throttle === 0 && brake === 0) a -= Math.sign(vf) * 2.2;
     c.accel = a;
 
-    // zatáčení: v nízké rychlosti omezené, ve vysoké tlumené
-    const sf = clamp(Math.abs(vf) / 7, 0, 1);
-    const damp = 1 / (1 + Math.abs(vf) / st.steerRef);
-    let yaw = -c.steer * st.turn * sf * damp * 1.3 * (vf >= 0 ? 1 : -1);
-    if (c.drifting) yaw *= 1.4;
+    // ---- zatáčení (viz yawAt: ve stoje nic, ve vysoké rychlosti nedotáčivost podle steerRef)
+    let yaw = -c.steer * yawAt(st, vf) * (vf >= 0 ? 1 : -1);
+    if (c.drifting) yaw *= 1.5; // drift: zadek ujede a auto se stočí mnohem víc
     c.yawRate = yaw;
     c.h += yaw * dt;
 
     fx = Math.sin(c.h); fz = Math.cos(c.h);
     c.vx += fx * a * dt; c.vz += fz * a * dt;
 
-    // boční přilnavost: boční složka rychlosti se rychle tlumí (v driftu pomalu)
+    // ---- boční přilnavost
     const rx = -fz, rz = fx;
     vf = c.vx * fx + c.vz * fz;
     let vl = c.vx * rx + c.vz * rz;
-    vl *= Math.exp(-(c.drifting ? st.grip * 0.25 : st.grip) * dt);
+    let grip = st.grip;
+    grip *= 1 - 0.4 * clamp(Math.abs(vl) / 14, 0, 1);               // rozjetý smyk chvíli vydrží
+    if (throttle > 0.5 && Math.abs(vf) > 14) grip *= 0.86;          // plný plyn rozhoupe zadek
+    if (c.drifting) grip *= 0.2;
+    vl *= Math.exp(-grip * dt);
     if (Math.abs(vf) < 0.15 && throttle === 0 && brake === 0) vf = 0;
     c.vx = fx * vf + rx * vl; c.vz = fz * vf + rz * vl;
     c.speed = vf; c.slip = Math.abs(vl);
+
+    // ---- srovnání po smyku: jakmile hráč pustí volant, auto se samo natočí po směru jízdy.
+    // Bez téhle pomoci by se s tlačítky na telefonu ze smyku skoro nedalo dostat.
+    if (!c.drifting && vf > 5) {
+      const slipAng = angDiff(Math.atan2(c.vx, c.vz), c.h);
+      if (Math.abs(slipAng) > 0.12) {
+        const k = (1 - Math.abs(c.steer)) * 2.4 * clamp(Math.abs(slipAng) / 0.4, 0, 1);
+        c.h += clamp(slipAng, -0.9, 0.9) * k * dt;
+      }
+    }
 
     c.x += c.vx * dt; c.z += c.vz * dt;
 
     const prev = c.ti;
     this.keepInside(c, dt, false);
 
-    // kola + cíl
+    this.lapCheck(c, prev);
+
+    // protisměr
+    const along = fx * tr.tx[c.ti] + fz * tr.tz[c.ti];
+    if (along < -0.3 && vf > 4) c.wrongWay += dt; else c.wrongWay = 0;
+
+    // zbraně
+    if (!c.finished && this.phase === 'racing') {
+      if (inp.fire && c.fireCd <= 0) this.fireGun(c);
+      if (inp.secondary && c.secCd <= 0 && c.secAmmo > 0) this.fireSecondary(c);
+    }
+  }
+
+  /** Projelo auto cílem? (prev = index vzorku trati před posunem) */
+  private lapCheck(c: Car, prev: number) {
+    const n = this.track.n;
     const d = c.ti - prev;
-    if (d < -tr.n / 2) {
+    if (d < -n / 2) {
       c.lap++;
       if (!this.attract && c.lap >= 1 && !c.finished) {
         const lapTime = this.time - c.lapStart;
@@ -416,17 +476,7 @@ export class Sim {
           this.events.push({ t: 'lap', car: c.id, lap: c.lap + 1, time: lapTime });
         }
       } else if (c.lap === 0) c.lapStart = this.time;
-    } else if (d > tr.n / 2) c.lap--;
-
-    // protisměr
-    const along = fx * tr.tx[c.ti] + fz * tr.tz[c.ti];
-    if (along < -0.3 && vf > 4) c.wrongWay += dt; else c.wrongWay = 0;
-
-    // zbraně
-    if (!c.finished && this.phase === 'racing') {
-      if (inp.fire && c.fireCd <= 0) this.fireGun(c);
-      if (inp.secondary && c.secCd <= 0 && c.secAmmo > 0) this.fireSecondary(c);
-    }
+    } else if (d > n / 2) c.lap--;
   }
 
   /** Svodidla: auto nesmí ven z koridoru trati. */
@@ -448,7 +498,7 @@ export class Sim {
       const fr = 1 - Math.min(0.35, vn * 0.012);
       c.vx *= fr; c.vz *= fr;
       if (!wreck) {
-        if (vn > 7) this.damage(c, (vn - 7) * 0.55, -1);
+        // Do svodidel se auto jen otře – žádné poškození, jen ztráta rychlosti a jiskry.
         if (vn > 2.5 && c.wallT <= 0) {
           c.wallT = 0.12;
           this.events.push({ t: 'wall', car: c.id, x: c.x + nx * 1.0, z: c.z + nz * 1.0, force: vn });
@@ -488,15 +538,15 @@ export class Sim {
         b.x += bnx * best * (ma / tot); b.z += bnz * best * (ma / tot);
         const rv = (b.vx - a.vx) * bnx + (b.vz - a.vz) * bnz;
         if (rv < 0) {
-          const jimp = (-(1 + 0.35) * rv) / (1 / ma + 1 / mb);
+          const jimp = (-(1 + 0.5) * rv) / (1 / ma + 1 / mb); // pořádně odhodí (těžké auto lehké)
           a.vx -= (jimp / ma) * bnx; a.vz -= (jimp / ma) * bnz;
           b.vx += (jimp / mb) * bnx; b.vz += (jimp / mb) * bnz;
           const force = -rv;
           if (force > 5) {
-            // těžší auto ubližuje víc
-            if (!a.dead && !b.dead) {
-              this.damage(a, (force - 5) * 0.9 * (mb / tot) * 2, b.id);
-              this.damage(b, (force - 5) * 0.9 * (ma / tot) * 2, a.id);
+            // Náraz hlavně odhazuje. Životy ubere jen symbolicky – ničí se zbraněmi.
+            if (!a.dead && !b.dead && force > RAM_MIN) {
+              this.damage(a, (force - RAM_MIN) * RAM_DAMAGE * (mb / tot), b.id);
+              this.damage(b, (force - RAM_MIN) * RAM_DAMAGE * (ma / tot), a.id);
             }
             this.events.push({ t: 'crash', a: a.id, b: b.id, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, force });
           }

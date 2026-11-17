@@ -7,7 +7,7 @@ Vlastní server v Node.js – není potřeba AirConsole ani internet.
 - až **4 hráči** ve split-screenu + AI soupeři (vždy 6 aut na trati)
 - **kulomet, rakety, miny**, opravy a zrychlení – bedny na trati
 - **3 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory)
-- **4 auta** s různými vlastnostmi (Viper GT, Brute V8, Dune Rat, Titan)
+- **10 aut**, která se opravdu jinak řídí – od formule po náklaďák (rozdíl v kole je až 1,5×)
 - zničení soupeřů, respawn, pořadí, kola, body za umístění i za zničení
 - veškerá grafika i zvuk jsou procedurální (žádné stažené modely, textury ani zvuky)
 
@@ -70,6 +70,29 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 
 Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
 
+### Auta a jízda
+
+Auta se liší tak, aby to bylo poznat hned v první zatáčce:
+
+| | nejlepší | nejhorší |
+| --- | --- | --- |
+| rychlost | NEEDLE 245 km/h | HAULER 180 km/h |
+| zatáčení | DUNE RAT (poloměr 12 m při 108 km/h) | HAULER (51 m při stejné rychlosti) |
+| pancíř | HAULER 200 | NEEDLE 70 |
+
+Klíčová je hodnota `steerRef` v `game/content/cars.ts`: **nad touhle rychlostí auto začne nedotáčet**.
+Formule zatáčí i ve dvou stech, náklaďák se v té samé zatáčce jen vzepře a jede rovně – před zatáčkou se
+musí brzdit. Nízká `grip` (muscle car, hot rod) znamená, že zadek ujíždí; auto se dá krásně driftovat,
+ale v zatáčce ho to nese ven.
+
+Další arkádové vychytávky: rozjetý smyk chvíli vydrží, plný plyn ve vysoké rychlosti rozhoupe zadek,
+a jakmile pustíš volant, auto se samo srovná po směru jízdy (jinak by se s tlačítky na telefonu
+ze smyku skoro nedalo dostat).
+
+**Nárazy neubližují.** Do svodidel se auto jen otře – ztratí rychlost, poškrábe lak, ale životy ne.
+Náraz do jiného auta hlavně odhazuje (těžký TITAN odhodí buginu přes půl silnice) a ubere jen pár životů.
+Ničí se **zbraněmi**, ne ježděním do zdi.
+
 ## Struktura projektu
 
 ```
@@ -107,7 +130,7 @@ Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přepos�
 ### Jak se to rozšiřuje
 
 - **Nová trať:** další záznam v `game/content/tracks.ts`. Karta ve výběru, náhled i obrys vzniknou samy.
-- **Nové auto:** další záznam v `game/content/cars.ts`. Ve výběru aut se objeví samo – 3D model, dlaždice na telefonu i staty se berou z dat.
+- **Nové auto:** další záznam v `game/content/cars.ts`. Ve výběru aut se objeví samo – 3D model, dlaždice na telefonu i ukazatele se spočítají z dat. Tvar karoserie řídí pár čísel v `shape`: `nose` (0 tupá příď dodávky … 1 nízký klín supersportu), `spoiler` 0/1/2, `rugged` (offroad rám a rampa), `bed` (korba), `roofless` (otevřený kokpit), `openWheels` (kola mimo karoserii).
 - **Nový krok v menu (výběr zbraní…):** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `trackSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Ovladač se měnit nemusí – obrazovka LEFT / SELECT / RIGHT je obecná a co se vybírá, jí posílá hra (`MenuInfo` v `shared/protocol.ts`).
 - **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 
@@ -116,7 +139,7 @@ Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přepos�
 | Příkaz | Co dělá |
 | --- | --- |
 | `npm run dev` | vývojový server (Vite, změny v kódu se projeví hned) |
-| `npm run test:sim` | odjede závody AI na všech tratích bez grafiky a zkontroluje, že auta dojedou |
+| `npm run test:sim` | odjede závody AI se všemi auty na všech tratích bez grafiky a zkontroluje, že dojedou |
 | `npm run typecheck` | kontrola typů TypeScriptu |
 | `npm run build` + `npm run prod` | sestavení do `dist/` a spuštění bez Vite |
 
@@ -126,7 +149,7 @@ V konzoli prohlížeče je pro ladění objekt `fbc` (`fbc.sim`, `fbc.view`, `fb
 
 Ověřeno: test simulace (AI dojede všechny tratě), kontrola typů, hra v Chrome (lobby, závod, split-screen, výsledky) a ovladač s emulovaným dotykem včetně odpojení a znovupřipojení.
 **Neověřeno:** skutečný telefon, výkon na konkrétním PC a `npm run build` / `npm run prod`.
-Jízdní vlastnosti a obtížnost jsou vyladěné jen podle simulace – čísla jsou v `cars.ts` a nahoře v `sim.ts`.
+Jízdní vlastnosti a obtížnost jsou vyladěné jen podle simulace – čísla jsou v `game/content/cars.ts` a nahoře v `sim.ts`.
 
 Nápady na další rozšíření: kariéra a odemykání aut, další zbraně, převýšení trati, hudba, výběr barvy auta.
 

@@ -11,6 +11,7 @@ import { Sim, CarEntry } from '../client/src/game/sim';
 import { aiThink } from '../client/src/game/ai';
 
 let failed = false;
+let offset = 0;
 const fail = (msg: string) => { failed = true; console.log('  ✗ ' + msg); };
 
 for (const def of TRACKS) {
@@ -18,8 +19,11 @@ for (const def of TRACKS) {
     const track = buildTrack(def);
     const entries: CarEntry[] = [];
     for (let i = 0; i < 6; i++) {
-      entries.push({ name: 'AI' + i, color: 0, typeIdx: i % 4, stats: CAR_TYPES[i % 4], human: withHuman && i === 0, pid: null });
+      // napříč závody se protočí všechny typy aut, ať se každé někdy projede
+      const t = (i + offset) % CAR_TYPES.length;
+      entries.push({ name: 'AI' + i, color: 0, typeIdx: t, stats: CAR_TYPES[t], human: withHuman && i === 0, pid: null });
     }
+    offset += 6;
     const sim = new Sim(track, entries, { laps: 3, seed: 1234 + def.id.length });
     const dt = 1 / 60;
     const count: Record<string, number> = {};

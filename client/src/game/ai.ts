@@ -2,7 +2,7 @@
  * AI soupeři. Jedou po ose trati s bočním posunem ("pruh"), brzdí před zatáčkami podle křivosti,
  * vyhýbají se pomalejším autům, střílí v dávkách a umí se vyprostit ze zaseknutí.
  */
-import type { Car, Sim } from './sim';
+import { maxCornerSpeed, type Car, type Sim } from './sim';
 import { wrapIdx } from './track';
 
 export interface AIState {
@@ -91,13 +91,14 @@ export function aiThink(sim: Sim, c: Car, dt: number) {
 
   // --- rychlost: projdi křivost před sebou a spočítej, jak rychle se dá ještě ubrzdit
   let target = c.stats.top * 1.5;
-  const aLat = 3.6 * c.stats.grip * ai.skill;
+  const aLat = 4.2 * c.stats.grip * ai.skill; // kolik bočního zrychlení si AI dovolí (arkádově hodně)
   const dec = c.stats.brake * 0.75;
   const K = Math.round((24 + Math.abs(c.speed) * 2.2) / tr.step);
   for (let j = 1; j < K; j += 2) {
     const k = Math.abs(tr.curv[wrapIdx(tr, c.ti + j)]);
     if (k < 0.004) continue;
-    const vmax = Math.sqrt(aLat / k);
+    // auto musí zatáčku jednak udržet (přilnavost), jednak do ní vůbec stihnout zatočit
+    const vmax = Math.min(Math.sqrt(aLat / k), maxCornerSpeed(c.stats, k) * 0.94);
     const allow = Math.sqrt(vmax * vmax + 2 * dec * j * tr.step);
     if (allow < target) target = allow;
   }

@@ -77,7 +77,10 @@ function merged(list: THREE.BufferGeometry[], mat: THREE.Material, shadow = true
 
 export function buildCar(shape: CarShape, color: number): CarVisual {
   const L = shape.length, W = shape.width, g = shape.ground, wr = shape.wheelR;
-  const open = shape.rugged && shape.cabinH < 0.6; // bugina: kola vně karoserie
+  const open = !!shape.openWheels;   // bugina / formule: kola vně karoserie
+  const roofless = !!shape.roofless; // bez střechy, jen ochranný oblouk
+  const bed = !!shape.bed;           // otevřená korba vzadu
+  const nose = shape.nose;           // 0 tupá příď … 1 nízký klín
   const bodyW = open ? W - 2 * shape.wheelW - 0.12 : W;
   const sh = open ? g + shape.bodyH : Math.max(g + shape.bodyH, 2 * wr + 0.12); // výška ramen
   const hB = sh - g;
@@ -97,37 +100,70 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
     }
   }
   s.lineTo(zf - 0.06, g);
-  s.lineTo(zf, g + hB * 0.28);
-  s.lineTo(zf - 0.05, g + hB * 0.66);
-  s.lineTo(zf - 0.32, g + hB * 0.82);
-  s.lineTo(zcf + shape.windshield * shape.cabinH * 1.2, sh);
+  // příď: pro nose = 0 skoro svislá stěna (dodávka), pro nose = 1 dlouhý nízký klín (supersport)
+  const zWind = zcf + shape.windshield * shape.cabinH * 1.2;
+  const bedTop = g + hB * 0.6;
+  s.lineTo(zf, g + hB * (0.66 - 0.46 * nose));
+  s.lineTo(Math.max(zWind + 0.16, zf - 0.04 - 0.3 * nose), g + hB * (0.95 - 0.3 * nose));
+  s.lineTo(Math.max(zWind + 0.08, zf - 0.12 - 0.85 * nose), g + hB * (1 - 0.06 * nose));
+  s.lineTo(zWind, sh);
   s.lineTo(zcr - 0.1, sh);
-  s.lineTo(zr + 0.14, g + hB * (shape.spoiler ? 0.98 : 0.93));
-  s.lineTo(zr, g + hB * 0.62);
+  if (bed) {
+    // korba: karoserie za kabinou klesne, boky se přidají jako samostatné díly
+    s.lineTo(zcr - 0.2, bedTop);
+    s.lineTo(zr + 0.12, bedTop);
+    s.lineTo(zr, g + hB * 0.42);
+  } else {
+    s.lineTo(zr + 0.14, g + hB * (shape.spoiler ? 0.98 : 0.93));
+    s.lineTo(zr, g + hB * 0.62);
+  }
   s.closePath();
   const paintGeo: THREE.BufferGeometry[] = [sideExtrude(s, bodyW, 0.07)];
   // závodní pruh: stejný profil, jen úzký a o chlup větší, takže obepíná kapotu i záď
   const stripeGeo: THREE.BufferGeometry[] = [sideExtrude(s, bodyW * 0.26, 0.02, 0.012)];
+  const glassGeo: THREE.BufferGeometry[] = [];
+  const darkGeo: THREE.BufferGeometry[] = [];
+  const gunGeo: THREE.BufferGeometry[] = [];
 
   // ---- kabina (sklo)
   const ch = shape.cabinH;
   const cw = bodyW * (open ? 0.9 : 0.8);
-  const cs = new THREE.Shape();
-  cs.moveTo(zcr - shape.rearGlass * ch * 1.5, sh - 0.03);
-  cs.lineTo(zcf + shape.windshield * ch * 1.3, sh - 0.03);
-  cs.lineTo(zcf, sh + ch);
-  cs.lineTo(zcr, sh + ch);
-  cs.closePath();
-  const glassGeo: THREE.BufferGeometry[] = [sideExtrude(cs, cw, 0.08)];
-  const roofY = sh + ch;
-  // střecha + sloupky v barvě vozu
-  paintGeo.push(box(cw - 0.1, 0.06, zcf - zcr - 0.04, 0, roofY + 0.012, (zcf + zcr) / 2));
-  stripeGeo.push(box(bodyW * 0.26, 0.07, zcf - zcr - 0.02, 0, roofY + 0.014, (zcf + zcr) / 2));
-  paintGeo.push(box(0.16, 0.1, 0.2, cw / 2 + 0.1, sh + 0.12, zcf + 0.1)); // zrcátka
-  paintGeo.push(box(0.16, 0.1, 0.2, -cw / 2 - 0.1, sh + 0.12, zcf + 0.1));
+  let roofY: number;
+  if (roofless) {
+    // otevřený kokpit: nízké čelní sklo, sedadlo a ochranný oblouk za hlavou
+    roofY = sh + ch * 0.8;
+    glassGeo.push(box(cw * 0.84, ch * 0.6, 0.05, 0, sh + ch * 0.28, zcf - 0.06, -0.32));
+    for (const sx of [-1, 1]) {
+      paintGeo.push(box(0.07, ch * 0.64, 0.07, sx * cw * 0.44, sh + ch * 0.3, zcf - 0.06));
+      gunGeo.push(box(0.09, ch * 0.8, 0.09, sx * (cw / 2), sh + ch * 0.4, zcr + 0.08));
+    }
+    gunGeo.push(box(cw + 0.12, 0.09, 0.09, 0, sh + ch * 0.8, zcr + 0.08));
+    darkGeo.push(box(cw * 0.46, ch * 0.5, 0.14, 0, sh + ch * 0.25, zcr + 0.26));          // opěradlo
+    darkGeo.push(box(cw * 0.52, 0.08, (zcf - zcr) * 0.5, 0, sh + 0.02, (zcf + zcr) / 2)); // vana kokpitu
+  } else {
+    const cs = new THREE.Shape();
+    cs.moveTo(zcr - shape.rearGlass * ch * 1.5, sh - 0.03);
+    cs.lineTo(zcf + shape.windshield * ch * 1.3, sh - 0.03);
+    cs.lineTo(zcf, sh + ch);
+    cs.lineTo(zcr, sh + ch);
+    cs.closePath();
+    glassGeo.push(sideExtrude(cs, cw, 0.08));
+    roofY = sh + ch;
+    // střecha + sloupky v barvě vozu
+    paintGeo.push(box(cw - 0.1, 0.06, zcf - zcr - 0.04, 0, roofY + 0.012, (zcf + zcr) / 2));
+    stripeGeo.push(box(bodyW * 0.26, 0.07, zcf - zcr - 0.02, 0, roofY + 0.014, (zcf + zcr) / 2));
+    paintGeo.push(box(0.16, 0.1, 0.2, cw / 2 + 0.1, sh + 0.12, zcf + 0.1)); // zrcátka
+    paintGeo.push(box(0.16, 0.1, 0.2, -cw / 2 - 0.1, sh + 0.12, zcf + 0.1));
+  }
+  if (bed) {
+    // boky a čelo korby
+    const wallH = hB * 0.38, zbR = zr + 0.12, zbF = zcr - 0.2;
+    for (const sx of [-1, 1]) paintGeo.push(box(0.1, wallH, zbF - zbR, sx * (bodyW / 2 - 0.05), bedTop + wallH / 2, (zbF + zbR) / 2));
+    paintGeo.push(box(bodyW, wallH, 0.1, 0, bedTop + wallH / 2, zbR));
+    darkGeo.push(box(bodyW - 0.22, 0.05, zbF - zbR, 0, bedTop + 0.03, (zbF + zbR) / 2));
+  }
 
   // ---- tmavé díly
-  const darkGeo: THREE.BufferGeometry[] = [];
   darkGeo.push(box(bodyW - 0.5, hB - 0.16, L - 0.5, 0, g + hB / 2 - 0.02, 0)); // podvozek (vyplní podběhy)
   darkGeo.push(box(bodyW * 0.56, hB * 0.26, 0.08, 0, g + hB * 0.36, zf - 0.03)); // maska
   darkGeo.push(box(bodyW * 0.96, 0.08, 0.34, 0, g + 0.02, zf - 0.1)); // přední spoiler
@@ -142,7 +178,6 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   darkGeo.push(cyl(0.055, 0.3, -bodyW * 0.28, g + 0.1, zr + 0.02, 'z', 8));
 
   // ---- zbraně: dva kulomety na kapotě
-  const gunGeo: THREE.BufferGeometry[] = [];
   const gz = Math.min(zf - 0.75, zcf + shape.windshield * ch * 1.3 + 0.75);
   for (const sx of [-1, 1]) {
     gunGeo.push(box(0.2, 0.12, 0.5, sx * bodyW * 0.27, sh + 0.02, gz - 0.25));
@@ -150,19 +185,31 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
     gunGeo.push(cyl(0.07, 0.14, sx * bodyW * 0.27, sh + 0.07, gz + 0.58, 'z', 8));
   }
 
-  if (shape.spoiler) {
-    paintGeo.push(box(bodyW * 0.94, 0.05, 0.4, 0, sh + 0.34, zr + 0.24, -0.12));
-    darkGeo.push(box(0.06, 0.34, 0.2, bodyW * 0.32, sh + 0.16, zr + 0.26));
-    darkGeo.push(box(0.06, 0.34, 0.2, -bodyW * 0.32, sh + 0.16, zr + 0.26));
+  if (shape.spoiler > 0) {
+    // 1 = nízká lipa, 2 = velké závodní křídlo
+    const big = shape.spoiler === 2;
+    const wingH = big ? 0.6 : 0.3, wingD = big ? 0.55 : 0.38;
+    paintGeo.push(box(bodyW * (big ? 1.04 : 0.94), 0.06, wingD, 0, sh + wingH + 0.04, zr + 0.22, -0.16));
+    for (const sx of [-1, 1]) darkGeo.push(box(0.07, wingH, 0.22, sx * bodyW * 0.33, sh + wingH / 2, zr + 0.24));
+  }
+  if (shape.spare) {
+    // rezerva: v korbě u kabiny, jinak na zádi
+    const sr = wr * 0.9;
+    const sz = bed ? zcr - 0.42 : zr - 0.14;
+    const sy = bed ? bedTop + sr : g + hB * 0.58;
+    darkGeo.push(cyl(sr, 0.22, 0, sy, sz, 'z', 16));
+    gunGeo.push(cyl(sr * 0.45, 0.26, 0, sy, sz, 'z', 10));
   }
   if (shape.rugged) {
     // ochranný rám vpředu
     gunGeo.push(box(bodyW * 0.8, 0.07, 0.07, 0, g + hB * 0.75, zf + 0.12));
     gunGeo.push(box(bodyW * 0.8, 0.07, 0.07, 0, g + hB * 0.3, zf + 0.12));
     for (const sx of [-1, 1]) gunGeo.push(box(0.07, hB * 0.55, 0.07, sx * bodyW * 0.3, g + hB * 0.52, zf + 0.12));
-    // ochranný oblouk za kabinou
-    for (const sx of [-1, 1]) gunGeo.push(box(0.08, ch + 0.2, 0.08, sx * (cw / 2 + 0.02), sh + (ch + 0.2) / 2, zcr - 0.12));
-    gunGeo.push(box(cw + 0.12, 0.08, 0.08, 0, sh + ch + 0.2, zcr - 0.12));
+    if (!roofless) {
+      // ochranný oblouk za kabinou
+      for (const sx of [-1, 1]) gunGeo.push(box(0.08, ch + 0.2, 0.08, sx * (cw / 2 + 0.02), sh + (ch + 0.2) / 2, zcr - 0.12));
+      gunGeo.push(box(cw + 0.12, 0.08, 0.08, 0, sh + ch + 0.2, zcr - 0.12));
+    }
   }
   if (open) {
     // bugina: nápravy a blatníčky
@@ -180,7 +227,7 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
     rearGeo.push(box(bodyW * 0.27, hB * 0.17, 0.12, sx * bodyW * 0.31, g + hB * 0.61, zr + 0.03));
   }
   const plateGeo = [box(0.46, 0.13, 0.03, 0, g + hB * 0.6, zr - 0.02)];
-  if (shape.rugged && !open) {
+  if (shape.rugged && !open && !roofless) {
     for (let i = -1.5; i <= 1.5; i++) frontGeo.push(box(0.2, 0.12, 0.1, i * 0.3, roofY + 0.12, zcf - 0.1)); // světelná rampa
     gunGeo.push(box(1.3, 0.05, 0.1, 0, roofY + 0.05, zcf - 0.12));
   }
