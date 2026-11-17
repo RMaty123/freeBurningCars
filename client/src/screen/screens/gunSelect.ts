@@ -28,7 +28,7 @@ function howTo(g: GunStats): string {
   if (g.kind === 'beam') {
     const n = g.twin ? 2 : 1;
     const max = Math.min(BEAM_MAX, g.chargeMax ?? BEAM_MAX);
-    return `DRŽ FIRE 1 – NABÍJÍ SE · PUSTÍŠ A ${n > 1 ? `${n} PAPRSKY PÁLÍ` : 'PAPRSEK PÁLÍ'} STEJNĚ DLOUHO (MAX ${max} s) · ${g.dmg * n} DMG/s`;
+    return `DRŽ FIRE 1 – NABÍJÍ SE · ${n > 1 ? `${n} PAPRSKY PÁLÍ` : 'PAPRSEK PÁLÍ'} STEJNĚ DLOUHO (MAX ${max} s) · ${g.dmg} DMG ZA ZÁSAH`;
   }
   const shots = g.twin ? 2 : 1;
   const dps = Math.round((g.dmg * shots) / g.cd);

@@ -53,7 +53,7 @@ export interface GunStats {
 
   /** prodleva mezi ranami (s); u paprsku prodleva po jeho dohoření */
   cd: number;
-  /** poškození jedné rány; u paprsku poškození za sekundu */
+  /** poškození jedné rány – u paprsku taky, a to celé naráz při každém zásahu */
   dmg: number;
   /** rychlost střely (m/s) – u paprsku se nepoužije */
   speed: number;
@@ -75,8 +75,10 @@ export interface GunStats {
   chargeMax?: number;
   /** jen `beam`: kolik sekund paprsku dá jedna sekunda nabíjení */
   beamPer?: number;
-  /** jen `beam`: poloměr, do kterého paprsek ještě zasáhne auto (m) */
+  /** jen `beam`: jak daleko od osy paprsku ještě auto schytá ránu (m, k poloměru auta) */
   beamR?: number;
+  /** jen `beam`: za jak dlouho může paprsek zasáhnout to samé auto znovu (s) */
+  rehit?: number;
 
   /** ukazatele 1–10 do nabídky */
   ratings: { power: number; rate: number; range: number };

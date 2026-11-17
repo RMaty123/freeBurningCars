@@ -8,9 +8,9 @@
  * Vyvážení (poškození za sekundu, když všechno sedí):
  *   VULCAN   2.7 / 0.085 s ≈ 32 dps – hodně ran, dobře doměřuje, malé rány
  *   BREAKER  13  / 0.40 s  ≈ 32 dps – málo ran, každá bolí, slabší doměřování
- *   PRISM    2× 32 dmg/s po dobu paprsku – dvě děla na dveřích, nabíjí se držením.
- *            Sekunda paprsku na cíli sebere 64 hp, takže většina aut padne po dvou –
- *            zato se na to musí nejdřív nabít a paprskem se musí trefovat.
+ *   PRISM    110 dmg za zásah – dvě děla na dveřích, nabíjí se držením.
+ *            Stačí po někom paprskem řeznout a je po něm; těžká auta (120+ hp)
+ *            to přežijí a padnou druhou ranou. Zato se musí nejdřív nabít.
  */
 import type { GunStats } from '../guns';
 
@@ -46,12 +46,12 @@ export const GUNS: GunStats[] = [
   {
     id: 'prism',
     name: 'PRISM',
-    tagline: 'Dvě děla na dveřích. Drž FIRE 1, pustíš – a pálí obě.',
+    tagline: 'Dvě děla na dveřích. Koho paprsek škrtne, ten většinou končí.',
     kind: 'beam', mount: 'side', twin: true,
     color: 0x6ff0ff,
-    cd: 0.8, dmg: 32, speed: 0, range: 90, spread: 0, tracer: 1,
+    cd: 0.8, dmg: 110, speed: 0, range: 90, spread: 0, tracer: 1,
     cone: 0, aim: 0, aimMax: 0,
-    chargeMax: 5, beamPer: 1, beamR: 1.6,
+    chargeMax: 5, beamPer: 1, beamR: 0.55, rehit: 0.7,
     ratings: { power: 10, rate: 2, range: 7 },
     shape: {
       // přesně ta dvě děla, co auto nosí na dveřích

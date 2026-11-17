@@ -72,6 +72,8 @@ export interface Car {
   beamT: number;
   /** délka každého paprsku po první zásah (m) – jen pro vykreslení */
   beamLen: number[];
+  /** kdy naposledy paprsek zasáhl které auto (podle id) – ať jedna rána platí jednou */
+  beamHitAt: number[];
   fireCd: number;
   secCd: number;
   gunSide: number;
@@ -251,7 +253,7 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        secType: 'rocket', secAmmo: 2, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: [],
+        secType: 'rocket', secAmmo: 2, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
         fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
         finished: false, finishTime: 0, place: 0, kills: 0, deaths: 0, bestLap: 0, lapStart: 0,
@@ -649,6 +651,7 @@ export class Sim {
     c.beamT = beamTime(c.gun, c.charge);
     c.beam = c.beamT;
     c.beamLen = this.beamSides(c).map(() => c.gun.range);
+    c.beamHitAt = [];
     c.charge = 0;
     this.events.push({ t: 'beam', car: c.id, len: c.beamT });
   }
@@ -660,7 +663,12 @@ export class Sim {
 
   /**
    * Paprsky: pálí rovně dopředu z míst, kde zbraň na autě sedí (u PRISM z obou dveří),
-   * každý si najde první auto v cestě a ubírá mu život po celou dobu, co na něm drží.
+   * a každý si najde první auto v cestě.
+   *
+   * Zásah je **jednorázová rána**, ne ubírání po kapkách: stačí po někom paprskem řeznout
+   * a schytá celé `g.dmg` naráz. Dokud paprsek na autě drží, další rána přijde až za
+   * `g.rehit` sekund – a protože se počítá za auto (ne za paprsek), obě děla dohromady
+   * nenapočítají dvojnásobek.
    */
   private stepBeams(dt: number) {
     for (const c of this.cars) {
@@ -673,6 +681,7 @@ export class Sim {
       const side = g.mount === 'side';
       const lat = side ? c.stats.shape.width * 0.48 : 0.45;
       const fwd = side ? 0.9 : 1.6;
+      const reach = g.beamR ?? 0.55;
       this.beamSides(c).forEach((sgn, k) => {
         const ox = c.x + fx * fwd - fz * lat * sgn, oz = c.z + fz * fwd + fx * lat * sgn;
         let hit: Car | null = null, hitT = g.range;
@@ -681,14 +690,18 @@ export class Sim {
           const dx = o.x - ox, dz = o.z - oz;
           const t = dx * fx + dz * fz;                    // jak daleko podél paprsku
           if (t < 0 || t > hitT) continue;
-          if (Math.abs(dx * fz - dz * fx) > (g.beamR ?? 1.6)) continue; // kolmá odchylka
+          // kolmá odchylka: počítá se od boku auta, ne od jeho středu, ať se dá i "štrejchnout"
+          if (Math.abs(dx * fz - dz * fx) > reach + CAR_R) continue;
           hit = o; hitT = t;
         }
         c.beamLen[k] = hitT;
         if (!hit) return;
+        const last = c.beamHitAt[hit.id] ?? -99;
+        if (this.time - last < (g.rehit ?? 0.7)) return;  // tohle auto už ránu dostalo
+        c.beamHitAt[hit.id] = this.time;
         // AI pálí do lidí slabším paprskem, ať to není frustrující
-        this.damage(hit, g.dmg * dt * (!c.human && hit.human ? 0.55 : 1), c.id);
-        if (this.rnd() < dt * 10) this.events.push({ t: 'hit', car: hit.id, x: hit.x, z: hit.z });
+        this.damage(hit, g.dmg * (!c.human && hit.human ? 0.55 : 1), c.id);
+        this.events.push({ t: 'hit', car: hit.id, x: ox + fx * hitT, z: oz + fz * hitT });
       });
     }
   }

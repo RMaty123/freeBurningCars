@@ -77,11 +77,13 @@ Po výběru auta přijde **výběr zbraně** – na telefonu mřížka s náhled
 | --- | --- | --- |
 | **VULCAN** | rychlopalný kulomet, dobře si doměřuje cíl | 2,7 dmg / ránu, 12 ran za sekundu (≈ 32 dmg/s) |
 | **BREAKER** | pomalý těžký kulomet, slabší doměřování, velké rány | 13 dmg / ránu, 2,5 rány za sekundu (≈ 32 dmg/s) |
-| **PRISM** | **dva lasery na dveřích**, nabíjí se držením FIRE 1 | 2× 32 dmg/s po dobu paprsku, nabíjení až 5 s |
+| **PRISM** | **dva lasery na dveřích**, nabíjí se držením FIRE 1 | 110 dmg za zásah, nabíjení až 5 s |
 
 PRISM je **boční zbraň**: dvě laserová děla přišroubovaná zvenku na dveřích, vidět přímo na autě (`mount: 'side'`, `twin: true`). **Držením FIRE 1 se nabíjí, puštěním vystřelí** a paprsky pak svítí **stejně dlouho, jak dlouho se nabíjelo** – nejvýš 5 sekund (`BEAM_MAX` v `game/guns.ts`). Pálí obě děla naráz, každé rovně dopředu ze svého ústí; paprsek se zastaví o první auto v cestě a ubírá mu život po celou dobu, co na něm drží, takže se jím dá po soupeři "přejíždět".
 
-Čísla sedí tak, že **sekunda paprsku na cíli sebere 64 hp** – běžnému autu (70–100 hp) jedna vteřina vezme většinu života a druhá ho dorazí. Protože se nejdřív musí nabíjet, vychází PRISM v průměru na podobné poškození za sekundu jako kulomety, jen je mnohem víc "všechno nebo nic". Čočky děl se během nabíjení postupně rozsvěcují, takže je na autě poznat, že se chystá pálit; ukazatel nabití je i v HUD a na tlačítku FIRE 1 na telefonu.
+Zásah je **jednorázová rána za 110 hp, ne ubírání po kapkách** – stačí po soupeři paprskem řeznout a schytá to celé. Běžná auta (70–100 hp) to tedy sejme na jeden zásah, těžká (BRUTE 120, TRAILBLAZER 130, TITAN 170, HAULER 200) jednu ránu přežijí a padnou druhou. Dokud paprsek na autě drží, další rána přijde až za `rehit` (0,7 s), a počítá se za auto, ne za paprsek – obě děla dohromady tedy nenapočítají dvojnásobek. Bot střílející do hráče dává jako u ostatních zbraní 55 %, takže hráč první ránu přežije.
+
+Čočky děl se během nabíjení postupně rozsvěcují, takže je na autě poznat, že se někdo chystá pálit; ukazatel nabití je i v HUD a na tlačítku FIRE 1 na telefonu.
 
 **Zbraň je vlastnost hráče, ne auta** – každé auto může nosit kteroukoli zbraň a model se mu podle toho změní: kulomety sedí na kapotě, laserová děla na dveřích (a velikost děl se přizpůsobí autu, takže formule nemá na boku kanón z náklaďáku). Stejná dvojice děl je i modelem zbraně v nabídce, takže v menu vidíš přesně to, co ti pak bude koukat ze dveří.
 
