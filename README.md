@@ -139,19 +139,21 @@ Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přepos�
   | přepínač | co udělá |
   | --- | --- |
   | `nose` | 0 tupá příď dodávky … 1 nízký klín supersportu |
-  | `spoiler` | 0 nic, 1 lipa, 2 velké GT křídlo, 3 křídlo na labutích krcích |
+  | `spoiler` | 0 nic, 1 lipa, 2 velké GT křídlo, 3 křídlo na labutích krcích, 4 vysoké rovné křídlo na stojkách |
   | `flares` | rozšířené blatníky (0–1) |
   | `intakes` | boční sání s lamelami před zadními koly |
   | `scoop` | 1 nasávání na kapotě, 2 kompresor trčící ven |
   | `splitter` | přední splitter a difuzor se žebry |
-  | `sideExhaust` | trojice bočních výfuků místo zadních |
+  | `sideExhaust` | chromovaný svod podél prahu místo zadních výfuků |
+  | `deckVents` / `roofScoop` | lamely na víku motoru / hřeben ze střechy na víko |
   | `rugged` / `bed` / `spare` | offroad rám a rampa / korba / rezerva |
   | `roofless` / `openWheels` | otevřený kokpit / kola mimo karoserii |
   | `lights` | `slim`, `round`, `quad`, `strip` |
   | `livery` | `center`, `twin`, `flash`, `none` (+ `liveryColor`) |
-  | `rimSpokes`, `rimColor` | kola (barvy jsou v `RIM` v `game/cars.ts`) |
+  | `rimSpokes`, `rimColor`, `rimCap` | kola: počet paprsků (hodně = tenké), barva z `RIM`, středová krytka v barvě vozu |
 
-- **Barvy:** každý typ auta má **svoji pevnou barvu** (`color` v `content/cars.ts`) – stejnou pro hráče i pro boty, takže VIPER GT je vždy červená, HYPERION světle modrý, HAULER bílý atd. Když si dva hráči vyberou stejné auto, `colorPicker()` dá druhému volnou barvu z palety `CAR_COLORS` (přednost mají barvy, které nejsou ničí vlastní), aby se nepletli. Kdo je kdo se pozná podle barvy jména nad autem, tečky na minimapě a rámečku v HUD – to je `tagColor` (barva slotu hráče z `PLAYER_COLORS`), která je oddělená od barvy laku. K hlavní barvě má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION karbonové prahy a blatníky. `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
+- **Barvy:** každý typ auta má **svoji pevnou barvu** (`color` v `content/cars.ts`) – stejnou pro hráče i pro boty, takže VIPER GT je vždy červená, HYPERION světle modrý, HAULER bílý atd. Když si dva hráči vyberou stejné auto, `colorPicker()` dá druhému volnou barvu z palety `CAR_COLORS` (přednost mají barvy, které nejsou ničí vlastní), aby se nepletli. Kdo je kdo se pozná podle barvy jména nad autem, tečky na minimapě a rámečku v HUD – to je `tagColor` (barva slotu hráče z `PLAYER_COLORS`), která je oddělená od barvy laku. K hlavní barvě má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`, `spine`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION grafitový hřbet (`spine` = klín na kapotě + víko motoru, k tomu střecha). `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
+- **Maska a světla** sedí na šikmém čele samy: `noseAt()` v `carModel.ts` spočítá bod a sklon přídě, takže ani u ostrého klínu nic netrčí z karoserie.
 - **Nový krok v menu (výběr zbraní…):** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `trackSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Ovladač se měnit nemusí – obrazovka LEFT / SELECT / RIGHT je obecná a co se vybírá, jí posílá hra (`MenuInfo` v `shared/protocol.ts`).
 - **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 

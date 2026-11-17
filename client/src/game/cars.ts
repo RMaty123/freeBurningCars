@@ -8,9 +8,9 @@ export type LightStyle = 'slim' | 'round' | 'quad' | 'strip';
 /** Lak: pruhy přes kapotu a střechu, dvojité pruhy, boční blesk, nic. */
 export type Livery = 'center' | 'twin' | 'flash' | 'none';
 /** Zadní křídlo. */
-export type Wing = 0 | 1 | 2 | 3; // 0 nic, 1 lipa, 2 GT křídlo, 3 vysoké křídlo na labutích krcích
+export type Wing = 0 | 1 | 2 | 3 | 4; // 0 nic, 1 lipa, 2 GT křídlo, 3 křídlo na labutích krcích, 4 vysoké rovné křídlo na stojkách
 /** Díly, které se obarví druhou barvou. */
-export type AccentPart = 'hood' | 'roof' | 'flares' | 'wing' | 'mirrors' | 'lower' | 'bed';
+export type AccentPart = 'hood' | 'roof' | 'flares' | 'wing' | 'mirrors' | 'lower' | 'bed' | 'spine';
 /** Povrch laku. */
 export type Finish = 'gloss' | 'matte' | 'metallic' | 'pearl';
 
@@ -75,6 +75,12 @@ export interface CarShape {
   /** počet paprsků kol a jejich barva */
   rimSpokes?: number;
   rimColor?: number;
+  /** středová krytka kola v barvě vozu */
+  rimCap?: boolean;
+  /** lamely na víku motoru za kabinou */
+  deckVents?: boolean;
+  /** hřeben (snorkel) na střeše, který sbíhá na víko motoru */
+  roofScoop?: boolean;
 }
 
 export interface CarStats {
@@ -134,6 +140,7 @@ export const RIM = { chrome: 0xd4d9e2, dark: 0x26282e, gold: 0xd9a93c, bronze: 0
 export const PAINT = {
   carbon: 0x1b1d22, black: 0x101216, white: 0xf2f0ea, silver: 0xb9bec7, gunmetal: 0x4a4f58,
   gold: 0xd9a93c, orange: 0xff7a1a, red: 0xc0392b, blue: 0x1f6fd6, lime: 0x9ad42a, cream: 0xe8dcb5,
+  graphite: 0x59626d,
 };
 
 export function hexCss(c: number): string {

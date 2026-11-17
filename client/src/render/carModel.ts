@@ -92,6 +92,26 @@ function fender(r: number, tube: number, wide: number, x: number, y: number, z: 
   return prep(g);
 }
 
+/**
+ * Plochý panel daný půdorysem (body [x, z]) – kapota, víko motoru, lamely.
+ * `y` je spodek panelu, `rx` ho nakloní kolem osy X procházející z = `zPivot`.
+ */
+function plate(pts: [number, number][], y: number, th: number, rx = 0, zPivot = 0): THREE.BufferGeometry {
+  const sp = new THREE.Shape();
+  pts.forEach(([px, pz], i) => (i ? sp.lineTo(px, pz) : sp.moveTo(px, pz)));
+  sp.closePath();
+  const g = new THREE.ExtrudeGeometry(sp, { depth: th, bevelEnabled: false, curveSegments: 1 });
+  g.rotateX(Math.PI / 2); // půdorys si lehne do roviny XZ a tloušťka jde nahoru
+  g.translate(0, th, 0);
+  if (rx) {
+    g.translate(0, 0, -zPivot);
+    g.rotateX(rx);
+    g.translate(0, 0, zPivot);
+  }
+  g.translate(0, y, 0);
+  return prep(g);
+}
+
 /** Vytáhne boční profil [z, y] do šířky a otočí ho tak, aby délka auta byla v ose Z. */
 function sideExtrude(shape: THREE.Shape, width: number, bevel: number, grow = 0, offsetX = 0): THREE.BufferGeometry {
   const depth = width - 2 * bevel;
@@ -181,12 +201,47 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   s.closePath();
   paintGeo.push(sideExtrude(s, bodyW, 0.07));
 
+  // ---- šikmé čelo: maska a světla musí sedět na plášti, ne trčet z klínu
+  const noseA: [number, number] = [zf, g + hB * (0.66 - 0.46 * nose)];
+  const noseB: [number, number] = [Math.max(zWind + 0.16, zf - 0.04 - 0.3 * nose), g + hB * (0.95 - 0.3 * nose)];
+  const nd: [number, number] = [noseB[0] - noseA[0], noseB[1] - noseA[1]];
+  const nLen = Math.hypot(nd[0], nd[1]);
+  const nrm: [number, number] = [nd[1] / nLen, -nd[0] / nLen]; // normála [z, y] ven z karoserie
+  const noseRx = -Math.atan2(nrm[1], nrm[0]);
+  /** Bod na čele: `t` = 0 dole … 1 nahoře, `out` = jak moc díl vystupuje. Vrací [z, y]. */
+  const noseAt = (t: number, out: number): [number, number] =>
+    [noseA[0] + nd[0] * t + nrm[0] * out, noseA[1] + nd[1] * t + nrm[1] * out];
+
   // ---- panel kapoty (jen když má jinou barvu – jinak je kapota součástí karoserie)
   if (acc.has('hood')) {
     const yA = sh, zA = zWind;
     const zB = Math.max(zWind + 0.1, zf - 0.14 - 0.85 * nose), yB = g + hB * (1 - 0.06 * nose);
     const len = Math.hypot(zB - zA, yA - yB);
     accentGeo.push(box(bodyW * 0.84, 0.05, len * 0.94, 0, (yA + yB) / 2 + 0.018, (zA + zB) / 2, Math.atan2(yA - yB, zB - zA)));
+  }
+
+  // ---- tmavý hřbet: klín na kapotě a víko motoru v druhé barvě (hypersport)
+  const yHood = g + hB * (1 - 0.06 * nose);
+  const zHoodEnd = Math.max(zWind + 0.32, zf - 0.16 - 0.78 * nose);
+  if (acc.has('spine')) {
+    accentGeo.push(plate(
+      [[-bodyW * 0.34, zWind - 0.05], [bodyW * 0.34, zWind - 0.05], [bodyW * 0.17, zHoodEnd], [-bodyW * 0.17, zHoodEnd]],
+      (sh + yHood) / 2 - 0.012, 0.05, Math.atan2(sh - yHood, zHoodEnd - zWind), (zWind + zHoodEnd) / 2));
+    if (!bed) {
+      const zDeck = zr + 0.22;
+      accentGeo.push(plate(
+        [[-bodyW * 0.4, zcr + 0.06], [bodyW * 0.4, zcr + 0.06], [bodyW * 0.33, zDeck], [-bodyW * 0.33, zDeck]],
+        sh - 0.038, 0.05));
+    }
+  }
+
+  // ---- lamely na víku motoru
+  if (shape.deckVents && !bed) {
+    const zvF = zcr - 0.16, zvR = zr + 0.5;
+    for (let k = 0; k < 3; k++) {
+      const zz = zvF + (zvR - zvF) * ((k + 0.5) / 3);
+      darkGeo.push(box(bodyW * 0.34, 0.05, 0.09, 0, sh + 0.02, zz, 0.42));
+    }
   }
 
   // ---- lak: pruhy obepínají kapotu i záď (stejný profil, jen užší a o chlup větší)
@@ -259,9 +314,16 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   }
 
   // ---- spodek, maska, prahy
-  darkGeo.push(box(bodyW - 0.5, hB - 0.16, L - 0.5, 0, g + hB / 2 - 0.02, 0)); // podvozek (vyplní podběhy)
-  darkGeo.push(box(bodyW * 0.56, hB * 0.26, 0.08, 0, g + hB * 0.36, zf - 0.03)); // maska
-  for (let i = 0; i < 3; i++) chromeGeo.push(box(bodyW * 0.44, 0.025, 0.05, 0, g + hB * (0.3 + i * 0.06), zf - 0.01)); // lamely mřížky
+  // výplň podběhů: jen tak vysoká, aby zakryla výřezy – jinak by prorazila klínovou příď
+  const fz0 = axR - wr - 0.12, fz1 = axF + wr + 0.12;
+  const fillTop = Math.min(g + hB - 0.08, wr + 0.16);
+  darkGeo.push(box(bodyW - 0.5, fillTop - g, fz1 - fz0, 0, (g + fillTop) / 2, (fz0 + fz1) / 2));
+  const [mz, my] = noseAt(0.34, 0.01);
+  darkGeo.push(box(bodyW * 0.56, Math.min(hB * 0.26, nLen * 0.5), 0.08, 0, my, mz, noseRx)); // maska
+  for (let i = 0; i < 3; i++) {
+    const [lz, ly] = noseAt(0.26 + i * 0.08, 0.04);
+    chromeGeo.push(box(bodyW * 0.44, 0.025, 0.05, 0, ly, lz, noseRx)); // lamely mřížky
+  }
   if (!open) {
     const skirt = axF - axR - 2 * (wr + 0.12);
     for (const sx of [-1, 1]) putLow(box(0.09, hB * 0.22, skirt, sx * (bodyW / 2), g + hB * 0.1, (axF + axR) / 2));
@@ -292,7 +354,7 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
 
   // ---- splitter a difuzor
   if (shape.splitter) {
-    putLow(box(bodyW * 1.04, 0.05, 0.42, 0, g + 0.03, zf - 0.14));
+    putLow(box(bodyW * 0.99, 0.05, 0.36, 0, g + 0.03, zf - 0.16));
     for (const sx of [-1, 1]) darkGeo.push(box(0.05, hB * 0.3, 0.3, sx * bodyW * 0.5, g + hB * 0.17, zf - 0.2));
     putLow(box(bodyW * 0.92, hB * 0.22, 0.3, 0, g + hB * 0.12, zr + 0.16));
     for (let k = -1.5; k <= 1.5; k++) darkGeo.push(box(0.05, hB * 0.26, 0.34, k * bodyW * 0.17, g + hB * 0.14, zr + 0.14));
@@ -303,8 +365,14 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
 
   // ---- výfuky
   if (shape.sideExhaust) {
-    for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) {
-      chromeGeo.push(cyl(0.06, 0.34, sx * (bodyW / 2 - 0.02), g + hB * 0.22, axF - 0.5 - k * 0.3, 'x', 8));
+    // chromovaný svod podél prahu: trubka, tlumič, koncovka a stahovací pásky
+    const zA = axF - wr - 0.22, zB = axR + wr + 0.18, len = Math.max(0.8, zA - zB), zc = (zA + zB) / 2;
+    for (const sx of [-1, 1]) {
+      const ex = sx * (bodyW / 2 + 0.035), ey = g + hB * 0.26;
+      chromeGeo.push(cyl(0.05, len, ex, ey, zc, 'z', 10));
+      chromeGeo.push(box(0.15, 0.17, len * 0.42, ex + sx * 0.012, ey, zc - len * 0.08));
+      chromeGeo.push(cyl(0.075, 0.2, ex, ey, zB + 0.02, 'z', 10));
+      for (const t of [0.26, 0.74]) gunGeo.push(box(0.17, 0.055, 0.05, ex, ey, zB + len * t));
     }
   } else {
     const quad = shape.spoiler >= 2;
@@ -320,6 +388,15 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   if (shape.spoiler === 1) {
     // lipa na víku kufru
     put('wing', box(bodyW * 0.92, 0.07, 0.26, 0, sh + 0.06, zr + 0.2, -0.3));
+  } else if (shape.spoiler === 4) {
+    // vysoké rovné křídlo na dvou stojkách – hypersport
+    const wd = 0.46, wy = sh + 0.33, wz = zr + 0.74;
+    put('wing', box(bodyW * 1.0, 0.05, wd, 0, wy, wz, 0.13));
+    put('wing', box(bodyW * 1.0, 0.09, 0.05, 0, wy + 0.045, wz - wd * 0.48, 0.13)); // odtoková hrana
+    for (const sx of [-1, 1]) {
+      gunGeo.push(box(0.055, 0.34, 0.2, sx * bodyW * 0.29, sh + 0.17, wz + 0.03)); // stojka
+      gunGeo.push(box(0.03, 0.19, wd + 0.06, sx * bodyW * 0.5, wy + 0.05, wz));    // koncová deska
+    }
   } else if (shape.spoiler >= 2) {
     const swan = shape.spoiler === 3;
     // formule nese křídlo vysoko, hypersport nízko a elegantně, tuner naopak co nejvýš
@@ -339,23 +416,32 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
     }
   }
 
+  // ---- hřeben na střeše, který sbíhá na víko motoru
+  if (shape.roofScoop && !roofless && !bed) {
+    darkGeo.push(box(cw * 0.15, 0.06, zcf - zcr - 0.24, 0, roofY + 0.035, (zcf + zcr) / 2 - 0.05));
+    darkGeo.push(box(cw * 0.13, 0.06, 0.5, 0, roofY - 0.08, zcr - 0.21, -0.44));
+  }
+
   // ---- světla
-  const fy = g + hB * (0.62 - 0.18 * nose), ry = g + hB * 0.62;
+  const ry = g + hB * 0.62;
   if (lights === 'strip') {
-    frontGeo.push(box(bodyW * 0.86, hB * 0.08, 0.09, 0, fy, zf - 0.08, 0.2));
+    const [lz, ly] = noseAt(0.62, 0.015);
+    frontGeo.push(box(bodyW * 0.86, hB * 0.08, 0.09, 0, ly, lz, noseRx));
     rearGeo.push(box(bodyW * 0.9, hB * 0.09, 0.08, 0, ry, zr + 0.02));
   } else if (lights === 'round' || lights === 'quad') {
     const n = lights === 'quad' ? 2 : 1;
     const lr = hB * (lights === 'quad' ? 0.11 : 0.15);
+    const [lz, ly] = noseAt(0.5, 0.0);
     for (const sx of [-1, 1]) for (let i = 0; i < n; i++) {
       const off = (i - (n - 1) / 2) * lr * 2.4;
-      frontGeo.push(cyl(lr, 0.1, sx * (bodyW * 0.3) + off, fy, zf - 0.04, 'z', 12));
-      chromeGeo.push(cyl(lr * 1.22, 0.06, sx * (bodyW * 0.3) + off, fy, zf - 0.07, 'z', 12));
+      frontGeo.push(cyl(lr, 0.1, sx * (bodyW * 0.3) + off, ly, lz + 0.03, 'z', 12));
+      chromeGeo.push(cyl(lr * 1.22, 0.06, sx * (bodyW * 0.3) + off, ly, lz, 'z', 12));
       rearGeo.push(cyl(lr * 0.85, 0.08, sx * (bodyW * 0.3) + off, ry, zr + 0.02, 'z', 12));
     }
   } else {
+    const [lz, ly] = noseAt(0.56, 0.015);
     for (const sx of [-1, 1]) {
-      frontGeo.push(box(bodyW * 0.24, hB * 0.14, 0.12, sx * bodyW * 0.33, fy, zf - 0.05, 0.2));
+      frontGeo.push(box(bodyW * 0.24, Math.min(hB * 0.14, nLen * 0.3), 0.12, sx * bodyW * 0.33, ly, lz, noseRx));
       rearGeo.push(box(bodyW * 0.27, hB * 0.15, 0.12, sx * bodyW * 0.31, ry, zr + 0.03));
     }
   }
@@ -364,9 +450,13 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   // ---- zbraně: dva kulomety na kapotě
   const gz = Math.min(zf - 0.75, zWind + 0.75);
   for (const sx of [-1, 1]) {
-    gunGeo.push(box(0.2, 0.12, 0.5, sx * bodyW * 0.27, sh + 0.02, gz - 0.25));
-    gunGeo.push(cyl(0.045, 0.95, sx * bodyW * 0.27, sh + 0.07, gz + 0.15, 'z', 8));
-    gunGeo.push(cyl(0.07, 0.14, sx * bodyW * 0.27, sh + 0.07, gz + 0.58, 'z', 8));
+    const gx = sx * bodyW * 0.27;
+    gunGeo.push(box(0.14, 0.09, 0.34, gx, sh - 0.01, gz - 0.12));
+    gunGeo.push(box(0.15, 0.035, 0.05, gx, sh + 0.035, gz + 0.06)); // objímka hlavní
+    for (const [ox, oy] of [[-0.032, 0], [0.032, 0], [0, 0.05]] as [number, number][]) {
+      gunGeo.push(cyl(0.019, 0.52, gx + ox, sh + 0.02 + oy, gz + 0.26, 'z', 6));
+    }
+    chromeGeo.push(cyl(0.046, 0.08, gx, sh + 0.035, gz + 0.5, 'z', 8)); // ústí
   }
 
   // ---- offroad výbava
@@ -431,9 +521,10 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
 
   // ---- kola s paprsky
   const spokes = shape.rimSpokes ?? 5;
+  const spokeTh = wr * Math.min(0.17, 1.5 / spokes); // hodně paprsků = tenké
   const tireGeo = mergeGeometries([cyl(wr, ww, 0, 0, 0, 'x', 20)])!;
   const rimParts = [cyl(wr * 0.52, ww + 0.02, 0, 0, 0, 'x', 16)];
-  for (let i = 0; i < spokes; i++) rimParts.push(spoke(ww + 0.03, wr * 0.86, wr * 0.17, (i / spokes) * Math.PI * 2));
+  for (let i = 0; i < spokes; i++) rimParts.push(spoke(ww + 0.03, wr * 0.86, spokeTh, (i / spokes) * Math.PI * 2));
   const rimGeo = mergeGeometries(rimParts)!;
   // náboj, vnitřek disku a brzdový kotouč (vidět mezi paprsky)
   const hubGeo = mergeGeometries([
@@ -442,6 +533,7 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
     cyl(wr * 0.66, ww * 0.26, 0, 0, 0, 'x', 20),
   ])!;
   const caliperGeo = box(ww * 0.42, wr * 0.52, wr * 0.26, 0, wr * 0.42, -wr * 0.34);
+  const capGeo = shape.rimCap ? cyl(wr * 0.25, ww + 0.1, 0, 0, 0, 'x', 14) : null;
   const wheels: THREE.Group[] = [];
   const spins: THREE.Object3D[] = [];
   const wx = W / 2 - ww / 2 + (open ? 0 : 0.03);
@@ -452,6 +544,7 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
     const tire = new THREE.Mesh(tireGeo, tireMat);
     tire.castShadow = true;
     spin.add(tire, new THREE.Mesh(hubGeo, hubMat), new THREE.Mesh(rimGeo, rim));
+    if (capGeo) spin.add(new THREE.Mesh(capGeo, paint)); // krytka v barvě vozu
     wgroup.add(spin, new THREE.Mesh(caliperGeo, caliper)); // třmen se netočí s kolem
     root.add(wgroup);
     wheels.push(wgroup);

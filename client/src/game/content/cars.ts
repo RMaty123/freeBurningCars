@@ -172,14 +172,14 @@ export const CAR_TYPES: CarStats[] = [
     id: 'hyperion',
     name: 'HYPERION',
     tagline: 'Hypersport. Nejvyšší rychlost a špička ve všem ostatním.',
-    color: 0x4fb6f0, // světle modrá
+    color: 0x22abe6, // světle modrá
     top: 72, accel: 34, brake: 50, turn: 2.8, steerRef: 58, grip: 12.2, hp: 100, mass: 1.0,
     shape: {
-      length: 4.8, width: 2.1, ground: 0.14, bodyH: 0.46, cabinFrom: 0.3, cabinTo: 0.56, cabinH: 0.34,
-      windshield: 0.85, rearGlass: 0.55, wheelR: 0.38, wheelW: 0.4, nose: 1, spoiler: 3, rugged: false,
-      flares: 0.45, intakes: true, splitter: true, lights: 'strip', livery: 'center', liveryColor: 0xd9a93c,
-      rimSpokes: 10, rimColor: RIM.gold,
-      accent: ['lower', 'flares', 'roof'], accentColor: PAINT.carbon, finish: 'pearl', caliperColor: PAINT.gold,
+      length: 4.86, width: 2.12, ground: 0.13, bodyH: 0.46, cabinFrom: 0.33, cabinTo: 0.545, cabinH: 0.3,
+      windshield: 0.95, rearGlass: 0.5, wheelR: 0.38, wheelW: 0.4, nose: 1, spoiler: 4, rugged: false,
+      flares: 0.3, intakes: true, splitter: true, sideExhaust: true, lights: 'slim', livery: 'none',
+      rimSpokes: 16, rimColor: RIM.gold, rimCap: true, deckVents: true, roofScoop: true,
+      accent: ['spine', 'roof'], accentColor: PAINT.graphite, finish: 'pearl', caliperColor: PAINT.gold,
     },
   },
 ];
