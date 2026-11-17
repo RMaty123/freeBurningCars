@@ -28,6 +28,18 @@ Pak na PC otevři **http://localhost:3000** (Chrome nebo Edge).
 
 Bez telefonu: na obrazovce stiskni **ENTER** (přidá hráče na klávesnici) a znovu **ENTER** (start).
 
+### Adresa v QR kódu
+
+Server se podívá do směrovací tabulky (`route print`) a do QR kódu dá adresu té síťovky, která má **výchozí bránu** – tedy té, kterou je PC připojené k routeru. Virtuální adaptéry (VirtualBox, WSL, Hyper-V…) se tím přeskočí. Pod QR kódem je vidět, která síťovka a brána se použila; totéž vypíše server do konzole.
+
+Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev`
+
+### Celá obrazovka
+
+- **PC:** po prvním kliknutí nebo stisku klávesy se hra sama přepne na celou obrazovku (bez interakce to prohlížeč nedovolí). ESC ji vypne, další klik ji zase zapne.
+- **Android:** přepne se po připojení / prvním dotyku a otočí na šířku. Ještě lepší je v Chromu dát *⋮ → Přidat na plochu* – ovladač se pak spouští rovnou přes celou obrazovku jako aplikace.
+- **iPhone:** Safari celou obrazovku pro webové stránky neumí. Použij *Sdílet → Přidat na plochu* a spouštěj ovladač z ikony na ploše.
+
 ### Když se telefon nepřipojí
 
 - Windows Firewall: při prvním spuštění povol Node.js přístup do **soukromé sítě**.
@@ -52,7 +64,7 @@ Bez telefonu: na obrazovce stiskni **ENTER** (přidá hráče na klávesnici) a 
 | SHIFT | drift |
 | ESC | ukončit závod |
 
-**V menu (klávesnice na PC):** `T` trať · `L` počet kol · `O` obtížnost AI · `←/→` výběr auta · `G` kvalita grafiky · `M` zvuk · `F11` celá obrazovka
+**V menu (klávesnice na PC):** `T` trať · `L` počet kol · `O` obtížnost AI · `←/→` výběr auta · `G` kvalita grafiky · `M` zvuk
 
 Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
 
@@ -60,6 +72,8 @@ Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 
 
 ```
 server/index.ts              Express + Socket.IO + Vite; místnosti, přeposílání vstupů z telefonů
+server/net.ts                výběr IP adresy pro QR kód (síťovka s výchozí bránou)
+client/public/               manifest a ikony ovladače (Přidat na plochu → celá obrazovka)
 client/index.html            obrazovka (PC / TV)
 client/controller.html       ovladač (telefon)
 client/src/shared/           protokol zpráv mezi obrazovkou a ovladačem

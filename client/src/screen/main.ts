@@ -76,18 +76,21 @@ const socket = io({ transports: ['websocket', 'polling'] });
 
 socket.on('connect', () => {
   const wanted = sessionStorage.getItem('fbc-room') ?? '';
-  socket.emit('host:create', { room: wanted }, (r: { room: string; urls: string[]; qr: string }) => {
+  socket.emit('host:create', { room: wanted }, (r: { room: string; urls: string[]; qr: string; net: { ip: string; iface: string; gateway: string; source: string } | null }) => {
     room = r.room;
     sessionStorage.setItem('fbc-room', room);
     $('room-code').textContent = room;
     ($('qr') as HTMLImageElement).src = r.qr;
     const short = r.urls[0].replace(/^http:\/\//, '').replace(/\?room=.*/, '');
     $('join-url').textContent = short;
+    const net = r.net;
+    $('net-info').textContent = !net ? '' : net.source === 'route' ? `síť: ${net.iface} · brána ${net.gateway}` : net.source === 'env' ? `adresa z HOST_IP (${net.iface})` : `síť: ${net.iface}`;
     const warn = $('net-warn');
-    if (r.urls[0].includes('localhost')) {
+    if (!net) {
       warn.hidden = false;
-      warn.textContent = 'PC není připojené k síti – telefon se nepřipojí. Připoj PC k Wi-Fi a restartuj server.';
-    } else if (r.urls.length > 1) {
+      warn.textContent = 'PC není připojené k síti – telefon se nepřipojí. Připoj PC k Wi-Fi a obnov stránku.';
+    } else if (net.source === 'guess' && r.urls.length > 1) {
+      // výchozí bránu se nepodařilo najít → nabídni i ostatní adresy
       warn.hidden = false;
       warn.textContent = 'Nejde to? Zkus i: ' + r.urls.slice(1, 3).map((u) => u.replace(/^http:\/\//, '').replace(/\/controller.*/, '')).join(' , ');
     } else warn.hidden = true;
@@ -438,6 +441,7 @@ function kbdInput(): InputState {
 
 window.addEventListener('keydown', (e) => {
   audio.unlock();
+  if (e.code !== 'Escape' && e.code !== 'F11') goFullscreen();
   if (e.repeat) { if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault(); return; }
   keys.add(e.code);
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -467,7 +471,23 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
-window.addEventListener('pointerdown', () => audio.unlock());
+window.addEventListener('pointerdown', () => { audio.unlock(); goFullscreen(); });
+
+// ------------------------------------------------------------------ celá obrazovka
+// Prohlížeč dovolí přepnout na celou obrazovku jen po kliknutí / stisku klávesy,
+// proto to zkoušíme při každé interakci, dokud na celé obrazovce nejsme.
+function isFullscreen(): boolean {
+  // F11 v prohlížeči nenastaví fullscreenElement, ale okno je pak velké jako monitor
+  return !!document.fullscreenElement || (window.innerHeight >= screen.height - 2 && window.innerWidth >= screen.width - 2);
+}
+function goFullscreen() {
+  if (isFullscreen() || !document.documentElement.requestFullscreen) return;
+  document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => { /* bez interakce to prohlížeč nepovolí */ });
+}
+function updateFsHint() { $('fs-hint').style.display = isFullscreen() ? 'none' : ''; }
+document.addEventListener('fullscreenchange', updateFsHint);
+window.addEventListener('resize', updateFsHint);
+updateFsHint();
 
 function addKeyboardPlayer() {
   const slot = freeSlot();

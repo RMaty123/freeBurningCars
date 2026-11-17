@@ -10,12 +10,12 @@
  */
 import express from 'express';
 import { createServer } from 'node:http';
-import { networkInterfaces } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { Server, Socket } from 'socket.io';
 import QRCode from 'qrcode';
+import { allAddresses, primaryAddress, PrimaryAddress } from './net';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -33,19 +33,6 @@ interface Room {
 }
 
 const rooms = new Map<string, Room>();
-
-function lanAddresses(): string[] {
-  const out: string[] = [];
-  for (const list of Object.values(networkInterfaces())) {
-    for (const ni of list ?? []) {
-      if (ni.family === 'IPv4' && !ni.internal) out.push(ni.address);
-    }
-  }
-  // domácí sítě napřed (192.168.x.x, 10.x.x.x), virtuální adaptéry až potom
-  const score = (ip: string) =>
-    ip.startsWith('192.168.') ? 0 : ip.startsWith('10.') ? 1 : /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ? 2 : 3;
-  return out.sort((a, b) => score(a) - score(b));
-}
 
 function newRoomCode(): string {
   const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // bez I a O, ať se to neplete
@@ -67,7 +54,7 @@ async function main() {
   });
 
   app.get('/api/info', (_req, res) => {
-    res.json({ port: PORT, addresses: lanAddresses(), rooms: rooms.size });
+    void primaryAddress().then((primary) => res.json({ port: PORT, primary, addresses: allAddresses(), rooms: rooms.size }));
   });
 
   // ---------- Socket.IO: přeposílání zpráv ----------
@@ -91,13 +78,16 @@ async function main() {
       role = 'host';
       room = r;
 
-      const ips = lanAddresses();
-      const urls = (ips.length ? ips : ['localhost']).map((ip) => `http://${ip}:${PORT}/controller.html?room=${r!.code}`);
+      // adresa pro QR kód = síťovka s výchozí bránou (zjišťuje se pokaždé znovu, kdyby se PC přepojilo na jinou síť)
+      const primary = await primaryAddress();
+      const others = allAddresses().map((a) => a.ip).filter((ip) => ip !== primary?.ip);
+      const ips = primary ? [primary.ip, ...others] : ['localhost'];
+      const urls = ips.map((ip) => `http://${ip}:${PORT}/controller.html?room=${r!.code}`);
       let qr = '';
       try {
         qr = await QRCode.toDataURL(urls[0], { margin: 1, width: 360, color: { dark: '#0b0d14', light: '#ffffff' } });
       } catch { /* QR není kritický */ }
-      ack?.({ room: r.code, urls, qr, players: [...r.players.keys()] });
+      ack?.({ room: r.code, urls, qr, net: primary satisfies PrimaryAddress | null, players: [...r.players.keys()] });
       // ovladače, které přežily reload obrazovky, se ohlásí znovu
       for (const s of r.players.values()) s.emit('host:back');
     });
@@ -185,13 +175,21 @@ async function main() {
     process.exit(1);
   });
 
-  http.listen(PORT, '0.0.0.0', () => {
-    const ips = lanAddresses();
+  http.listen(PORT, '0.0.0.0', async () => {
+    const primary = await primaryAddress();
     console.log('\n  FREE BURNING CARS  –  server běží\n');
-    console.log(`  Obrazovka (na tomhle PC):   http://localhost:${PORT}`);
-    for (const ip of ips) console.log(`  Ovladač (telefon, stejná Wi-Fi): http://${ip}:${PORT}/controller.html`);
-    if (!ips.length) console.log('  (Nenašel jsem žádnou síťovou adresu – telefon se nepřipojí, dokud PC není na Wi-Fi/LAN.)');
-    console.log('\n  Nejjednodušší je naskenovat QR kód, který uvidíš na obrazovce.\n');
+    console.log(`  Obrazovka (na tomhle PC):  http://localhost:${PORT}`);
+    if (primary) {
+      const how = primary.source === 'route' ? `výchozí brána ${primary.gateway}` : primary.source === 'env' ? 'nastaveno v HOST_IP' : primary.source === 'udp' ? 'podle výchozí trasy systému' : 'odhad – výchozí bránu jsem nenašel';
+      console.log(`  Ovladač (telefon):         http://${primary.ip}:${PORT}/controller.html`);
+      console.log(`                             síťovka "${primary.iface}", ${how}`);
+      const others = allAddresses().filter((a) => a.ip !== primary.ip);
+      if (others.length) console.log(`  Další adresy tohoto PC:    ${others.map((a) => `${a.ip} (${a.iface})`).join(', ')}`);
+    } else {
+      console.log('  Nenašel jsem žádnou síťovou adresu – telefon se nepřipojí, dokud PC není na Wi-Fi/LAN.');
+    }
+    console.log('\n  Nejjednodušší je naskenovat QR kód, který uvidíš na obrazovce.');
+    console.log('  Jinou adresu do QR kódu vynutíš:  set HOST_IP=192.168.x.x && npm run dev\n');
   });
 }
 

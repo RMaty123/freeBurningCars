@@ -55,10 +55,26 @@ function join(auto = false) {
   });
 }
 
+// ------------------------------------------------------------------ celá obrazovka
+// Prohlížeč ji povolí jen jako reakci na dotyk, proto to zkoušíme při každém dotyku, dokud se to nepovede.
+// iPhone (Safari) celou obrazovku pro stránky neumí – tam pomůže "Přidat na plochu" (manifest + apple meta v HTML).
+function goFullscreen() {
+  const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+  const doc = document as Document & { webkitFullscreenElement?: Element };
+  if (doc.fullscreenElement || doc.webkitFullscreenElement) return;
+  try {
+    if (el.requestFullscreen) {
+      el.requestFullscreen({ navigationUI: 'hide' })
+        .then(() => (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+        .catch(() => { /* nepovoleno – zkusí se při dalším dotyku */ });
+    } else el.webkitRequestFullscreen?.();
+  } catch { /* nevadí */ }
+}
+// pointerup/touchend/click jsou podle prohlížečů "aktivační" události (pointerdown u dotyku ne)
+for (const ev of ['pointerup', 'touchend', 'click']) document.addEventListener(ev, goFullscreen, { passive: true });
+
 $('join').addEventListener('click', () => {
-  // celá obrazovka (kde to prohlížeč dovolí) – víc místa na tlačítka
-  try { void document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.catch(() => {}); } catch { /* nevadí */ }
-  try { void (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.('landscape')?.catch(() => {}); } catch { /* nevadí */ }
+  goFullscreen();
   join();
 });
 roomEl.addEventListener('input', () => { roomEl.value = roomEl.value.toUpperCase().replace(/[^A-Z]/g, ''); });
