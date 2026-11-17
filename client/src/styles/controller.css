@@ -32,6 +32,9 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .big:active { transform: translateY(4px); box-shadow: 0 2px 0 #7a1c00; }
 .err { color: #ff6a5a; min-height: 1.3em; font-size: 14px; text-align: center; }
 .wait { color: var(--dim); font-size: 15px; text-align: center; }
+/* drobná rada do začátku – ať nový hráč ví, že plyn neřeší */
+.tip { color: var(--dim); font-size: 13px; text-align: center; opacity: 0.8; max-width: 34em; }
+.tip b { color: var(--text); font-weight: 700; }
 
 /* ---------- lobby */
 #s-lobby { justify-content: space-evenly; gap: 8px; }
@@ -134,7 +137,11 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
   font-family: var(--body); overflow: hidden; padding: 0 2vw;
 }
 .mn-panel small { font-size: 3.6vh; letter-spacing: 0.3em; color: #b9b9b9; font-weight: 700; }
-.mn-panel b { font-family: var(--display); font-style: italic; font-weight: 400; font-size: 13vh; line-height: 1.05; color: #fff; text-shadow: 0 0.6vh 1vh rgba(0, 0, 0, 0.8); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+/* název se musí vejít celý – u dlouhých tratí se písmo samo zmenší (min() podle šířky panelu) */
+.mn-panel b {
+  font-family: var(--display); font-style: italic; font-weight: 400; font-size: min(13vh, 9.5vw); line-height: 1.05; color: #fff;
+  text-shadow: 0 0.6vh 1vh rgba(0, 0, 0, 0.8); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
 .mn-panel i { font-style: normal; font-size: 3.8vh; color: var(--fire2); font-weight: 700; letter-spacing: 0.06em; }
 .mn-row {
   flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 3vw;
@@ -232,7 +239,7 @@ body.playing .topbar { padding-right: calc(max(2vw, env(safe-area-inset-right)) 
   #s-lobby { flex-direction: row; flex-wrap: wrap; align-content: center; gap: 8px 16px; }
   .who { width: 100%; justify-content: center; }
   .carsel, #master-box { width: 47%; }
-  .wait { width: 47%; }
+  .wait, .tip { width: 47%; }
   .carinfo > b { font-size: 24px; }
   #s-join { gap: 8px; }
   #s-join h1 { font-size: 13vh; }

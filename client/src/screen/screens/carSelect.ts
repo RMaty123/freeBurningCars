@@ -98,7 +98,7 @@ export class CarSelectScreen implements Screen {
     if (all && this.startT < 0) this.startT = START_DELAY;
     if (!all) this.startT = -1;
     const waiting = players.filter((p) => !p.ready).map((p) => p.name);
-    $('cs-hint').textContent = all ? 'VŠICHNI POTVRDILI – TEĎ ZBRAŇ!' : `POTVRĎ AUTO NA TELEFONU! ČEKÁ SE NA: ${waiting.join(', ')}`;
+    $('cs-hint').textContent = all ? 'VŠICHNI POTVRDILI – TEĎ ZBRAŇ!' : `POTVRĎTE AUTO · ČEKÁ SE NA: ${waiting.join(', ')}`;
   }
 
   private allReady(): boolean {

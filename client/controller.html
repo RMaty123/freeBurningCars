@@ -18,7 +18,7 @@
   <!-- 1) připojení -->
   <section id="s-join" class="screen active">
     <h1><span>FREE</span> BURNING <span>CARS</span></h1>
-    <p class="sub">ovladač · nejdřív spusť hru na počítači</p>
+    <p class="sub">ovladač</p>
     <label>Tvoje jméno
       <input id="name" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="JMÉNO" />
     </label>
@@ -35,6 +35,7 @@
       <button id="start" class="big">VYBRAT TRAŤ ▶</button>
     </div>
     <p id="l-wait" class="wait">Čekej, až první hráč vybere trať…</p>
+    <p class="tip">Ve hře <b>plyn drží hra sama</b> – ty jen zatáčíš, brzdíš a střílíš.</p>
   </section>
 
   <!-- 2b) menu: LEFT / SELECT / RIGHT + zpět. Obecná obrazovka – teď výběr tratě, později i další výběry. -->
@@ -46,9 +47,9 @@
       <i id="mn-sub"></i>
     </div>
     <div class="mn-row">
-      <div class="btn arrow-l" id="mn-left"><b>LEFT</b></div>
-      <div class="btn sel" id="mn-select"><span><b>SELECT</b></span></div>
-      <div class="btn arrow-r" id="mn-right"><b>RIGHT</b></div>
+      <div class="btn arrow-l" id="mn-left"><b>◀</b></div>
+      <div class="btn sel" id="mn-select"><span><b>VYBRAT</b></span></div>
+      <div class="btn arrow-r" id="mn-right"><b>▶</b></div>
     </div>
   </section>
 
@@ -79,7 +80,7 @@
     </div>
     <!-- Plyn drží hra sama. Nahoře palba a drift, dole zatáčení a brzda. -->
     <div class="pad" id="pad">
-      <div class="btn fire1" id="b-fire"><i class="chg" id="fire-chg"></i><span><b>FIRE 1</b><small id="fire-name">kulomet</small></span></div>
+      <div class="btn fire1" id="b-fire"><i class="chg" id="fire-chg"></i><span><b>FIRE 1</b><small id="fire-name">zbraň</small></span></div>
       <div class="btn drift" id="b-drift"><span><b>DRIFT</b></span></div>
       <div class="btn fire2" id="b-sec"><span><b>FIRE 2</b><small id="sec-ammo">raketa ×2</small></span></div>
       <div class="btn arrow-l" id="b-left"><b>LEFT</b></div>

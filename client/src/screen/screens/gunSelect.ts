@@ -20,21 +20,21 @@ const START_DELAY = 1.3;
 
 /** řádky ukazatelů pod jmenovkou */
 const STAT_ROWS: [keyof GunStats['ratings'], string][] = [
-  ['power', 'SÍLA'], ['rate', 'KADENCE'], ['range', 'DOSTŘEL'],
+  ['power', 'SÍLA'], ['rate', 'RYCHLOST PALBY'], ['range', 'DOSTŘEL'],
 ];
 
 /** Řádek, který hráči řekne, jak se zbraň chová (tohle je na ní to zajímavé). */
 function howTo(g: GunStats): string {
+  /** české desetinné číslo (2,5 místo 2.5) */
+  const num = (v: number, d = 1) => v.toFixed(d).replace('.', ',').replace(',0', '');
+  /** 2,5 rány · 11,8 rány · 6 ran */
+  const shots = (v: number) => `${num(v)} ${Number.isInteger(v) && v >= 5 ? 'RAN' : 'RÁNY'} ZA SEKUNDU`;
   if (g.kind === 'beam') {
     const n = g.twin ? 2 : 1;
     const max = Math.min(BEAM_MAX, g.chargeMax ?? BEAM_MAX);
-    return `DRŽ FIRE 1 – NABÍJÍ SE · ${n > 1 ? `${n} PAPRSKY PÁLÍ` : 'PAPRSEK PÁLÍ'} STEJNĚ DLOUHO (MAX ${max} s) · ${g.dmg} DMG ZA ZÁSAH`;
+    return `DRŽ FIRE 1 · ČÍM DÉL NABÍJÍŠ, TÍM DÉL ${n > 1 ? 'PAPRSKY PÁLÍ' : 'PAPRSEK PÁLÍ'} (AŽ ${max} s) · POŠKOZENÍ ${g.dmg} ZA ZÁSAH`;
   }
-  const shots = g.twin ? 2 : 1;
-  const dps = Math.round((g.dmg * shots) / g.cd);
-  const salvo = g.twin ? `2 LASERY NARÁZ · ${g.dmg * 2} DMG ZA SALVU` : `${g.dmg} DMG NA RÁNU`;
-  const rate = g.twin ? `SALVA KAŽDÝCH ${g.cd.toFixed(1)} s` : `${(1 / g.cd).toFixed(1)} RAN/s`;
-  return `${salvo} · ${rate} · ${dps} DMG/s`;
+  return `POŠKOZENÍ ${num(g.dmg)} ZA RÁNU · ${shots(1 / g.cd)}`;
 }
 
 interface Panel {
@@ -103,7 +103,7 @@ export class GunSelectScreen implements Screen {
     if (all && this.startT < 0) this.startT = START_DELAY;
     if (!all) this.startT = -1;
     const waiting = players.filter((p) => !p.ready).map((p) => p.name);
-    $('gs-hint').textContent = all ? 'VŠICHNI POTVRDILI – STARTUJEME!' : `POTVRĎ ZBRAŇ NA TELEFONU! ČEKÁ SE NA: ${waiting.join(', ')}`;
+    $('gs-hint').textContent = all ? 'VŠICHNI POTVRDILI – STARTUJEME!' : `POTVRĎTE ZBRAŇ (TLAČÍTKO FIRE 1) · ČEKÁ SE NA: ${waiting.join(', ')}`;
   }
 
   private allReady(): boolean {

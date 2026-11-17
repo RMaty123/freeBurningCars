@@ -179,6 +179,21 @@ function pips(id: string, n: number) {
   $(id).innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('');
 }
 
+/**
+ * Zmenší písmo, dokud se text vejde do své škatulky (dlouhé názvy tratí se tak neuseknou).
+ * Měří se až po vykreslení – ve skryté obrazovce mají prvky nulovou šířku.
+ */
+function fitText(el: HTMLElement) {
+  requestAnimationFrame(() => {
+    el.style.fontSize = '';
+    if (!el.clientWidth) return;
+    const base = parseFloat(getComputedStyle(el).fontSize);
+    for (let i = 1; i <= 10 && el.scrollWidth > el.clientWidth + 1; i++) {
+      el.style.fontSize = `${base * (1 - i * 0.07)}px`;
+    }
+  });
+}
+
 socket.on('host:msg', (m: HostMsg) => {
   if (m.type === 'state') {
     phase = m.phase;
@@ -197,6 +212,7 @@ socket.on('host:msg', (m: HostMsg) => {
     if (m.menu) {
       $('mn-title').textContent = m.menu.title;
       $('mn-label').textContent = m.menu.label;
+      fitText($('mn-label'));
       // kdo nevybírá, vidí místo podrobností, kdo právě vybírá
       $('mn-sub').textContent = m.master ? m.menu.sub : `vybírá ${m.menu.by}`;
       $('s-menu').classList.toggle('locked', !m.master);
