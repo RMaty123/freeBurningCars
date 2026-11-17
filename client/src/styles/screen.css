@@ -227,11 +227,6 @@ kbd {
   text-shadow: 0 0.5vh 0 rgba(0, 0, 0, 0.5); animation: csBanner 0.3s ease-out;
 }
 .pick-banner[hidden] { display: none; }
-/* řádek "jak se zbraň chová" ve výběru zbraní */
-.gs-how {
-  text-align: center; margin-top: calc(var(--u) * 0.8); color: #ffd24a; font-family: var(--body); font-weight: 800;
-  font-size: calc(var(--u) * 2.1); letter-spacing: 0.03em; text-shadow: 0 0 0.6em #000, 0 0.1em 0.2em #000; white-space: nowrap;
-}
 @keyframes csBanner { from { opacity: 0; transform: scaleX(0.6); } }
 
 /* ------------------------------------------------------------------ HUD */

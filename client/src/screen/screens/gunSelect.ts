@@ -10,7 +10,6 @@
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
 import { GUNS } from '../../game/content/guns';
 import type { GunStats } from '../../game/guns';
-import { BEAM_MAX } from '../../game/guns';
 import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, Screen } from '../app';
 import { KBD, Player } from '../session';
@@ -22,20 +21,6 @@ const START_DELAY = 1.3;
 const STAT_ROWS: [keyof GunStats['ratings'], string][] = [
   ['power', 'SÍLA'], ['rate', 'RYCHLOST PALBY'], ['range', 'DOSTŘEL'],
 ];
-
-/** Řádek, který hráči řekne, jak se zbraň chová (tohle je na ní to zajímavé). */
-function howTo(g: GunStats): string {
-  /** české desetinné číslo (2,5 místo 2.5) */
-  const num = (v: number, d = 1) => v.toFixed(d).replace('.', ',').replace(',0', '');
-  /** 2,5 rány · 11,8 rány · 6 ran */
-  const shots = (v: number) => `${num(v)} ${Number.isInteger(v) && v >= 5 ? 'RAN' : 'RÁNY'} ZA SEKUNDU`;
-  if (g.kind === 'beam') {
-    const n = g.twin ? 2 : 1;
-    const max = Math.min(BEAM_MAX, g.chargeMax ?? BEAM_MAX);
-    return `DRŽ FIRE 1 · ČÍM DÉL NABÍJÍŠ, TÍM DÉL ${n > 1 ? 'PAPRSKY PÁLÍ' : 'PAPRSEK PÁLÍ'} (AŽ ${max} s) · POŠKOZENÍ ${g.dmg} ZA ZÁSAH`;
-  }
-  return `POŠKOZENÍ ${num(g.dmg)} ZA RÁNU · ${shots(1 / g.cd)}`;
-}
 
 interface Panel {
   pid: string;
@@ -67,7 +52,6 @@ export class GunSelectScreen implements Screen {
         <div class="cs-plate">
           <div class="cs-car"></div>
           <div class="cs-name"></div>
-          <div class="gs-how"></div>
           <div class="cs-stats">${STAT_ROWS.map(([k, label]) => `<span>${label}</span><div class="cs-pips" data-k="${k}">${'<i></i>'.repeat(10)}</div>`).join('')}</div>
           <div class="cs-status"></div>
         </div>`;
@@ -90,7 +74,6 @@ export class GunSelectScreen implements Screen {
       panel.shown = key;
       const q = (s: string) => panel.el.querySelector(s) as HTMLElement;
       q('.cs-car').textContent = gun.name;
-      q('.gs-how').textContent = howTo(gun);
       panel.el.querySelectorAll<HTMLElement>('.cs-pips').forEach((row) => {
         const n = gun.ratings[row.dataset.k as keyof GunStats['ratings']];
         Array.from(row.children).forEach((pip, k) => pip.classList.toggle('on', k < n));

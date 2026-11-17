@@ -93,8 +93,8 @@ export class TrackSelectScreen implements Screen {
     const m = app.session.master();
     const who = !m ? '' : m.pid === KBD ? 'klávesnice' : m.name;
     $('ts-who').innerHTML = m && m.pid !== KBD
-      ? `Vybírá <b>${esc(who)}</b> na telefonu · <kbd>←</kbd><kbd>→</kbd> <kbd>ENTER</kbd> <kbd>ESC</kbd> fungují taky`
-      : `<kbd>←</kbd><kbd>→</kbd> výběr · <kbd>ENTER</kbd> potvrdit · <kbd>ESC</kbd> zpět`;
+      ? `Vybírá <b>${esc(who)}</b>`
+      : 'Vybíráš na klávesnici';
     const humans = app.session.active().length;
     const laps = app.settings.laps;
     const bots = app.settings.bots;

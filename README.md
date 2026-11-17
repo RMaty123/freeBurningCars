@@ -1,4 +1,4 @@
-# Free Burning Cars
+# Free Burnin’n Cars
 
 3D akční závodní hra do obýváku inspirovaná **Burnin' Rubber 5 Air** z AirConsole.
 Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače** – naskenují QR kód a jsou ve hře, nic se nikam neopisuje.

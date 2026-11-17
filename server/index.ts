@@ -196,7 +196,7 @@ async function main() {
 
   http.listen(PORT, '0.0.0.0', async () => {
     const primary = await primaryAddress();
-    console.log('\n  FREE BURNING CARS  –  server běží\n');
+    console.log('\n  FREE BURNIN’N CARS  –  server běží\n');
     console.log(`  Obrazovka (na tomhle PC):  http://localhost:${PORT}`);
     if (primary) {
       const how = primary.source === 'route' ? `výchozí brána ${primary.gateway}` : primary.source === 'env' ? 'nastaveno v HOST_IP' : primary.source === 'udp' ? 'podle výchozí trasy systému' : 'odhad – výchozí bránu jsem nenašel';

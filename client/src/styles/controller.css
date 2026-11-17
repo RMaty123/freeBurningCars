@@ -32,9 +32,6 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .big:active { transform: translateY(4px); box-shadow: 0 2px 0 #7a1c00; }
 .err { color: #ff6a5a; min-height: 1.3em; font-size: 14px; text-align: center; }
 .wait { color: var(--dim); font-size: 15px; text-align: center; }
-/* drobná rada do začátku – ať nový hráč ví, že plyn neřeší */
-.tip { color: var(--dim); font-size: 13px; text-align: center; opacity: 0.8; max-width: 34em; }
-.tip b { color: var(--text); font-weight: 700; }
 
 /* ---------- lobby */
 #s-lobby { justify-content: space-evenly; gap: 8px; }
@@ -239,7 +236,7 @@ body.playing .topbar { padding-right: calc(max(2vw, env(safe-area-inset-right)) 
   #s-lobby { flex-direction: row; flex-wrap: wrap; align-content: center; gap: 8px 16px; }
   .who { width: 100%; justify-content: center; }
   .carsel, #master-box { width: 47%; }
-  .wait, .tip { width: 47%; }
+  .wait { width: 47%; }
   .carinfo > b { font-size: 24px; }
   #s-join { gap: 8px; }
   #s-join h1 { font-size: 13vh; }

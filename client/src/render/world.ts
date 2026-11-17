@@ -481,7 +481,7 @@ export function buildWorld(tr: Track): World {
   beam.position.y = 7.9;
   beam.castShadow = true;
   gate.add(beam);
-  const bt = bannerTexture('FREE BURNING CARS', 'START  ·  CÍL');
+  const bt = bannerTexture('FREE BURNIN’N CARS', 'START  ·  CÍL');
   const bannerMat = new THREE.MeshBasicMaterial({ map: bt, toneMapped: false });
   for (const dir of [-1, 1]) {
     const b = new THREE.Mesh(new THREE.PlaneGeometry(span - 0.4, 1.7), bannerMat);

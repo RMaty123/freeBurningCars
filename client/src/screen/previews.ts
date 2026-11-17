@@ -8,7 +8,7 @@ import { TRACKS } from '../game/content/tracks';
 import type { App } from './app';
 
 /** Zvyš, když změníš vzhled hry a chceš náhledy vygenerovat znovu. */
-const PREVIEW_VERSION = 1;
+const PREVIEW_VERSION = 2;
 
 function hash(s: string): string {
   let h = 5381;
