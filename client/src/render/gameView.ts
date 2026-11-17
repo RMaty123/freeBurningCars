@@ -452,6 +452,36 @@ export class GameView {
     }
   }
 
+  // ------------------------------------------------------------ náhled tratě
+  /**
+   * Vyrenderuje jeden snímek aktuální scény a vrátí ho jako JPEG (data URL).
+   * Používá se pro obrázky na kartách ve výběru tratě. Volat po setTrack() + setSim(sim, []).
+   */
+  snapshot(sim: Sim, width = 640, height = 360): string {
+    this.update(sim, 1 / 60);
+    const rig = this.rigs[0];
+    const order = [...sim.cars].sort((a, b) => a.rank - b.rank);
+    const c = order[Math.min(1, order.length - 1)];
+    if (rig && c) {
+      // kamera šikmo zepředu na druhé auto v pořadí, ať je v záběru auto i kus trati
+      const a = c.h + 0.55;
+      rig.cam.position.set(c.x + Math.sin(a) * 9.5, 2.6, c.z + Math.cos(a) * 9.5);
+      rig.cam.lookAt(c.x - Math.sin(c.h) * 4, 1.1, c.z - Math.cos(c.h) * 4);
+      rig.fov = 58;
+      this.tvTarget = c.id;
+    }
+    this.render(sim);
+    const src = this.renderer.domElement;
+    const out = document.createElement('canvas');
+    out.width = width; out.height = height;
+    const g = out.getContext('2d')!;
+    // ořez na poměr stran náhledu
+    const k = Math.min(src.width / width, src.height / height);
+    const sw = width * k, sh = height * k;
+    g.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, width, height);
+    return out.toDataURL('image/jpeg', 0.82);
+  }
+
   // ------------------------------------------------------------ vykreslení
   render(sim: Sim | null) {
     const rn = this.renderer;

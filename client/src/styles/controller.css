@@ -109,6 +109,37 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .overlay.show { display: flex; }
 .overlay.fin { color: var(--fire2); }
 
+/* ---------- menu ovladač (LEFT / SELECT / RIGHT) */
+#s-menu {
+  padding: 0; gap: 0; justify-content: stretch; align-items: stretch; touch-action: manipulation;
+  background: radial-gradient(90% 120% at 50% 60%, #6e6e6e 0%, #3a3a3a 45%, #151515 100%);
+}
+.mn-back {
+  position: absolute; z-index: 2; top: max(3vh, env(safe-area-inset-top)); left: max(2.5vw, env(safe-area-inset-left));
+  width: max(48px, 13vh); height: max(48px, 13vh); background: linear-gradient(180deg, #9a9a9a, #3c3c3c); border: 0.8vh solid #1b1b1b;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 1vh 2vh rgba(0, 0, 0, 0.6);
+}
+.mn-back i { width: 45%; height: 50%; background: #f1f1f1; clip-path: polygon(100% 0, 100% 100%, 0 50%); }
+.mn-back:active { filter: brightness(1.5); }
+.mn-panel {
+  flex: 0.8; min-height: 0; margin: 4vh 22vw 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  background: linear-gradient(180deg, #4b4b4b 0%, #4b4b4b 46%, #2b2b2b 47%, #2b2b2b 100%); border: 1.6vh solid #6a6a6a; box-shadow: 0 0 0 1vh #1b1b1b, 0 1.6vh 2.4vh rgba(0, 0, 0, 0.6);
+  font-family: var(--body); overflow: hidden; padding: 0 2vw;
+}
+.mn-panel small { font-size: 3.6vh; letter-spacing: 0.3em; color: #b9b9b9; font-weight: 700; }
+.mn-panel b { font-family: var(--display); font-style: italic; font-weight: 400; font-size: 13vh; line-height: 1.05; color: #fff; text-shadow: 0 0.6vh 1vh rgba(0, 0, 0, 0.8); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mn-panel i { font-style: normal; font-size: 3.8vh; color: var(--fire2); font-weight: 700; letter-spacing: 0.06em; }
+.mn-row {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 3vw;
+  padding: 4vh max(3vw, env(safe-area-inset-right)) max(4vh, env(safe-area-inset-bottom)) max(3vw, env(safe-area-inset-left));
+}
+.sel { --c: #8a8a8a; }
+.sel b { font-size: 10vh; }
+#s-menu .btn:active { filter: brightness(1.5); transform: scale(0.97); }
+#s-menu .arrow-l:active, #s-menu .arrow-r:active { filter: drop-shadow(0 0 2.5vh var(--pc)) brightness(1.5); }
+/* kdo nevybírá, vidí tlačítka ztlumená */
+#s-menu.locked .mn-row, #s-menu.locked .mn-back { opacity: 0.28; pointer-events: none; }
+
 /* ---------- hlášky */
 #rotate { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; font-size: 20px; font-weight: 800; text-align: center; }
 #rotate div { font-size: 80px; color: var(--fire2); animation: rot 1.6s ease-in-out infinite; }

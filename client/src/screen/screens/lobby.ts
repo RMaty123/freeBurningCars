@@ -1,0 +1,114 @@
+/**
+ * Lobby – připojování hráčů (QR kód), výběr auta, počet kol a obtížnost.
+ * První hráč (nebo ENTER na PC) pokračuje na výběr tratě.
+ */
+import { CAR_TYPES, PLAYER_COLORS, hexCss } from '../../game/cars';
+import type { CtrlMsg } from '../../shared/protocol';
+import { $, App, DIFFS, Screen, TOTAL_CARS, esc } from '../app';
+import { KBD, MAX_PLAYERS, Player, RoomInfo } from '../session';
+
+export class LobbyScreen implements Screen {
+  constructor(private app: App) {}
+
+  enter() {
+    this.app.phase = 'lobby';
+    this.app.startAttract();
+    $('lobby').hidden = false;
+    this.refresh();
+  }
+
+  exit() {
+    $('lobby').hidden = true;
+  }
+
+  update() { /* lobby je statické */ }
+
+  onRoom(r: RoomInfo) {
+    $('room-code').textContent = r.room;
+    ($('qr') as HTMLImageElement).src = r.qr;
+    $('join-url').textContent = r.urls[0].replace(/^http:\/\//, '').replace(/\?room=.*/, '');
+    const net = r.net;
+    $('net-info').textContent = !net ? '' : net.source === 'route' ? `síť: ${net.iface} · brána ${net.gateway}` : net.source === 'env' ? `adresa z HOST_IP (${net.iface})` : `síť: ${net.iface}`;
+    const warn = $('net-warn');
+    if (!net) {
+      warn.hidden = false;
+      warn.textContent = 'PC není připojené k síti – telefon se nepřipojí. Připoj PC k Wi-Fi a obnov stránku.';
+    } else if (net.source === 'guess' && r.urls.length > 1) {
+      // výchozí bránu se nepodařilo najít → nabídni i ostatní adresy
+      warn.hidden = false;
+      warn.textContent = 'Nejde to? Zkus i: ' + r.urls.slice(1, 3).map((u) => u.replace(/^http:\/\//, '').replace(/\/controller.*/, '')).join(' , ');
+    } else warn.hidden = true;
+  }
+
+  command(p: Player, m: CtrlMsg) {
+    const { app } = this;
+    const isMaster = app.session.isMaster(p);
+    if (m.type === 'car') {
+      p.carIdx = (p.carIdx + m.dir + CAR_TYPES.length) % CAR_TYPES.length;
+      app.audio.ui();
+    } else if (m.type === 'laps' && isMaster) {
+      app.settings.laps = Math.max(1, Math.min(9, app.settings.laps + m.dir));
+      app.audio.ui();
+    } else if (m.type === 'select' && isMaster) {
+      this.proceed();
+      return;
+    }
+    app.session.changed();
+  }
+
+  key(e: KeyboardEvent) {
+    const { app } = this;
+    const s = app.session, kp = s.keyboard;
+    if (e.code === 'Enter') {
+      // první ENTER přidá hráče na klávesnici, další pokračuje na výběr tratě
+      if (!kp) {
+        if (s.addKeyboard()) { app.audio.ui(); app.toast('Klávesnice připojena · ←/→ výběr auta · ENTER pokračovat'); }
+      } else this.proceed();
+    } else if (e.code === 'Escape') {
+      s.removeKeyboard();
+    } else if (e.code === 'KeyL') {
+      app.settings.laps = app.settings.laps >= 5 ? 1 : app.settings.laps + 1;
+      app.audio.ui();
+      s.changed();
+    } else if (e.code === 'KeyO') {
+      app.settings.diff = (app.settings.diff + 1) % DIFFS.length;
+      app.audio.ui();
+      this.refresh();
+    } else if (kp && (e.code === 'ArrowLeft' || e.code === 'KeyA')) this.command(kp, { type: 'car', dir: -1 });
+    else if (kp && (e.code === 'ArrowRight' || e.code === 'KeyD')) this.command(kp, { type: 'car', dir: 1 });
+  }
+
+  private proceed() {
+    if (this.app.session.active().length) this.app.show('track');
+  }
+
+  refresh() {
+    const { app } = this;
+    const sorted = app.session.sorted();
+    const m = app.session.master();
+    let html = '';
+    for (let s = 0; s < MAX_PLAYERS; s++) {
+      const p = sorted.find((x) => x.slot === s);
+      if (!p) {
+        html += `<li class="empty" style="--pc:${hexCss(PLAYER_COLORS[s])}"><div class="badge">${s + 1}</div><div class="who"><b>volné místo</b><small>naskenuj QR kód</small></div><div class="tagr"></div></li>`;
+        continue;
+      }
+      const car = CAR_TYPES[p.carIdx];
+      html += `<li style="--pc:${hexCss(PLAYER_COLORS[s])}">
+        <div class="badge">${s + 1}</div>
+        <div class="who"><b>${esc(p.name)}</b><small>${car.name} · ${esc(car.tagline)}</small></div>
+        <div class="tagr">${m?.pid === p.pid ? '<span class="master">★ ovládá menu</span><br>' : ''}${p.pid === KBD ? 'klávesnice' : p.connected ? 'telefon' : 'odpojen'}${p.points ? `<br>${p.points} b.` : ''}</div>
+      </li>`;
+    }
+    $('slots').innerHTML = html;
+    $('laps').textContent = String(app.settings.laps);
+    $('ai-level').textContent = DIFFS[app.settings.diff].name;
+    $('ai-count').textContent = `${Math.max(0, TOTAL_CARS - sorted.length)} AI`;
+    const sh = $('start-hint');
+    if (!sorted.length) { sh.textContent = 'Čekám na hráče…'; sh.classList.remove('ready'); }
+    else {
+      sh.textContent = m?.pid === KBD ? 'ENTER = VÝBĚR TRATĚ' : `${m?.name ?? 'Hráč 1'}: zmáčkni VYBRAT TRAŤ`;
+      sh.classList.add('ready');
+    }
+  }
+}

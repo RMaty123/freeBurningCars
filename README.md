@@ -23,10 +23,11 @@ npm run dev
 Pak na PC otevři **http://localhost:3000** (Chrome nebo Edge).
 
 1. Na obrazovce uvidíš QR kód – naskenuj ho telefonem (telefon musí být na **stejné Wi-Fi** jako PC).
-2. Zadej jméno, vyber auto.
-3. První připojený hráč má na telefonu tlačítko **START** (a volbu trati a počtu kol).
+2. Zadej jméno, vyber auto. První připojený hráč ovládá menu.
+3. **VYBRAT TRAŤ** → na obrazovce se objeví velké karty tratí. Telefonem je posouváš (LEFT / RIGHT), **SELECT** odstartuje závod, šipka zpět vrací do lobby.
+4. Po závodě se hra vrací na výběr tratě.
 
-Bez telefonu: na obrazovce stiskni **ENTER** (přidá hráče na klávesnici) a znovu **ENTER** (start).
+Bez telefonu: **ENTER** přidá hráče na klávesnici, další **ENTER** otevře výběr tratě (←/→, ENTER potvrdí, ESC zpět).
 
 ### Adresa v QR kódu
 
@@ -64,7 +65,7 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 | SHIFT | drift |
 | ESC | ukončit závod |
 
-**V menu (klávesnice na PC):** `T` trať · `L` počet kol · `O` obtížnost AI · `←/→` výběr auta · `G` kvalita grafiky · `M` zvuk
+**V lobby (klávesnice na PC):** `L` počet kol · `O` obtížnost AI · `←/→` výběr auta · `G` kvalita grafiky · `M` zvuk
 
 Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
 
@@ -73,27 +74,37 @@ Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 
 ```
 server/index.ts              Express + Socket.IO + Vite; místnosti, přeposílání vstupů z telefonů
 server/net.ts                výběr IP adresy pro QR kód (síťovka s výchozí bránou)
-client/public/               manifest a ikony ovladače (Přidat na plochu → celá obrazovka)
 client/index.html            obrazovka (PC / TV)
 client/controller.html       ovladač (telefon)
+client/public/               manifest a ikony ovladače
 client/src/shared/           protokol zpráv mezi obrazovkou a ovladačem
 client/src/game/             čistá herní logika bez grafiky
-    track.ts                 tratě (křivky z řídicích bodů)
+    content/tracks.ts        DATA: seznam tratí (sem se přidávají nové)
     cars.ts                  typy aut a jejich vlastnosti
+    track.ts                 geometrie trati (křivka, vzorky, nejbližší bod)
     sim.ts                   fyzika, zbraně, bedny, kola, pořadí
     ai.ts                    AI soupeři
-client/src/render/           Three.js
-    world.ts                 vozovka, svodidla, obloha, scenérie podle prostředí
-    carModel.ts              procedurální modely aut
-    effects.ts               částice (oheň, kouř, jiskry, výbuchy)
-    textures.ts              textury kreslené do canvasu
-    gameView.ts              scéna, kamery, split-screen
-client/src/screen/           hlavní smyčka, lobby, HUD, zvuk (Web Audio)
-client/src/controller/       logika ovladače (multi-touch)
+client/src/render/           Three.js (svět, modely aut, částice, textury, kamery, split-screen)
+client/src/screen/           obrazovka na PC
+    main.ts                  jen propojení: vytvoří App, zaregistruje obrazovky, hlavní smyčka
+    app.ts                   společný kontext: grafika, zvuk, ukázka na pozadí, přepínání obrazovek
+    session.ts               hráči a spojení s ovladači
+    previews.ts              náhledy tratí (vyrenderují se jednou, pak se berou z úložiště prohlížeče)
+    screens/lobby.ts         připojení hráčů
+    screens/trackSelect.ts   výběr tratě (karty)
+    screens/race.ts          odpočet, závod, výsledky
+    hud.ts, audio.ts         HUD a zvuky
+client/src/controller/       logika ovladače
 scripts/simtest.ts           test simulace bez grafiky
 ```
 
-Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přeposílá zprávy, aby měly ovladače co nejmenší odezvu.
+Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přeposílá zprávy.
+
+### Jak se to rozšiřuje
+
+- **Nová trať:** další záznam v `game/content/tracks.ts`. Karta ve výběru, náhled i obrys vzniknou samy.
+- **Nový krok v menu (výběr aut, zbraní…):** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `trackSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Ovladač se měnit nemusí – obrazovka LEFT / SELECT / RIGHT je obecná a co se vybírá, jí posílá hra (`MenuInfo` v `shared/protocol.ts`).
+- **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 
 ## Další příkazy
 
@@ -104,9 +115,7 @@ Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přepos�
 | `npm run typecheck` | kontrola typů TypeScriptu |
 | `npm run build` + `npm run prod` | sestavení do `dist/` a spuštění bez Vite |
 
-Jak přidat trať: do pole `TRACKS` v `client/src/game/track.ts` přidej řídicí body `[x, z]` v metrech (křivka se sama uzavře) a zvol prostředí `desert` / `city` / `forest`. Zatáčky drž s poloměrem aspoň ~25 m a jednotlivé úseky trati aspoň ~40 m od sebe.
-
-V konzoli prohlížeče je pro ladění objekt `fbc` (`fbc.sim`, `fbc.view`, `fbc.players`).
+V konzoli prohlížeče je pro ladění objekt `fbc` (`fbc.sim`, `fbc.view`, `fbc.session.players`, `fbc.show('track')`).
 
 ## Stav
 

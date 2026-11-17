@@ -1,5 +1,5 @@
 /**
- * Tratě. Čistá matematika bez Three.js – používá ji simulace i vykreslování
+ * Geometrie tratí (definice jednotlivých tratí jsou v content/tracks.ts). Čistá matematika bez Three.js – používá ji simulace i vykreslování
  * (a taky headless test v scripts/simtest.ts).
  *
  * Trať je uzavřená křivka (Catmull-Rom přes řídicí body) převzorkovaná po STEP metrech.
@@ -11,6 +11,8 @@ export type ThemeId = 'desert' | 'city' | 'forest';
 export interface TrackDef {
   id: string;
   name: string;
+  /** krátký popisek na kartě ve výběru tratě */
+  tagline: string;
   theme: ThemeId;
   /** šířka vozovky (m) */
   width: number;
@@ -39,41 +41,6 @@ export interface Track {
   /** vzdálenost svodidel od středu */
   wallDist: number;
 }
-
-export const TRACKS: TrackDef[] = [
-  {
-    id: 'canyon',
-    name: 'SUNSET CANYON',
-    theme: 'desert',
-    width: 17,
-    points: [
-      [0, 0], [120, 0], [220, -12], [292, -72], [300, -165], [240, -228], [150, -212], [96, -150],
-      [28, -128], [-42, -180], [-62, -270], [-150, -305], [-242, -252], [-262, -150], [-204, -78],
-      [-212, 8], [-130, 42],
-    ],
-  },
-  {
-    id: 'neon',
-    name: 'NEON CITY',
-    theme: 'city',
-    width: 16,
-    points: [
-      [0, 0], [170, 0], [262, 0], [300, -38], [300, -128], [262, -166], [176, -166], [138, -204],
-      [138, -296], [100, -334], [-70, -334], [-108, -296], [-108, -226], [-146, -188], [-236, -188],
-      [-274, -150], [-274, -38], [-236, 0], [-120, 0],
-    ],
-  },
-  {
-    id: 'alpine',
-    name: 'ALPINE RUSH',
-    theme: 'forest',
-    width: 16,
-    points: [
-      [0, 0], [115, 8], [205, 60], [262, 150], [242, 252], [150, 292], [70, 244], [18, 172],
-      [-62, 160], [-124, 222], [-212, 242], [-292, 182], [-302, 80], [-242, 10], [-150, 18], [-88, -28],
-    ],
-  },
-];
 
 const STEP = 2;
 

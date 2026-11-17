@@ -4,7 +4,8 @@
  *
  *   npm run test:sim
  */
-import { TRACKS, buildTrack } from '../client/src/game/track';
+import { buildTrack } from '../client/src/game/track';
+import { TRACKS } from '../client/src/game/content/tracks';
 import { CAR_TYPES } from '../client/src/game/cars';
 import { Sim, CarEntry } from '../client/src/game/sim';
 import { aiThink } from '../client/src/game/ai';

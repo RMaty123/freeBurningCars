@@ -1,6 +1,7 @@
 /**
  * Free Burning Cars – ovladač (telefon).
- * Plyn drží hra sama. Tlačítka: FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa/mina), LEFT, BRAKE, RIGHT.
+ * V závodě: plyn drží hra sama, tlačítka FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa/mina), LEFT, BRAKE, RIGHT.
+ * V menu (výběr tratě…): LEFT / SELECT / RIGHT / zpět – co se vybírá, říká obrazovka (HostMsg.menu).
  * Stav tlačítek se posílá na obrazovku přes Socket.IO.
  */
 import { io } from 'socket.io-client';
@@ -28,9 +29,11 @@ let isMaster = false;
 let retryTimer = 0;
 
 // ------------------------------------------------------------------ obrazovky
-function show(id: 's-join' | 's-lobby' | 's-pad' | 's-results') {
+type ScreenId = 's-join' | 's-lobby' | 's-menu' | 's-pad' | 's-results';
+function show(id: ScreenId) {
   for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === id);
-  document.body.classList.toggle('playing', id === 's-pad');
+  // 'playing' = obrazovky jen na šířku (v režimu na výšku se ukáže výzva k otočení telefonu)
+  document.body.classList.toggle('playing', id === 's-pad' || id === 's-menu');
   if (id !== 's-pad') resetInput();
 }
 
@@ -183,15 +186,22 @@ socket.on('host:msg', (m: HostMsg) => {
     $('l-slot').textContent = 'hráč ' + (m.slot + 1);
     $('car-name').textContent = m.carName;
     pips('st-speed', m.carStats.speed); pips('st-accel', m.carStats.accel); pips('st-handling', m.carStats.handling); pips('st-armor', m.carStats.armor);
-    $('l-track').textContent = m.track;
     $('l-laps').textContent = String(m.laps);
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
     const wait = $('l-wait');
     wait.style.display = m.master && !m.waiting ? 'none' : '';
-    wait.textContent = m.waiting ? 'Závod právě běží – naskočíš do dalšího.' : 'Čekej, až první hráč odstartuje závod…';
+    wait.textContent = m.waiting ? 'Závod právě běží – naskočíš do dalšího.' : 'Čekej, až první hráč vybere trať…';
     $('continue').style.display = m.master ? '' : 'none';
     $('r-wait').style.display = m.master ? 'none' : '';
+    if (m.menu) {
+      $('mn-title').textContent = m.menu.title;
+      $('mn-label').textContent = m.menu.label;
+      // kdo nevybírá, vidí místo podrobností, kdo právě vybírá
+      $('mn-sub').textContent = m.master ? m.menu.sub : `vybírá ${m.menu.by}`;
+      $('s-menu').classList.toggle('locked', !m.master);
+    }
     if (m.phase === 'lobby') show('s-lobby');
+    else if (m.phase === 'track') show('s-menu');
     else if (m.phase === 'results') show('s-results');
     else show('s-pad');
   } else if (m.type === 'hud') {
@@ -221,12 +231,16 @@ socket.on('host:msg', (m: HostMsg) => {
 const tap = (id: string, fn: () => void) => $(id).addEventListener('click', fn);
 tap('car-prev', () => send({ type: 'car', dir: -1 }));
 tap('car-next', () => send({ type: 'car', dir: 1 }));
-tap('trk-prev', () => send({ type: 'track', dir: -1 }));
-tap('trk-next', () => send({ type: 'track', dir: 1 }));
 tap('laps-dec', () => send({ type: 'laps', dir: -1 }));
 tap('laps-inc', () => send({ type: 'laps', dir: 1 }));
-tap('start', () => send({ type: 'start' }));
-tap('continue', () => send({ type: 'continue' }));
+tap('start', () => send({ type: 'select' }));
+tap('continue', () => send({ type: 'select' }));
+
+// ------------------------------------------------------------------ menu (výběr tratě…)
+tap('mn-left', () => send({ type: 'nav', dir: -1 }));
+tap('mn-right', () => send({ type: 'nav', dir: 1 }));
+tap('mn-select', () => send({ type: 'select' }));
+tap('mn-back', () => send({ type: 'back' }));
 
 // ------------------------------------------------------------------ řízení (multi-touch)
 type Key = 'f' | 'd' | 'r' | 'left' | 'b' | 'right';

@@ -19,15 +19,32 @@ export interface InputState {
 
 export const EMPTY_INPUT: InputState = { s: 0, b: 0, f: false, r: false, d: false };
 
-/** Ovladač -> obrazovka (spolehlivé zprávy). */
+/**
+ * Ovladač -> obrazovka (spolehlivé zprávy).
+ * nav / select / back jsou obecné příkazy pro menu (LEFT / SELECT / RIGHT / zpět) –
+ * používá je výběr tratě a půjdou použít i pro další výběry (auta, zbraně…).
+ */
 export type CtrlMsg =
   | { type: 'car'; dir: 1 | -1 }
-  | { type: 'track'; dir: 1 | -1 }
   | { type: 'laps'; dir: 1 | -1 }
-  | { type: 'start' }
-  | { type: 'continue' };
+  | { type: 'nav'; dir: 1 | -1 }
+  | { type: 'select' }
+  | { type: 'back' };
 
-export type Phase = 'lobby' | 'countdown' | 'race' | 'results';
+/** lobby → track (výběr tratě) → countdown → race → results → track … */
+export type Phase = 'lobby' | 'track' | 'countdown' | 'race' | 'results';
+
+/** Co má ovladač ukázat na obrazovce menu (LEFT / SELECT / RIGHT). */
+export interface MenuInfo {
+  /** nadpis, např. "VÝBĚR TRATĚ" */
+  title: string;
+  /** právě vybraná položka */
+  label: string;
+  /** doplňkový řádek, např. "2 / 3 · 1,7 km" */
+  sub: string;
+  /** jméno hráče, který vybírá */
+  by: string;
+}
 
 /** Obrazovka -> ovladač. */
 export type HostMsg =
@@ -43,8 +60,9 @@ export type HostMsg =
       master: boolean;
       /** připojil se během závodu a čeká na další */
       waiting: boolean;
-      track: string;
       laps: number;
+      /** vyplněno ve fázích s menu (výběr tratě…) */
+      menu?: MenuInfo;
     }
   | {
       type: 'hud';

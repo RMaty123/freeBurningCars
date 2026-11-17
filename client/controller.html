@@ -46,11 +46,25 @@
       <button id="car-next" class="arrow" aria-label="další auto">▶</button>
     </div>
     <div id="master-box">
-      <div class="row"><button id="trk-prev" class="arrow sm">◀</button><div class="val"><small>TRAŤ</small><b id="l-track">—</b></div><button id="trk-next" class="arrow sm">▶</button></div>
       <div class="row"><button id="laps-dec" class="arrow sm">−</button><div class="val"><small>KOLA</small><b id="l-laps">3</b></div><button id="laps-inc" class="arrow sm">+</button></div>
-      <button id="start" class="big">START</button>
+      <button id="start" class="big">VYBRAT TRAŤ ▶</button>
     </div>
-    <p id="l-wait" class="wait">Čekej, až první hráč odstartuje závod…</p>
+    <p id="l-wait" class="wait">Čekej, až první hráč vybere trať…</p>
+  </section>
+
+  <!-- 2b) menu: LEFT / SELECT / RIGHT + zpět. Obecná obrazovka – teď výběr tratě, později i další výběry. -->
+  <section id="s-menu" class="screen">
+    <button id="mn-back" class="mn-back" aria-label="Zpět"><i></i></button>
+    <div class="mn-panel">
+      <small id="mn-title">VÝBĚR TRATĚ</small>
+      <b id="mn-label">—</b>
+      <i id="mn-sub"></i>
+    </div>
+    <div class="mn-row">
+      <div class="btn arrow-l" id="mn-left"><b>LEFT</b></div>
+      <div class="btn sel" id="mn-select"><span><b>SELECT</b></span></div>
+      <div class="btn arrow-r" id="mn-right"><b>RIGHT</b></div>
+    </div>
   </section>
 
   <!-- 3) řízení -->

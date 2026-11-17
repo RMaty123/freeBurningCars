@@ -43,13 +43,30 @@
 
       <div class="card race">
         <h2>3 · ZÁVOD</h2>
-        <div class="opt"><span>TRAŤ</span><b id="track-name">—</b><small><kbd>T</kbd> další</small></div>
         <div class="opt"><span>KOLA</span><b id="laps">3</b><small><kbd>L</kbd> změnit</small></div>
         <div class="opt"><span>SOUPEŘI</span><b id="ai-count">5 AI</b><small><kbd>O</kbd> obtížnost: <i id="ai-level">střední</i></small></div>
+        <p class="hint next">Trať se vybírá v dalším kroku – první hráč ji vybere telefonem.</p>
         <div id="start-hint" class="start-hint">Čekám na hráče…</div>
       </div>
     </div>
     <footer><span id="fs-hint">⛶ klikni nebo stiskni klávesu → celá obrazovka · </span><kbd>G</kbd> kvalita grafiky · <kbd>M</kbd> zvuk · <kbd>ESC</kbd> ukončit závod</footer>
+  </section>
+
+  <!-- Výběr tratě (karty staví screens/trackSelect.ts) -->
+  <section id="trackselect" hidden>
+    <header>
+      <h1>VYBER TRAŤ</h1>
+      <p id="ts-who"></p>
+    </header>
+    <div id="ts-stage">
+      <div class="ts-arrow l">◀</div>
+      <div class="ts-arrow r">▶</div>
+    </div>
+    <footer>
+      <div id="ts-dots"></div>
+      <p id="ts-info"></p>
+      <p id="ts-room"></p>
+    </footer>
   </section>
 
   <!-- Výsledky -->
@@ -63,6 +80,7 @@
     <p class="hint" id="results-hint"></p>
   </section>
 
+  <div id="boot">NAČÍTÁM TRATĚ…</div>
   <div id="toast"></div>
   <script type="module" src="/src/screen/main.ts"></script>
 </body>
