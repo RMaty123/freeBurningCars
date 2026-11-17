@@ -28,8 +28,11 @@ function howTo(g: GunStats): string {
   if (g.kind === 'beam') {
     return `DRŽ FIRE 1 – NABÍJÍ SE (${g.chargeMax} s) · PUSTÍŠ A PÁLÍ AŽ ${BEAM_MAX} s · ${g.dmg} DMG/s`;
   }
-  const dps = Math.round(g.dmg / g.cd);
-  return `${g.dmg} DMG NA RÁNU · ${(1 / g.cd).toFixed(1)} RAN/s · ${dps} DMG/s`;
+  const shots = g.twin ? 2 : 1;
+  const dps = Math.round((g.dmg * shots) / g.cd);
+  const salvo = g.twin ? `2 LASERY NARÁZ · ${g.dmg * 2} DMG ZA SALVU` : `${g.dmg} DMG NA RÁNU`;
+  const rate = g.twin ? `SALVA KAŽDÝCH ${g.cd.toFixed(1)} s` : `${(1 / g.cd).toFixed(1)} RAN/s`;
+  return `${salvo} · ${rate} · ${dps} DMG/s`;
 }
 
 interface Panel {

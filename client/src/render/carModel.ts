@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { AccentPart, CarShape } from '../game/cars';
+import type { GunStats } from '../game/guns';
 
 export interface CarVisual {
   root: THREE.Group;
@@ -28,6 +29,8 @@ export interface CarVisual {
   rim: THREE.MeshStandardMaterial;
   rearLights: THREE.MeshStandardMaterial;
   frontLights: THREE.MeshStandardMaterial;
+  /** svítící části zbraně (čočky laserů na dveřích) */
+  laser: THREE.MeshBasicMaterial;
   color: number;
   shape: CarShape;
   /** výška ramen karoserie (kam se dává kulomet, kouř…) */
@@ -67,8 +70,9 @@ function boxY(w: number, h: number, d: number, x: number, y: number, z: number, 
   return prep(g);
 }
 
-function cyl(r: number, len: number, x: number, y: number, z: number, axis: 'x' | 'y' | 'z', seg = 10): THREE.BufferGeometry {
-  const g = new THREE.CylinderGeometry(r, r, len, seg);
+/** Válec; `r2` zúží / rozšíří zadní konec (kužel, např. ústí hlavně). */
+function cyl(r: number, len: number, x: number, y: number, z: number, axis: 'x' | 'y' | 'z', seg = 10, r2 = r): THREE.BufferGeometry {
+  const g = new THREE.CylinderGeometry(r, r2, len, seg);
   if (axis === 'x') g.rotateZ(Math.PI / 2);
   if (axis === 'z') g.rotateX(Math.PI / 2);
   g.translate(x, y, z);
@@ -134,7 +138,7 @@ function merged(list: THREE.BufferGeometry[], mat: THREE.Material, shadow = true
 }
 
 // ---------------------------------------------------------------- stavba auta
-export function buildCar(shape: CarShape, color: number): CarVisual {
+export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVisual {
   const L = shape.length, W = shape.width, g = shape.ground, wr = shape.wheelR, ww = shape.wheelW;
   const open = !!shape.openWheels;   // bugina / formule: kola vně karoserie
   const roofless = !!shape.roofless; // bez střechy, jen ochranný oblouk
@@ -447,16 +451,44 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   }
   const plateGeo = [box(0.46, 0.13, 0.03, 0, g + hB * 0.42, zr - 0.02)];
 
-  // ---- zbraně: dva kulomety na kapotě
+  // ---- zbraně: buď dva kulomety na kapotě, nebo dva lasery na dveřích
   const gz = Math.min(zf - 0.75, zWind + 0.75);
-  for (const sx of [-1, 1]) {
-    const gx = sx * bodyW * 0.27;
-    gunGeo.push(box(0.14, 0.09, 0.34, gx, sh - 0.01, gz - 0.12));
-    gunGeo.push(box(0.15, 0.035, 0.05, gx, sh + 0.035, gz + 0.06)); // objímka hlavní
-    for (const [ox, oy] of [[-0.032, 0], [0.032, 0], [0, 0.05]] as [number, number][]) {
-      gunGeo.push(cyl(0.019, 0.52, gx + ox, sh + 0.02 + oy, gz + 0.26, 'z', 6));
+  const laserGeo: THREE.BufferGeometry[] = [];
+  if (gun?.mount === 'side') {
+    // laserové dělo přišroubované zvenku na dveře – končí kousek za předním kolem, míří dopředu
+    const zF = axF - wr - 0.28;
+    const zR = Math.max(axR + wr + 0.12, zF - 1.15);
+    const len = Math.max(0.6, zF - zR);
+    const py = g + hB * 0.46;
+    const px = bodyW / 2 + 0.085;
+    for (const sx of [-1, 1]) {
+      const x = sx * px;
+      // dva držáky do karoserie
+      for (const t of [0.22, 0.68]) {
+        const bz = zR + len * t;
+        darkGeo.push(box(0.14, 0.13, 0.11, sx * (bodyW / 2 - 0.03), py, bz));
+        gunGeo.push(box(0.13, 0.17, 0.1, sx * (bodyW / 2 + 0.04), py, bz));
+      }
+      chromeGeo.push(box(0.17, 0.19, len * 0.46, x, py, zR + len * 0.23));              // tělo děla
+      darkGeo.push(box(0.185, 0.055, len * 0.32, x, py + 0.095, zR + len * 0.2));        // žebra chlazení
+      darkGeo.push(box(0.19, 0.08, 0.06, x, py - 0.085, zR + len * 0.08));               // patka vzadu
+      laserGeo.push(box(0.05, 0.045, len * 0.36, x + sx * 0.072, py + 0.075, zR + len * 0.2)); // svítící proužek
+      chromeGeo.push(cyl(0.058, len * 0.58, x, py, zR + len * 0.72, 'z', 10));           // hlaveň
+      for (const t of [0.47, 0.78]) gunGeo.push(cyl(0.085, 0.055, x, py, zR + len * t, 'z', 12)); // objímky
+      laserGeo.push(cyl(0.072, 0.045, x, py, zR + len * 0.63, 'z', 12));                 // světelný prstenec
+      gunGeo.push(cyl(0.062, 0.16, x, py, zF - 0.07, 'z', 12, 0.095));                   // ústí se zužuje dopředu
+      laserGeo.push(cyl(0.052, 0.11, x, py, zF + 0.015, 'z', 12));                       // zářící čočka
     }
-    chromeGeo.push(cyl(0.046, 0.08, gx, sh + 0.035, gz + 0.5, 'z', 8)); // ústí
+  } else {
+    for (const sx of [-1, 1]) {
+      const gx = sx * bodyW * 0.27;
+      gunGeo.push(box(0.14, 0.09, 0.34, gx, sh - 0.01, gz - 0.12));
+      gunGeo.push(box(0.15, 0.035, 0.05, gx, sh + 0.035, gz + 0.06)); // objímka hlavní
+      for (const [ox, oy] of [[-0.032, 0], [0.032, 0], [0, 0.05]] as [number, number][]) {
+        gunGeo.push(cyl(0.019, 0.52, gx + ox, sh + 0.02 + oy, gz + 0.26, 'z', 6));
+      }
+      chromeGeo.push(cyl(0.046, 0.08, gx, sh + 0.035, gz + 0.5, 'z', 8)); // ústí
+    }
   }
 
   // ---- offroad výbava
@@ -506,6 +538,8 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   const rim = new THREE.MeshStandardMaterial({ color: shape.rimColor ?? 0xd4d9e2, metalness: 0.85, roughness: 0.3 });
   const frontLights = new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xfff0c8, emissiveIntensity: 2.2, roughness: 0.3 });
   const rearLights = new THREE.MeshStandardMaterial({ color: 0x5a0808, emissive: 0xff1010, emissiveIntensity: 1.4, roughness: 0.3 });
+  // svítící části zbraně (čočky laserů) – přesně v barvě jejích střel, bez vlivu světla
+  const laserMat = new THREE.MeshBasicMaterial({ color: gun?.color ?? 0x6ff0ff, toneMapped: false });
 
   const root = new THREE.Group();
   const body = new THREE.Group();
@@ -513,7 +547,7 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
   for (const [list, mat, shadow] of [
     [paintGeo, paint, true], [accentGeo, accent, true], [stripeGeo, stripe, false], [plateGeo, plateMat, false], [glassGeo, glassMat, true],
     [darkGeo, darkMat, true], [chromeGeo, chromeMat, false], [gunGeo, gunMat, true],
-    [frontGeo, frontLights, false], [rearGeo, rearLights, false],
+    [frontGeo, frontLights, false], [rearGeo, rearLights, false], [laserGeo, laserMat, false],
   ] as [THREE.BufferGeometry[], THREE.Material, boolean][]) {
     const m = merged(list, mat, shadow);
     if (m) body.add(m);
@@ -551,7 +585,7 @@ export function buildCar(shape: CarShape, color: number): CarVisual {
     spins.push(spin);
   }
 
-  return { root, body, wheels, spins, paint, accent, caliper, stripe, rim, rearLights, frontLights, color, shape, shoulder: sh, roofY };
+  return { root, body, wheels, spins, paint, accent, caliper, stripe, rim, rearLights, frontLights, laser: laserMat, color, shape, shoulder: sh, roofY };
 }
 
 export function setWrecked(v: CarVisual, wrecked: boolean) {
@@ -581,5 +615,6 @@ export function disposeCar(v: CarVisual) {
     const m = o as THREE.Mesh;
     if (m.isMesh) m.geometry.dispose();
   });
-  v.paint.dispose(); v.accent.dispose(); v.caliper.dispose(); v.stripe.dispose(); v.rim.dispose(); v.frontLights.dispose(); v.rearLights.dispose();
+  v.paint.dispose(); v.accent.dispose(); v.caliper.dispose(); v.stripe.dispose(); v.rim.dispose();
+  v.frontLights.dispose(); v.rearLights.dispose(); v.laser.dispose();
 }

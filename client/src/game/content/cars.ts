@@ -177,7 +177,7 @@ export const CAR_TYPES: CarStats[] = [
     shape: {
       length: 4.86, width: 2.12, ground: 0.13, bodyH: 0.46, cabinFrom: 0.33, cabinTo: 0.545, cabinH: 0.3,
       windshield: 0.95, rearGlass: 0.5, wheelR: 0.38, wheelW: 0.4, nose: 1, spoiler: 4, rugged: false,
-      flares: 0.3, intakes: true, splitter: true, sideExhaust: true, lights: 'slim', livery: 'none',
+      flares: 0.3, intakes: true, splitter: true, lights: 'slim', livery: 'none',
       rimSpokes: 16, rimColor: RIM.gold, rimCap: true, deckVents: true, roofScoop: true,
       accent: ['spine', 'roof'], accentColor: PAINT.graphite, finish: 'pearl', caliperColor: PAINT.gold,
     },

@@ -8,7 +8,8 @@
  * Vyvážení (poškození za sekundu, když všechno sedí):
  *   VULCAN   2.7 / 0.085 s ≈ 32 dps – hodně ran, dobře doměřuje, malé rány
  *   BREAKER  13  / 0.40 s  ≈ 32 dps – málo ran, každá bolí, slabší doměřování
- *   PRISM    28 dps po dobu paprsku – ale musí se nabít a míří se jen nosem auta
+ *   PRISM    2× 32 / 1.6 s ≈ 40 dps – salva z obou dveří; jedna sedne většině aut,
+ *            druhá je dorazí, ale mezi salvami je dlouhá pauza a minout bolí
  */
 import type { GunStats } from '../guns';
 
@@ -17,7 +18,7 @@ export const GUNS: GunStats[] = [
     id: 'vulcan',
     name: 'VULCAN',
     tagline: 'Rychlopalný kulomet. Spousta ran, slabší rány.',
-    kind: 'bullet',
+    kind: 'bullet', mount: 'hood',
     color: 0xffe6a0,
     cd: 0.085, dmg: 2.7, speed: 150, range: 95, spread: 0.012, tracer: 1,
     cone: 0.16, aim: 1, aimMax: 0.17,
@@ -31,7 +32,7 @@ export const GUNS: GunStats[] = [
     id: 'breaker',
     name: 'BREAKER',
     tagline: 'Pomalý těžký kulomet. Každá rána pořádně ubere.',
-    kind: 'bullet',
+    kind: 'bullet', mount: 'hood',
     color: 0xffa23c,
     cd: 0.4, dmg: 13, speed: 125, range: 110, spread: 0.018, tracer: 1.7,
     cone: 0.12, aim: 0.8, aimMax: 0.1,
@@ -44,13 +45,12 @@ export const GUNS: GunStats[] = [
   {
     id: 'prism',
     name: 'PRISM',
-    tagline: 'Laser. Drž FIRE 1 pro nabití, pustíš – a pálí.',
-    kind: 'beam',
+    tagline: 'Dvojice laserů na dveřích. Salva, která skoro zabíjí.',
+    kind: 'bullet', mount: 'side', twin: true,
     color: 0x6ff0ff,
-    cd: 0.8, dmg: 28, speed: 0, range: 85, spread: 0, tracer: 1,
-    cone: 0, aim: 0, aimMax: 0,
-    chargeMax: 2.5, beamPer: 2, beamR: 1.7,
-    ratings: { power: 10, rate: 2, range: 6 },
+    cd: 1.6, dmg: 32, speed: 220, range: 120, spread: 0.004, tracer: 1.5,
+    cone: 0.1, aim: 0.6, aimMax: 0.06,
+    ratings: { power: 10, rate: 2, range: 9 },
     shape: {
       metal: 0x8d939b, accent: 0x23262c, body: [0.68, 0.26, 0.27],
       barrel: 0.95, bore: 0.1, rings: 3, glow: 0x6ff0ff,

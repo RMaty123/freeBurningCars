@@ -4,8 +4,11 @@
  * aby šly zbraně přidávat bez sahání do simulace a do menu.
  */
 
-/** `bullet` = střílí projektily, `beam` = nabíjí se držením a pak drží paprsek. */
+/** `bullet` = střílí projektily, `beam` = nabíjí se držením a pak drží paprsek (zatím nikdo nepoužívá). */
 export type GunKind = 'bullet' | 'beam';
+
+/** Kam je zbraň na autě přidělaná – odtud taky střílí. */
+export type GunMount = 'hood' | 'side';
 
 /** Z čeho se poskládá model zbraně do nabídky (render/gunModel.ts). */
 export interface GunShape {
@@ -39,6 +42,10 @@ export interface GunStats {
   /** krátký popis do nabídky */
   tagline: string;
   kind: GunKind;
+  /** kde je zbraň na autě: 'hood' = na kapotě, 'side' = dva kusy na dveřích */
+  mount: GunMount;
+  /** střílí z obou stran naráz (dvě střely v jedné salvě) */
+  twin?: boolean;
   /** barva střel, paprsku a záblesku u hlavně */
   color: number;
 

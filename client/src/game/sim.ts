@@ -600,24 +600,32 @@ export class Sim {
     c.fireCd = g.cd;
     c.gunSide = -c.gunSide;
     const fx = Math.sin(c.h), fz = Math.cos(c.h);
-    const sx = c.x + fx * 1.6 - fz * 0.5 * c.gunSide, sz = c.z + fz * 1.6 + fx * 0.5 * c.gunSide;
+    // odkud to letí: z kapoty střídavě zleva a zprava, z boků z obou dveří naráz
+    const side = g.mount === 'side';
+    const lat = side ? 1.02 : 0.5, fwd = side ? 0.5 : 1.6;
+    const sides = g.twin ? [-1, 1] : [c.gunSide];
+    // zamíří se jednou ze středu auta a obě střely pak letí rovnoběžně
+    const mx = c.x + fx * fwd, mz = c.z + fz * fwd;
     let dir = c.h;
     const tgt = g.cone > 0 && g.aim > 0 ? this.findTarget(c, g.cone, g.range) : null;
     if (tgt) {
       // míření s předstihem – ale jen část opravy a nejvýš o `aimMax`
-      const d = Math.hypot(tgt.x - sx, tgt.z - sz);
+      const d = Math.hypot(tgt.x - mx, tgt.z - mz);
       const tt = d / (g.speed + Math.max(0, c.speed));
-      const want = Math.atan2(tgt.x + tgt.vx * tt - sx, tgt.z + tgt.vz * tt - sz);
+      const want = Math.atan2(tgt.x + tgt.vx * tt - mx, tgt.z + tgt.vz * tt - mz);
       dir = c.h + clamp(angDiff(want, c.h) * g.aim, -g.aimMax, g.aimMax);
     }
     const spread = c.human ? g.spread : Math.max(g.spread, c.ai.spread);
     dir += (this.rnd() - 0.5) * 2 * spread;
     const sp = g.speed + Math.max(0, c.speed);
-    this.bullets.push({
-      x: sx, z: sz, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
-      life: g.range / sp, owner: c.id, ti: c.ti, gun: g,
-    });
-    this.events.push({ t: 'shot', car: c.id, x: sx, z: sz });
+    for (const sgn of sides) {
+      const sx = mx - fz * lat * sgn, sz = mz + fx * lat * sgn;
+      this.bullets.push({
+        x: sx, z: sz, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
+        life: g.range / sp, owner: c.id, ti: c.ti, gun: g,
+      });
+      this.events.push({ t: 'shot', car: c.id, x: sx, z: sz });
+    }
   }
 
   /**
