@@ -70,8 +70,8 @@ export interface Car {
   beam: number;
   /** jak dlouho svítit měl (pro ukazatel) */
   beamT: number;
-  /** délka paprsku po první zásah (m) – jen pro vykreslení */
-  beamLen: number;
+  /** délka každého paprsku po první zásah (m) – jen pro vykreslení */
+  beamLen: number[];
   fireCd: number;
   secCd: number;
   gunSide: number;
@@ -251,7 +251,7 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        secType: 'rocket', secAmmo: 2, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: 0,
+        secType: 'rocket', secAmmo: 2, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: [],
         fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
         finished: false, finishTime: 0, place: 0, kills: 0, deaths: 0, bestLap: 0, lapStart: 0,
@@ -648,35 +648,48 @@ export class Sim {
   private fireBeam(c: Car) {
     c.beamT = beamTime(c.gun, c.charge);
     c.beam = c.beamT;
-    c.beamLen = c.gun.range;
+    c.beamLen = this.beamSides(c).map(() => c.gun.range);
     c.charge = 0;
     this.events.push({ t: 'beam', car: c.id, len: c.beamT });
   }
 
-  /** Paprsek: pálí rovně z nosu auta a ubírá život prvnímu autu v cestě. */
+  /** Z kolika míst auto pálí: dvojitá zbraň zleva i zprava, jinak jen ze středu. */
+  private beamSides(c: Car): number[] {
+    return c.gun.twin ? [-1, 1] : [0];
+  }
+
+  /**
+   * Paprsky: pálí rovně dopředu z míst, kde zbraň na autě sedí (u PRISM z obou dveří),
+   * každý si najde první auto v cestě a ubírá mu život po celou dobu, co na něm drží.
+   */
   private stepBeams(dt: number) {
     for (const c of this.cars) {
       if (c.beam <= 0) continue;
       const g = c.gun;
       if (c.dead || c.finished || this.phase !== 'racing') { c.beam = 0; c.fireCd = g.cd; continue; }
       c.beam = Math.max(0, c.beam - dt);
-      if (c.beam <= 0) { c.fireCd = g.cd; c.beamLen = g.range; continue; }
+      if (c.beam <= 0) { c.fireCd = g.cd; continue; }
       const fx = Math.sin(c.h), fz = Math.cos(c.h);
-      const ox = c.x + fx * 1.6, oz = c.z + fz * 1.6;
-      let hit: Car | null = null, hitT = g.range;
-      for (const o of this.cars) {
-        if (o === c || o.dead || o.finished) continue;
-        const dx = o.x - ox, dz = o.z - oz;
-        const t = dx * fx + dz * fz;                    // jak daleko podél paprsku
-        if (t < 0 || t > hitT) continue;
-        if (Math.abs(dx * fz - dz * fx) > (g.beamR ?? 1.6)) continue; // kolmá odchylka
-        hit = o; hitT = t;
-      }
-      c.beamLen = hitT;
-      if (!hit) continue;
-      // AI pálí do lidí slabším paprskem, ať to není frustrující
-      this.damage(hit, g.dmg * dt * (!c.human && hit.human ? 0.55 : 1), c.id);
-      if (this.rnd() < dt * 12) this.events.push({ t: 'hit', car: hit.id, x: hit.x, z: hit.z });
+      const side = g.mount === 'side';
+      const lat = side ? c.stats.shape.width * 0.48 : 0.45;
+      const fwd = side ? 0.9 : 1.6;
+      this.beamSides(c).forEach((sgn, k) => {
+        const ox = c.x + fx * fwd - fz * lat * sgn, oz = c.z + fz * fwd + fx * lat * sgn;
+        let hit: Car | null = null, hitT = g.range;
+        for (const o of this.cars) {
+          if (o === c || o.dead || o.finished) continue;
+          const dx = o.x - ox, dz = o.z - oz;
+          const t = dx * fx + dz * fz;                    // jak daleko podél paprsku
+          if (t < 0 || t > hitT) continue;
+          if (Math.abs(dx * fz - dz * fx) > (g.beamR ?? 1.6)) continue; // kolmá odchylka
+          hit = o; hitT = t;
+        }
+        c.beamLen[k] = hitT;
+        if (!hit) return;
+        // AI pálí do lidí slabším paprskem, ať to není frustrující
+        this.damage(hit, g.dmg * dt * (!c.human && hit.human ? 0.55 : 1), c.id);
+        if (this.rnd() < dt * 10) this.events.push({ t: 'hit', car: hit.id, x: hit.x, z: hit.z });
+      });
     }
   }
 

@@ -59,6 +59,7 @@ export class GameView {
   private beams: THREE.Mesh[] = [];
   private beamGeo: THREE.BufferGeometry | null = null;
   private tmpColor = new THREE.Color();
+  private tmpVec = new THREE.Vector3();
   private rockets: THREE.InstancedMesh;
   private mines: THREE.InstancedMesh;
   private mineMat: THREE.MeshStandardMaterial;
@@ -266,7 +267,12 @@ export class GameView {
         case 'spark': fx.sparks(e.x, 0.7, e.z, 4, 7); break;
         case 'beam': {
           const c = sim.cars[e.car];
-          fx.flash(c.x + Math.sin(c.h) * 2.2, this.cars[e.car].v.shoulder + 0.1, c.z + Math.cos(c.h) * 2.2, 2.4, 1.2, 2.4, 3.2, 0.2);
+          const cv = this.cars[e.car];
+          cv.v.body.updateWorldMatrix(true, false);
+          for (const mz of cv.v.muzzles) {
+            const o = cv.v.body.localToWorld(this.tmpVec.copy(mz));
+            fx.flash(o.x, o.y, o.z, 1.8, 1.2, 2.4, 3.2, 0.18);
+          }
           break;
         }
         case 'wall':
@@ -389,27 +395,38 @@ export class GameView {
     this.bullets.instanceMatrix.needsUpdate = true;
     if (this.bullets.instanceColor) this.bullets.instanceColor.needsUpdate = true;
 
-    // paprsky laseru: vedou z nosu auta a končí tam, kam dosáhly
+    // paprsky laseru: vedou z ústí zbraní (u PRISM z obou dveří) a končí tam, kam dosáhly
     this.beams.forEach((m) => (m.visible = false));
     sim.cars.forEach((c, i) => {
-      if (c.beam <= 0 || c.dead) return;
-      const m = this.beam(i);
-      const len = Math.max(1, c.beamLen);
-      const fade = Math.min(1, c.beam * 3);                     // na konci dohasne
-      const r = (0.17 + Math.sin(t * 48 + i) * 0.015) * fade;   // lehce pulzuje
-      const fx2 = Math.sin(c.h), fz2 = Math.cos(c.h);
-      const y = this.cars[i].v.shoulder + 0.08;
-      m.visible = true;
-      m.position.set(c.x + fx2 * (1.6 + len / 2), y, c.z + fz2 * (1.6 + len / 2));
-      m.rotation.set(0, c.h, 0);
-      m.scale.set(r, r, len);
-      const mat = m.material as THREE.MeshBasicMaterial;
-      mat.color.setHex(c.gun.color);
-      mat.opacity = 0.5 + 0.35 * fade;
-      fx.flash(c.x + fx2 * 2.1, y, c.z + fz2 * 2.1, 1.1 * fade, 1.4, 2.6, 3.0, 0.06);
-      if (c.beamLen < c.gun.range - 0.5) {
-        fx.sparks(c.x + fx2 * (1.6 + len), y, c.z + fz2 * (1.6 + len), 2, 6, 1.6, 2.6, 3.2);
+      const cv = this.cars[i];
+      if (!cv) return;
+      // čočky zbraně svítí podle nabití, ať je na autě vidět, že se chystá pálit
+      if (c.gun.kind === 'beam') {
+        const k = c.beam > 0 ? 1 : c.charge / (c.gun.chargeMax ?? 1);
+        cv.v.laser.color.setHex(c.gun.color).multiplyScalar(0.3 + 0.7 * k);
       }
+      if (c.beam <= 0 || c.dead) return;
+      const fade = Math.min(1, c.beam * 3);                     // na konci dohasne
+      const fx2 = Math.sin(c.h), fz2 = Math.cos(c.h);
+      cv.v.body.updateWorldMatrix(true, false);
+      c.beamLen.forEach((raw, k) => {
+        const m = this.beam(i * 2 + k);
+        const len = Math.max(0.8, raw);
+        const r = (0.15 + Math.sin(t * 48 + i + k) * 0.015) * fade; // lehce pulzuje
+        // začátek paprsku je přesně v ústí hlavně
+        const mz = cv.v.muzzles[Math.min(k, cv.v.muzzles.length - 1)];
+        const o = mz ? cv.v.body.localToWorld(this.tmpVec.copy(mz)) : this.tmpVec.set(c.x + fx2 * 1.6, cv.v.shoulder, c.z + fz2 * 1.6);
+        const ox = o.x, oy = o.y, oz = o.z;
+        m.visible = true;
+        m.position.set(ox + fx2 * (len / 2), oy, oz + fz2 * (len / 2));
+        m.rotation.set(0, c.h, 0);
+        m.scale.set(r, r, len);
+        const mat = m.material as THREE.MeshBasicMaterial;
+        mat.color.setHex(c.gun.color);
+        mat.opacity = 0.5 + 0.35 * fade;
+        fx.flash(ox + fx2 * 0.3, oy, oz + fz2 * 0.3, 0.85 * fade, 1.4, 2.6, 3.0, 0.06);
+        if (raw < c.gun.range - 0.5) fx.sparks(ox + fx2 * len, oy, oz + fz2 * len, 2, 6, 1.6, 2.6, 3.2);
+      });
     });
 
     n = 0;

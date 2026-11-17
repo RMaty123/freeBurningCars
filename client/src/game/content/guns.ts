@@ -8,8 +8,9 @@
  * Vyvážení (poškození za sekundu, když všechno sedí):
  *   VULCAN   2.7 / 0.085 s ≈ 32 dps – hodně ran, dobře doměřuje, malé rány
  *   BREAKER  13  / 0.40 s  ≈ 32 dps – málo ran, každá bolí, slabší doměřování
- *   PRISM    2× 32 / 1.6 s ≈ 40 dps – salva z obou dveří; jedna sedne většině aut,
- *            druhá je dorazí, ale mezi salvami je dlouhá pauza a minout bolí
+ *   PRISM    2× 32 dmg/s po dobu paprsku – dvě děla na dveřích, nabíjí se držením.
+ *            Sekunda paprsku na cíli sebere 64 hp, takže většina aut padne po dvou –
+ *            zato se na to musí nejdřív nabít a paprskem se musí trefovat.
  */
 import type { GunStats } from '../guns';
 
@@ -45,15 +46,17 @@ export const GUNS: GunStats[] = [
   {
     id: 'prism',
     name: 'PRISM',
-    tagline: 'Dvojice laserů na dveřích. Salva, která skoro zabíjí.',
-    kind: 'bullet', mount: 'side', twin: true,
+    tagline: 'Dvě děla na dveřích. Drž FIRE 1, pustíš – a pálí obě.',
+    kind: 'beam', mount: 'side', twin: true,
     color: 0x6ff0ff,
-    cd: 1.6, dmg: 32, speed: 220, range: 120, spread: 0.004, tracer: 1.5,
-    cone: 0.1, aim: 0.6, aimMax: 0.06,
-    ratings: { power: 10, rate: 2, range: 9 },
+    cd: 0.8, dmg: 32, speed: 0, range: 90, spread: 0, tracer: 1,
+    cone: 0, aim: 0, aimMax: 0,
+    chargeMax: 5, beamPer: 1, beamR: 1.6,
+    ratings: { power: 10, rate: 2, range: 7 },
     shape: {
-      metal: 0x8d939b, accent: 0x23262c, body: [0.68, 0.26, 0.27],
-      barrel: 0.95, bore: 0.1, rings: 3, glow: 0x6ff0ff,
+      // přesně ta dvě děla, co auto nosí na dveřích
+      metal: 0xb6bcc4, accent: 0x23262c, body: [0.62, 0.22, 0.22],
+      barrel: 0.6, bore: 0.1, pods: 2, glow: 0x6ff0ff,
     },
   },
 ];

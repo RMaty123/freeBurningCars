@@ -46,6 +46,26 @@ function ring(r: number, tube: number, z: number, seg = 14): THREE.BufferGeometr
 
 const merged = (parts: THREE.BufferGeometry[]) => (parts.length ? mergeGeometries(parts, false) : null);
 
+/**
+ * Dělo, jaké auto nosí na dveřích: chromové tělo s žebry, hlaveň s objímkami a zářící čočka.
+ * Kreslí se do předaných seznamů, takže se dá postavit vedle sebe víc kusů.
+ */
+function podCannon(
+  out: { metal: THREE.BufferGeometry[]; dark: THREE.BufferGeometry[]; glow: THREE.BufferGeometry[] },
+  x: number, y: number, zR: number, len: number, w: number,
+) {
+  const zF = zR + len;
+  out.metal.push(box(w, w * 1.1, len * 0.46, x, y, zR + len * 0.23));                 // tělo
+  out.dark.push(box(w * 1.08, w * 0.32, len * 0.32, x, y + w * 0.56, zR + len * 0.2)); // žebra chlazení
+  out.dark.push(box(w * 1.1, w * 0.45, len * 0.1, x, y - w * 0.5, zR + len * 0.08));   // patka
+  out.glow.push(box(w * 0.3, w * 0.26, len * 0.36, x + w * 0.42, y + w * 0.44, zR + len * 0.2)); // svítící proužek
+  out.metal.push(cyl(w * 0.34, len * 0.58, x, y, zR + len * 0.72, 'z', 12));           // hlaveň
+  for (const t of [0.47, 0.78]) out.dark.push(cyl(w * 0.5, w * 0.32, x, y, zR + len * t, 'z', 12)); // objímky
+  out.glow.push(cyl(w * 0.42, w * 0.26, x, y, zR + len * 0.63, 'z', 12));              // světelný prstenec
+  out.dark.push(cyl(w * 0.36, w * 0.95, x, y, zF - 0.07, 'z', 12, w * 0.56));          // ústí
+  out.glow.push(cyl(w * 0.3, w * 0.65, x, y, zF + 0.015, 'z', 12));                    // čočka
+}
+
 /** Postaví model zbraně na stojánku. Střed modelu je ve středu stojánku, zbraň míří do +Z. */
 export function buildGun(shape: GunShape): GunVisual {
   const metalGeo: THREE.BufferGeometry[] = [];
@@ -72,6 +92,35 @@ export function buildGun(shape: GunShape): GunVisual {
   metalGeo.push(box(bw * 0.72, bh * 0.42, bl * 0.5, 0, y + bh * 0.6, zBody - bl * 0.1)); // nástavec navrchu
   darkGeo.push(box(bw + 0.03, bh * 0.3, bl * 0.22, 0, y - bh * 0.1, zBody - bl * 0.42)); // zadní kryt
   accentGeo.push(box(bw * 0.4, bh * 0.5, bl * 0.3, 0, y - bh * 0.5, zBody - bl * 0.2));  // rukojeť / spoušť
+
+  // ---- dvojice děl z dveří auta (vlastní model laserové zbraně)
+  if (shape.pods) {
+    const n = shape.pods, w = bw, len = bl + shape.barrel, gap = w * 3.1;
+    const base = { metal: metalGeo, dark: darkGeo, glow: glowGeo };
+    const barY = y - w * 0.92, barZ = -len * 0.2;
+    for (let i = 0; i < n; i++) {
+      const x = (i - (n - 1) / 2) * gap;
+      podCannon(base, x, y, -len * 0.42, len, w);
+      metalGeo.push(box(0.08, w * 0.9, 0.16, x, (y + barY) / 2 - w * 0.2, barZ)); // nožka k příčníku
+    }
+    // příčník, na kterém děla sedí
+    metalGeo.push(box(gap * (n - 1) + w * 1.4, 0.08, 0.17, 0, barY, barZ));
+    const materials0: THREE.Material[] = [];
+    const metal0 = new THREE.MeshStandardMaterial({ color: shape.metal, metalness: 0.9, roughness: 0.34 });
+    const dark0 = new THREE.MeshStandardMaterial({ color: 0x1b1d22, metalness: 0.6, roughness: 0.5 });
+    const glow0 = new THREE.MeshBasicMaterial({ color: shape.glow ?? 0x6ff0ff, toneMapped: false });
+    const root0 = new THREE.Group();
+    for (const [parts, mat] of [[metalGeo, metal0], [darkGeo, dark0], [glowGeo, glow0]] as const) {
+      const geo = merged(parts as THREE.BufferGeometry[]);
+      if (!geo) continue;
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = mat !== glow0;
+      mesh.receiveShadow = true;
+      root0.add(mesh);
+    }
+    materials0.push(metal0, dark0, glow0);
+    return { root: root0, materials: materials0 };
+  }
 
   // ---- hlaveň
   const zMuzzle = zBody + bl / 2 + shape.barrel;

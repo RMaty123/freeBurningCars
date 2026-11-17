@@ -31,6 +31,8 @@ export interface CarVisual {
   frontLights: THREE.MeshStandardMaterial;
   /** svítící části zbraně (čočky laserů na dveřích) */
   laser: THREE.MeshBasicMaterial;
+  /** ústí zbraní v souřadnicích karoserie (zleva doprava) */
+  muzzles: THREE.Vector3[];
   color: number;
   shape: CarShape;
   /** výška ramen karoserie (kam se dává kulomet, kouř…) */
@@ -454,30 +456,34 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
   // ---- zbraně: buď dva kulomety na kapotě, nebo dva lasery na dveřích
   const gz = Math.min(zf - 0.75, zWind + 0.75);
   const laserGeo: THREE.BufferGeometry[] = [];
+  /** kde zbraň ústí (v souřadnicích karoserie) – odtud se kreslí paprsky a záblesky */
+  const muzzles: THREE.Vector3[] = [];
   if (gun?.mount === 'side') {
     // laserové dělo přišroubované zvenku na dveře – končí kousek za předním kolem, míří dopředu
     const zF = axF - wr - 0.28;
     const zR = Math.max(axR + wr + 0.12, zF - 1.15);
     const len = Math.max(0.6, zF - zR);
     const py = g + hB * 0.46;
-    const px = bodyW / 2 + 0.085;
+    const ps = Math.min(1.3, Math.max(0.8, bodyW / 2.1)); // na formuli menší dělo, na náklaďáku větší
+    const px = bodyW / 2 + 0.085 * ps;
     for (const sx of [-1, 1]) {
       const x = sx * px;
       // dva držáky do karoserie
       for (const t of [0.22, 0.68]) {
         const bz = zR + len * t;
-        darkGeo.push(box(0.14, 0.13, 0.11, sx * (bodyW / 2 - 0.03), py, bz));
-        gunGeo.push(box(0.13, 0.17, 0.1, sx * (bodyW / 2 + 0.04), py, bz));
+        darkGeo.push(box(0.14 * ps, 0.13 * ps, 0.11 * ps, sx * (bodyW / 2 - 0.03), py, bz));
+        gunGeo.push(box(0.13 * ps, 0.17 * ps, 0.1 * ps, sx * (bodyW / 2 + 0.04 * ps), py, bz));
       }
-      chromeGeo.push(box(0.17, 0.19, len * 0.46, x, py, zR + len * 0.23));              // tělo děla
-      darkGeo.push(box(0.185, 0.055, len * 0.32, x, py + 0.095, zR + len * 0.2));        // žebra chlazení
-      darkGeo.push(box(0.19, 0.08, 0.06, x, py - 0.085, zR + len * 0.08));               // patka vzadu
-      laserGeo.push(box(0.05, 0.045, len * 0.36, x + sx * 0.072, py + 0.075, zR + len * 0.2)); // svítící proužek
-      chromeGeo.push(cyl(0.058, len * 0.58, x, py, zR + len * 0.72, 'z', 10));           // hlaveň
-      for (const t of [0.47, 0.78]) gunGeo.push(cyl(0.085, 0.055, x, py, zR + len * t, 'z', 12)); // objímky
-      laserGeo.push(cyl(0.072, 0.045, x, py, zR + len * 0.63, 'z', 12));                 // světelný prstenec
-      gunGeo.push(cyl(0.062, 0.16, x, py, zF - 0.07, 'z', 12, 0.095));                   // ústí se zužuje dopředu
-      laserGeo.push(cyl(0.052, 0.11, x, py, zF + 0.015, 'z', 12));                       // zářící čočka
+      chromeGeo.push(box(0.17 * ps, 0.19 * ps, len * 0.46, x, py, zR + len * 0.23));            // tělo děla
+      darkGeo.push(box(0.185 * ps, 0.055 * ps, len * 0.32, x, py + 0.095 * ps, zR + len * 0.2)); // žebra chlazení
+      darkGeo.push(box(0.19 * ps, 0.08 * ps, 0.06, x, py - 0.085 * ps, zR + len * 0.08));        // patka vzadu
+      laserGeo.push(box(0.05 * ps, 0.045 * ps, len * 0.36, x + sx * 0.072 * ps, py + 0.075 * ps, zR + len * 0.2)); // svítící proužek
+      chromeGeo.push(cyl(0.058 * ps, len * 0.58, x, py, zR + len * 0.72, 'z', 10));              // hlaveň
+      for (const t of [0.47, 0.78]) gunGeo.push(cyl(0.085 * ps, 0.055 * ps, x, py, zR + len * t, 'z', 12)); // objímky
+      laserGeo.push(cyl(0.072 * ps, 0.045 * ps, x, py, zR + len * 0.63, 'z', 12));               // světelný prstenec
+      gunGeo.push(cyl(0.062 * ps, 0.16 * ps, x, py, zF - 0.07, 'z', 12, 0.095 * ps));            // ústí se zužuje dopředu
+      laserGeo.push(cyl(0.052 * ps, 0.11 * ps, x, py, zF + 0.015, 'z', 12));                     // zářící čočka
+      muzzles.push(new THREE.Vector3(x, py, zF + 0.06));
     }
   } else {
     for (const sx of [-1, 1]) {
@@ -488,8 +494,11 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
         gunGeo.push(cyl(0.019, 0.52, gx + ox, sh + 0.02 + oy, gz + 0.26, 'z', 6));
       }
       chromeGeo.push(cyl(0.046, 0.08, gx, sh + 0.035, gz + 0.5, 'z', 8)); // ústí
+      muzzles.push(new THREE.Vector3(gx, sh + 0.035, gz + 0.56));
     }
   }
+  // ústí se ukládají zleva doprava, ať odpovídají pořadí paprsků v simulaci
+  muzzles.sort((a, b) => a.x - b.x);
 
   // ---- offroad výbava
   if (shape.rugged) {
@@ -585,7 +594,10 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
     spins.push(spin);
   }
 
-  return { root, body, wheels, spins, paint, accent, caliper, stripe, rim, rearLights, frontLights, laser: laserMat, color, shape, shoulder: sh, roofY };
+  return {
+    root, body, wheels, spins, paint, accent, caliper, stripe, rim, rearLights, frontLights,
+    laser: laserMat, muzzles, color, shape, shoulder: sh, roofY,
+  };
 }
 
 export function setWrecked(v: CarVisual, wrecked: boolean) {

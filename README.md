@@ -62,7 +62,7 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 | --- | --- |
 | A D / šipky vlevo, vpravo | zatáčení |
 | S / šipka dolů | brzda, zpátečka |
-| MEZERNÍK | FIRE 1 (vybraná zbraň) |
+| MEZERNÍK | FIRE 1 (u PRISM držením nabíjíš, puštěním vystřelíš) |
 | F nebo E | raketa / mina |
 | SHIFT | drift |
 | ESC | ukončit závod |
@@ -77,11 +77,13 @@ Po výběru auta přijde **výběr zbraně** – na telefonu mřížka s náhled
 | --- | --- | --- |
 | **VULCAN** | rychlopalný kulomet, dobře si doměřuje cíl | 2,7 dmg / ránu, 12 ran za sekundu (≈ 32 dmg/s) |
 | **BREAKER** | pomalý těžký kulomet, slabší doměřování, velké rány | 13 dmg / ránu, 2,5 rány za sekundu (≈ 32 dmg/s) |
-| **PRISM** | **dva lasery na dveřích**, pálí z obou naráz | 2× 32 dmg v salvě, salva každých 1,6 s |
+| **PRISM** | **dva lasery na dveřích**, nabíjí se držením FIRE 1 | 2× 32 dmg/s po dobu paprsku, nabíjení až 5 s |
 
-PRISM je **boční zbraň**: dvě laserová děla přišroubovaná zvenku na dveřích, vidět přímo na autě (`mount: 'side'`). Každá salva vyšle dvě střely naráz, takže **jedna trefa sebere většině aut přes polovinu života a druhá je dorazí** – zato mezi salvami je dlouhá pauza a minout se vyplatí nejmíň ze všech zbraní. Auto má zbraň na sobě podle toho, co si hráč vybral: kulomety sedí na kapotě, PRISM na dveřích.
+PRISM je **boční zbraň**: dvě laserová děla přišroubovaná zvenku na dveřích, vidět přímo na autě (`mount: 'side'`, `twin: true`). **Držením FIRE 1 se nabíjí, puštěním vystřelí** a paprsky pak svítí **stejně dlouho, jak dlouho se nabíjelo** – nejvýš 5 sekund (`BEAM_MAX` v `game/guns.ts`). Pálí obě děla naráz, každé rovně dopředu ze svého ústí; paprsek se zastaví o první auto v cestě a ubírá mu život po celou dobu, co na něm drží, takže se jím dá po soupeři "přejíždět".
 
-Režim `kind: 'beam'` (nabíjení držením FIRE 1 a souvislý paprsek, nejvýš `BEAM_MAX` sekund) v kódu zůstal i s ukazatelem nabití v HUD a na tlačítku FIRE 1 – jen ho teď žádná zbraň nepoužívá. Stačí ho zapnout v datech, až bude pro něj zbraň.
+Čísla sedí tak, že **sekunda paprsku na cíli sebere 64 hp** – běžnému autu (70–100 hp) jedna vteřina vezme většinu života a druhá ho dorazí. Protože se nejdřív musí nabíjet, vychází PRISM v průměru na podobné poškození za sekundu jako kulomety, jen je mnohem víc "všechno nebo nic". Čočky děl se během nabíjení postupně rozsvěcují, takže je na autě poznat, že se chystá pálit; ukazatel nabití je i v HUD a na tlačítku FIRE 1 na telefonu.
+
+**Zbraň je vlastnost hráče, ne auta** – každé auto může nosit kteroukoli zbraň a model se mu podle toho změní: kulomety sedí na kapotě, laserová děla na dveřích (a velikost děl se přizpůsobí autu, takže formule nemá na boku kanón z náklaďáku). Stejná dvojice děl je i modelem zbraně v nabídce, takže v menu vidíš přesně to, co ti pak bude koukat ze dveří.
 
 **Doměřování u kulometů:** zbraň si najde cíl v kuželu před autem (`cone`) a natočí hlaveň na místo, kam auto doletí – ale jen částí opravy (`aim`) a nejvýš o `aimMax`. Střely samotné pak letí rovně. Všechno jsou to čísla v `game/content/guns.ts`, takže se dá doměřování komukoli přitvrdit i vypnout (`aim: 0`).
 

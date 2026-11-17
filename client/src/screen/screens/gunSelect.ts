@@ -26,7 +26,9 @@ const STAT_ROWS: [keyof GunStats['ratings'], string][] = [
 /** Řádek, který hráči řekne, jak se zbraň chová (tohle je na ní to zajímavé). */
 function howTo(g: GunStats): string {
   if (g.kind === 'beam') {
-    return `DRŽ FIRE 1 – NABÍJÍ SE (${g.chargeMax} s) · PUSTÍŠ A PÁLÍ AŽ ${BEAM_MAX} s · ${g.dmg} DMG/s`;
+    const n = g.twin ? 2 : 1;
+    const max = Math.min(BEAM_MAX, g.chargeMax ?? BEAM_MAX);
+    return `DRŽ FIRE 1 – NABÍJÍ SE · PUSTÍŠ A ${n > 1 ? `${n} PAPRSKY PÁLÍ` : 'PAPRSEK PÁLÍ'} STEJNĚ DLOUHO (MAX ${max} s) · ${g.dmg * n} DMG/s`;
   }
   const shots = g.twin ? 2 : 1;
   const dps = Math.round((g.dmg * shots) / g.cd);

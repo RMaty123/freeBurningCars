@@ -4,7 +4,7 @@
  * aby šly zbraně přidávat bez sahání do simulace a do menu.
  */
 
-/** `bullet` = střílí projektily, `beam` = nabíjí se držením a pak drží paprsek (zatím nikdo nepoužívá). */
+/** `bullet` = střílí projektily, `beam` = nabíjí se držením a pak drží paprsek. */
 export type GunKind = 'bullet' | 'beam';
 
 /** Kam je zbraň na autě přidělaná – odtud taky střílí. */
@@ -32,6 +32,8 @@ export interface GunShape {
   belt?: boolean;
   /** prstence kolem hlavně (energetické zbraně) */
   rings?: number;
+  /** dvojice (trojice…) stejných děl vedle sebe – přesně ta, co auto nosí na dveřích */
+  pods?: number;
   /** zářící jádro / hlaveň v téhle barvě */
   glow?: number;
 }
@@ -44,7 +46,7 @@ export interface GunStats {
   kind: GunKind;
   /** kde je zbraň na autě: 'hood' = na kapotě, 'side' = dva kusy na dveřích */
   mount: GunMount;
-  /** střílí z obou stran naráz (dvě střely v jedné salvě) */
+  /** střílí z obou stran naráz – dvě střely v salvě, u paprsku dva paprsky */
   twin?: boolean;
   /** barva střel, paprsku a záblesku u hlavně */
   color: number;
@@ -87,7 +89,7 @@ export const BEAM_MAX = 5;
 /** Nejkratší nabití, které ještě vystřelí (s) – ať se nedá laser "ťukat". */
 export const BEAM_MIN_CHARGE = 0.25;
 
-/** Jak dlouho bude paprsek svítit po nabíjení trvajícím `charge` sekund. */
+/** Jak dlouho bude paprsek svítit po nabíjení trvajícím `charge` sekund (u PRISM 1 : 1). */
 export function beamTime(g: GunStats, charge: number): number {
   return Math.min(BEAM_MAX, charge * (g.beamPer ?? 1));
 }
