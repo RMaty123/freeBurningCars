@@ -114,6 +114,27 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 #rotate div { font-size: 80px; color: var(--fire2); animation: rot 1.6s ease-in-out infinite; }
 @keyframes rot { 50% { transform: rotate(90deg); } }
 @media (orientation: portrait) { body.playing #rotate { display: flex; } }
+/* ---------- menu */
+#menu-btn {
+  position: fixed; z-index: 45; top: max(1.5vh, env(safe-area-inset-top)); right: max(2vw, env(safe-area-inset-right));
+  width: max(44px, 10vh); height: max(44px, 10vh); border-radius: 1.4vh; background: #1d1f27; border: 2px solid #3a3d4a;
+  display: flex; align-items: center; justify-content: center; gap: max(5px, 1.1vh); box-shadow: 0 0.8vh 1.6vh rgba(0, 0, 0, 0.5);
+}
+#menu-btn[hidden] { display: none; }
+#menu-btn i { width: max(5px, 1.2vh); height: 45%; background: #c9c9d1; border-radius: 2px; }
+#menu-btn:active { background: #343848; }
+body.playing .topbar { padding-right: calc(max(2vw, env(safe-area-inset-right)) + max(44px, 10vh) + 2vw); }
+#menu { position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; background: rgba(5, 5, 9, 0.86); backdrop-filter: blur(6px); }
+#menu[hidden] { display: none; }
+.menu-box { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(460px, 90vw); }
+.menu-box h2 { margin-bottom: 4px; }
+.mbtn { font-size: 22px; font-style: italic; letter-spacing: 0.05em; padding: 12px 20px; border-radius: 12px; width: min(420px, 92%); background: #262935; box-shadow: 0 4px 0 #0c0d12; }
+.mbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0c0d12; }
+.mbtn.danger { background: #7a1410; box-shadow: 0 4px 0 #3a0806; }
+.mbtn[hidden] { display: none; }
+.menu-box .hint { color: var(--dim); font-size: 13px; text-align: center; line-height: 1.4; }
+@media (max-height: 420px) { .menu-box { gap: 8px; } .menu-box h2 { font-size: 11vh; } .big, .mbtn { padding-top: 8px; padding-bottom: 8px; } }
+
 #offline { position: fixed; left: 0; right: 0; top: 0; z-index: 60; background: #b81a0a; color: #fff; text-align: center; padding: 8px; font-weight: 800; font-size: 14px; }
 #offline[hidden] { display: none; }
 

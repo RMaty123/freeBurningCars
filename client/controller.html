@@ -83,6 +83,18 @@
     <p id="r-wait" class="wait">Čekej na prvního hráče…</p>
   </section>
 
+  <!-- menu: pokračovat / celá obrazovka / odejít (otevře ho i tlačítko Zpět na telefonu) -->
+  <button id="menu-btn" aria-label="Menu" hidden><i></i><i></i></button>
+  <div id="menu" hidden>
+    <div class="menu-box">
+      <h2>MENU</h2>
+      <button id="m-resume" class="big">POKRAČOVAT</button>
+      <button id="m-fs" class="mbtn">ZRUŠIT CELOU OBRAZOVKU</button>
+      <button id="m-leave" class="mbtn danger">ODEJÍT ZE HRY</button>
+      <p class="hint">Menu otevře i tlačítko / gesto Zpět. Když odejdeš během závodu, tvoje auto dojede AI.</p>
+    </div>
+  </div>
+
   <div id="rotate"><div>↻</div>Otoč telefon na šířku</div>
   <div id="offline" hidden>Obrazovka se odpojila – připojuji znovu…</div>
   <script type="module" src="/src/controller/main.ts"></script>

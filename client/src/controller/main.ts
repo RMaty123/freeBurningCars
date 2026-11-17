@@ -42,9 +42,12 @@ function join(auto = false) {
   if (room.length !== 4) { if (!auto) $('join-err').textContent = 'Zadej 4 písmena kódu místnosti z obrazovky.'; return; }
   store('fbc-name', name); store('fbc-room', room);
   $('join-err').textContent = auto ? '' : 'Připojuji…';
+  if (!socket.connected) socket.connect(); // po "Odejít ze hry" je socket odpojený (zpráva počká ve frontě)
   socket.emit('ctrl:join', { room, pid, name }, (r: { ok: boolean; error?: string }) => {
     if (r.ok) {
       joined = true;
+      $('menu-btn').hidden = false;
+      armBack();
       $('offline').hidden = true;
       clearInterval(retryTimer); retryTimer = 0;
       $('join-err').textContent = '';
@@ -56,12 +59,20 @@ function join(auto = false) {
 }
 
 // ------------------------------------------------------------------ celá obrazovka
-// Prohlížeč ji povolí jen jako reakci na dotyk, proto to zkoušíme při každém dotyku, dokud se to nepovede.
+// Prohlížeč ji povolí jen jako reakci na dotyk. Dokud z ní hráč sám neodejde, zkoušíme ji zapnout při každém dotyku.
+// Jakmile ji vypne (menu, gesto Zpět, systémová lišta), přestaneme ji vnucovat – zapnout jde zase v menu.
 // iPhone (Safari) celou obrazovku pro stránky neumí – tam pomůže "Přidat na plochu" (manifest + apple meta v HTML).
+type FsDoc = Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => void };
+type FsEl = HTMLElement & { webkitRequestFullscreen?: () => void };
+const fsDoc = document as FsDoc;
+const fsSupported = !!(document.documentElement.requestFullscreen || (document.documentElement as FsEl).webkitRequestFullscreen);
+const standalone = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+let autoFs = true;
+const isFs = () => !!(fsDoc.fullscreenElement || fsDoc.webkitFullscreenElement);
+
 function goFullscreen() {
-  const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
-  const doc = document as Document & { webkitFullscreenElement?: Element };
-  if (doc.fullscreenElement || doc.webkitFullscreenElement) return;
+  if (isFs() || standalone) return;
+  const el = document.documentElement as FsEl;
   try {
     if (el.requestFullscreen) {
       el.requestFullscreen({ navigationUI: 'hide' })
@@ -70,10 +81,75 @@ function goFullscreen() {
     } else el.webkitRequestFullscreen?.();
   } catch { /* nevadí */ }
 }
+function exitFullscreen() {
+  try {
+    if (document.exitFullscreen && fsDoc.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else fsDoc.webkitExitFullscreen?.();
+  } catch { /* nevadí */ }
+}
+function updateFsButton() {
+  const b = $('m-fs');
+  b.hidden = !fsSupported || standalone;
+  b.textContent = isFs() ? 'ZRUŠIT CELOU OBRAZOVKU' : 'CELÁ OBRAZOVKA';
+}
+for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
+  document.addEventListener(ev, () => {
+    if (!isFs()) autoFs = false; // hráč z ní odešel sám → už ji nevnucuj
+    updateFsButton();
+  });
+}
 // pointerup/touchend/click jsou podle prohlížečů "aktivační" události (pointerdown u dotyku ne)
-for (const ev of ['pointerup', 'touchend', 'click']) document.addEventListener(ev, goFullscreen, { passive: true });
+const onTouch = () => {
+  if (autoFs) goFullscreen();
+  if (joined) armBack();
+};
+for (const ev of ['pointerup', 'touchend', 'click']) document.addEventListener(ev, onTouch, { passive: true });
+
+// ------------------------------------------------------------------ menu + tlačítko Zpět
+// Do historie vložíme jeden "falešný" krok. Zpět ho spotřebuje a místo opuštění stránky se otevře menu.
+function armBack() {
+  if ((history.state as { fbc?: string } | null)?.fbc !== 'menu') history.pushState({ fbc: 'menu' }, '');
+}
+window.addEventListener('popstate', () => {
+  if (!joined) return;
+  openMenu();
+  armBack();
+});
+
+function openMenu() {
+  resetInput();
+  updateFsButton();
+  $('menu').hidden = false;
+}
+function closeMenu() { $('menu').hidden = true; }
+
+function leave() {
+  closeMenu();
+  joined = false;
+  clearInterval(retryTimer); retryTimer = 0;
+  resetInput();
+  socket.disconnect();
+  $('menu-btn').hidden = true;
+  $('offline').hidden = true;
+  autoFs = false;
+  exitFullscreen();
+  // po obnovení stránky se nepřipojovat automaticky zpět
+  history.replaceState(null, '', location.pathname);
+  show('s-join');
+  $('join-err').textContent = 'Odpojil ses ze hry. Připojit se jde znovu tlačítkem níž.';
+}
+
+$('menu-btn').addEventListener('click', openMenu);
+$('m-resume').addEventListener('click', closeMenu);
+$('m-fs').addEventListener('click', () => {
+  if (isFs()) { autoFs = false; exitFullscreen(); }
+  else { autoFs = true; goFullscreen(); }
+  closeMenu();
+});
+$('m-leave').addEventListener('click', leave);
 
 $('join').addEventListener('click', () => {
+  autoFs = true;
   goFullscreen();
   join();
 });
@@ -89,6 +165,7 @@ function rejoinLoop() {
 
 socket.on('connect', () => { if (joined) join(true); });
 socket.on('disconnect', () => { if (joined) $('offline').hidden = false; });
+updateFsButton();
 socket.on('host:gone', rejoinLoop);
 socket.on('host:back', () => join(true));
 
@@ -133,6 +210,8 @@ socket.on('host:msg', (m: HostMsg) => {
     try { navigator.vibrate?.(m.ms); } catch { /* iPhone vibrace neumí */ }
   } else if (m.type === 'kicked') {
     joined = false;
+    closeMenu();
+    $('menu-btn').hidden = true;
     show('s-join');
     $('join-err').textContent = m.reason;
   }
