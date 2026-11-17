@@ -3,7 +3,7 @@
  * enter() postaví závod z aktuálního nastavení (trať, kola, hráči a jejich auta) a po výsledcích se vrací na výběr tratě.
  */
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
-import { CAR_TYPES } from '../../game/content/cars';
+import { CAR_TYPES, colorPicker } from '../../game/content/cars';
 import { TRACKS } from '../../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../../game/sim';
 import { CtrlMsg, EMPTY_INPUT, InputState } from '../../shared/protocol';
@@ -29,10 +29,13 @@ export class RaceScreen implements Screen {
 
     const idx = app.settings.trackIdx;
     app.loadWorld(idx);
+    // každé auto jezdí ve své barvě; hráč se pozná podle jmenovky a HUD ve své slotové barvě
+    const pick = colorPicker();
     const entries: CarEntry[] = humans.map((p) => ({
-      name: p.name, color: PLAYER_COLORS[p.slot], typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], human: true, pid: p.pid,
+      name: p.name, color: pick(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
+      typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], human: true, pid: p.pid,
     }));
-    entries.push(...app.aiEntries(TOTAL_CARS - humans.length, Math.floor(Math.random() * 6)));
+    entries.push(...app.aiEntries(TOTAL_CARS - humans.length, Math.floor(Math.random() * 6), pick));
     const sim = new Sim(app.track(idx), entries, { laps: app.settings.laps, aiSkill: DIFFS[app.settings.diff].skill });
     app.sim = sim;
     app.attractIdx = -1;
@@ -75,7 +78,7 @@ export class RaceScreen implements Screen {
       const p = c.pid ? app.session.players.get(c.pid) : undefined;
       if (p) p.points += pts;
       const best = c.bestLap ? c.bestLap.toFixed(2).replace('.', ',') + ' s' : '—';
-      html += `<tr class="${c.pid ? 'human' : ''}" style="--pc:${hexCss(c.color)};animation-delay:${i * 0.08}s">
+      html += `<tr class="${c.pid ? 'human' : ''}" style="--pc:${hexCss(c.tagColor)};animation-delay:${i * 0.08}s">
         <td>${c.place}.</td><td class="name">${esc(c.name)}${c.pid ? '' : '<small>AI</small>'}</td><td>${c.stats.name}</td>
         <td>${best}</td><td>${c.kills}×</td><td>+${pts}${p ? `<small>celkem ${p.points}</small>` : ''}</td></tr>`;
     });
@@ -228,9 +231,9 @@ export class RaceScreen implements Screen {
           session.buzz(this.playerOf(s, e.car), 400);
           if (killer) {
             hud.message(killer.id, `ZNIČIL JSI ${victim.name}`, 'gold small', 2);
-            hud.feed(`<span style="color:${hexCss(killer.color)}">${esc(killer.name)}</span><span class="x">✖</span><span style="color:${hexCss(victim.color)}">${esc(victim.name)}</span>`);
+            hud.feed(`<span style="color:${hexCss(killer.tagColor)}">${esc(killer.name)}</span><span class="x">✖</span><span style="color:${hexCss(victim.tagColor)}">${esc(victim.name)}</span>`);
           } else {
-            hud.feed(`<span style="color:${hexCss(victim.color)}">${esc(victim.name)}</span><span class="x">✖</span>svodidla`);
+            hud.feed(`<span style="color:${hexCss(victim.tagColor)}">${esc(victim.name)}</span><span class="x">✖</span>svodidla`);
           }
           break;
         }
@@ -244,7 +247,7 @@ export class RaceScreen implements Screen {
         case 'finish': {
           const c = s.cars[e.car];
           if (c.pid) { audio.finish(); hud.message(e.car, `CÍL · ${e.place}. MÍSTO`, 'gold', 6); }
-          hud.feed(`🏁 <span style="color:${hexCss(c.color)}">${esc(c.name)}</span> – ${e.place}. místo`);
+          hud.feed(`🏁 <span style="color:${hexCss(c.tagColor)}">${esc(c.name)}</span> – ${e.place}. místo`);
           break;
         }
       }

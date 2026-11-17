@@ -24,7 +24,10 @@ export type PickupKind = 'repair' | 'rocket' | 'mine' | 'nitro';
 export interface Car {
   id: number;
   name: string;
+  /** barva laku */
   color: number;
+  /** barva pro jmenovku a minimapu */
+  tagColor: number;
   typeIdx: number;
   stats: CarStats;
   /** řídí ho člověk? (když ne nebo když dojel, řídí AI) */
@@ -104,7 +107,10 @@ export type SimEvent =
 
 export interface CarEntry {
   name: string;
+  /** barva laku (barva auta) */
   color: number;
+  /** barva jmenovky, minimapy a výsledků – u hráčů jejich slotová barva */
+  tagColor: number;
   typeIdx: number;
   stats: CarStats;
   human: boolean;
@@ -222,7 +228,7 @@ export class Sim {
       const off = side * track.halfWidth * 0.42;
       const car: Car = {
         id: entries.indexOf(e),
-        name: e.name, color: e.color, typeIdx: e.typeIdx, stats: e.stats,
+        name: e.name, color: e.color, tagColor: e.tagColor, typeIdx: e.typeIdx, stats: e.stats,
         human: e.human, pid: e.pid,
         ai: newAI(this.rnd, skill),
         input: { steer: 0, throttle: 0, brake: 0, fire: false, secondary: false, drift: false },

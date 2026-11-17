@@ -9,8 +9,8 @@
  * Další krok (výběr aut, zbraní…) = nový soubor ve screens/ + řádek v main.ts.
  * App mezi nimi přepíná a stará se o to, co mají společné (simulace na pozadí, zvuky, toast).
  */
-import { AI_COLORS, AI_NAMES } from '../game/cars';
-import { CAR_TYPES } from '../game/content/cars';
+import { AI_NAMES } from '../game/cars';
+import { CAR_TYPES, colorPicker } from '../game/content/cars';
 import { TRACKS } from '../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../game/sim';
 import { Track, buildTrack } from '../game/track';
@@ -134,12 +134,13 @@ export class App {
     this.worldIdx = i;
   }
 
-  aiEntries(n: number, startAt = 0): CarEntry[] {
+  aiEntries(n: number, startAt = 0, pick = colorPicker()): CarEntry[] {
     const out: CarEntry[] = [];
     for (let i = 0; i < n; i++) {
       const k = (i + startAt) % AI_NAMES.length;
       const typeIdx = (i + startAt + 1) % CAR_TYPES.length;
-      out.push({ name: AI_NAMES[k], color: AI_COLORS[k], typeIdx, stats: CAR_TYPES[typeIdx], human: false, pid: null });
+      const color = pick(typeIdx);
+      out.push({ name: AI_NAMES[k], color, tagColor: color, typeIdx, stats: CAR_TYPES[typeIdx], human: false, pid: null });
     }
     return out;
   }

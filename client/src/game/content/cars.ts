@@ -10,6 +10,7 @@
  *              se auto "vzpírá" a jede rovně (náklaďák), vysoká = zatáčí i ve sto padesáti (formule)
  *   grip       boční přilnavost. Nízká = zadek ujíždí a auto krásně driftuje, ale snadno se protočí
  *   hp         výdrž, mass hmotnost (těžké auto odhodí lehké při nárazu)
+ *   color      barva, ve které auto jezdí vždy – stejná pro hráče i pro AI
  *
  * Tvar karoserie (shape) staví render/carModel.ts. Kromě rozměrů:
  *   nose 0 = tupá vysoká příď (dodávka) … 1 = nízký klín (supersport)
@@ -19,13 +20,14 @@
  *   bed korba, roofless otevřený kokpit, openWheels kola mimo karoserii,
  *   lights slim/round/quad/strip, livery center/twin/flash/none, rimSpokes a rimColor kola
  */
-import { PAINT, RIM, type CarStats } from '../cars';
+import { CAR_COLORS, PAINT, RIM, type CarStats } from '../cars';
 
 export const CAR_TYPES: CarStats[] = [
   {
     id: 'viper',
     name: 'VIPER GT',
     tagline: 'Rychlý sporťák. Drží stopu, ale moc nevydrží.',
+    color: 0xe02d26, // červená
     top: 64, accel: 27, brake: 46, turn: 2.55, steerRef: 46, grip: 9.5, hp: 90, mass: 1.0,
     shape: {
       length: 4.5, width: 1.97, ground: 0.19, bodyH: 0.5, cabinFrom: 0.26, cabinTo: 0.6, cabinH: 0.4,
@@ -38,18 +40,20 @@ export const CAR_TYPES: CarStats[] = [
     id: 'brute',
     name: 'BRUTE V8',
     tagline: 'Muscle car. Zadek ujíždí, zato parádně zrychluje.',
+    color: 0x15161b, // černá
     top: 61, accel: 29, brake: 40, turn: 2.35, steerRef: 38, grip: 7.2, hp: 120, mass: 1.35,
     shape: {
       length: 4.9, width: 2.04, ground: 0.24, bodyH: 0.62, cabinFrom: 0.18, cabinTo: 0.56, cabinH: 0.5,
       windshield: 0.55, rearGlass: 0.7, wheelR: 0.39, wheelW: 0.38, nose: 0.45, spoiler: 1, rugged: false,
       flares: 0.3, scoop: 1, lights: 'quad', livery: 'twin', rimSpokes: 5, rimColor: RIM.dark,
-      accent: ['hood'], accentColor: PAINT.black, finish: 'matte', caliperColor: PAINT.red,
+      accent: ['hood'], accentColor: PAINT.gunmetal, finish: 'matte', caliperColor: PAINT.red,
     },
   },
   {
     id: 'dune',
     name: 'DUNE RAT',
     tagline: 'Bugina. Otočí se na place, na rovince zaostane.',
+    color: 0xf2b02a, // písková žlutá
     top: 55, accel: 31, brake: 45, turn: 3.3, steerRef: 56, grip: 11.5, hp: 80, mass: 0.8,
     shape: {
       length: 3.8, width: 1.92, ground: 0.38, bodyH: 0.44, cabinFrom: 0.3, cabinTo: 0.66, cabinH: 0.5,
@@ -62,6 +66,7 @@ export const CAR_TYPES: CarStats[] = [
     id: 'titan',
     name: 'TITAN',
     tagline: 'Obrněný pick-up. Odhodí každého, v zatáčce dřevo.',
+    color: 0x5f6b3c, // vojenská zelená
     top: 53, accel: 22, brake: 40, turn: 2.15, steerRef: 33, grip: 8.0, hp: 170, mass: 1.95,
     shape: {
       length: 5.2, width: 2.14, ground: 0.42, bodyH: 0.7, cabinFrom: 0.42, cabinTo: 0.74, cabinH: 0.6,
@@ -74,6 +79,7 @@ export const CAR_TYPES: CarStats[] = [
     id: 'needle',
     name: 'NEEDLE',
     tagline: 'Formule. Nejpřesnější na trati, ale z papíru.',
+    color: 0xff6a13, // závodní oranžová
     top: 68, accel: 33, brake: 52, turn: 2.95, steerRef: 62, grip: 13, hp: 70, mass: 0.72,
     shape: {
       length: 4.7, width: 1.85, ground: 0.12, bodyH: 0.36, cabinFrom: 0.34, cabinTo: 0.58, cabinH: 0.34,
@@ -86,6 +92,7 @@ export const CAR_TYPES: CarStats[] = [
     id: 'hauler',
     name: 'HAULER',
     tagline: 'Náklaďák. Rozhrne všechno, zatáčí jako loď.',
+    color: 0xecebe6, // bílá
     top: 50, accel: 20, brake: 36, turn: 1.95, steerRef: 29, grip: 6.2, hp: 200, mass: 2.4,
     shape: {
       length: 5.3, width: 2.22, ground: 0.34, bodyH: 1.12, cabinFrom: 0.62, cabinTo: 0.95, cabinH: 0.3,
@@ -98,6 +105,7 @@ export const CAR_TYPES: CarStats[] = [
     id: 'pixie',
     name: 'PIXIE',
     tagline: 'Městské autíčko. Mrštné a lehké, zato pomalé.',
+    color: 0x3fc08a, // mátová
     top: 54, accel: 26, brake: 44, turn: 3.05, steerRef: 50, grip: 10.5, hp: 85, mass: 0.85,
     shape: {
       length: 3.6, width: 1.8, ground: 0.22, bodyH: 0.56, cabinFrom: 0.22, cabinTo: 0.7, cabinH: 0.52,
@@ -110,6 +118,7 @@ export const CAR_TYPES: CarStats[] = [
     id: 'roadking',
     name: 'ROADKING',
     tagline: 'Hot rod s kompresorem. Síla a kouř, přilnavost mizivá.',
+    color: 0x7e1d22, // vínová
     top: 62, accel: 32, brake: 38, turn: 2.15, steerRef: 35, grip: 6.3, hp: 100, mass: 1.2,
     shape: {
       length: 4.4, width: 2.0, ground: 0.26, bodyH: 0.58, cabinFrom: 0.24, cabinTo: 0.54, cabinH: 0.46,
@@ -123,6 +132,7 @@ export const CAR_TYPES: CarStats[] = [
     id: 'trail',
     name: 'TRAILBLAZER',
     tagline: 'Rallyová čtyřkolka. Ze všeho trochu, nic nezkazí.',
+    color: 0x1b5fd0, // rallye modrá
     top: 57, accel: 25, brake: 43, turn: 2.6, steerRef: 44, grip: 10, hp: 130, mass: 1.5,
     shape: {
       length: 4.6, width: 2.02, ground: 0.36, bodyH: 0.7, cabinFrom: 0.26, cabinTo: 0.72, cabinH: 0.58,
@@ -135,18 +145,20 @@ export const CAR_TYPES: CarStats[] = [
     id: 'specter',
     name: 'SPECTER',
     tagline: 'Noční kupé. Vysoká rychlost a klid v rychlých zatáčkách.',
+    color: 0x3a3f47, // grafitová
     top: 66, accel: 28, brake: 48, turn: 2.45, steerRef: 52, grip: 10.8, hp: 95, mass: 1.05,
     shape: {
       length: 4.8, width: 2.0, ground: 0.17, bodyH: 0.48, cabinFrom: 0.3, cabinTo: 0.62, cabinH: 0.38,
       windshield: 0.8, rearGlass: 1, wheelR: 0.37, wheelW: 0.34, nose: 0.95, spoiler: 1, rugged: false,
       flares: 0.2, intakes: true, splitter: true, lights: 'strip', livery: 'none', rimSpokes: 6, rimColor: RIM.dark,
-      accent: ['roof', 'hood'], accentColor: PAINT.black, finish: 'pearl', caliperColor: PAINT.orange,
+      accent: ['roof', 'hood'], accentColor: PAINT.silver, finish: 'pearl', caliperColor: PAINT.orange,
     },
   },
   {
     id: 'katana',
     name: 'KATANA',
     tagline: 'Tuned kupé s obřím křídlem. Zatáčí ostře, drift na povel.',
+    color: 0xe0218a, // magenta
     top: 63, accel: 30, brake: 47, turn: 2.7, steerRef: 50, grip: 11, hp: 95, mass: 1.0,
     shape: {
       length: 4.6, width: 2.0, ground: 0.18, bodyH: 0.5, cabinFrom: 0.28, cabinTo: 0.62, cabinH: 0.42,
@@ -160,6 +172,7 @@ export const CAR_TYPES: CarStats[] = [
     id: 'hyperion',
     name: 'HYPERION',
     tagline: 'Hypersport. Nejvyšší rychlost a špička ve všem ostatním.',
+    color: 0x4fb6f0, // světle modrá
     top: 72, accel: 34, brake: 50, turn: 2.8, steerRef: 58, grip: 12.2, hp: 100, mass: 1.0,
     shape: {
       length: 4.8, width: 2.1, ground: 0.14, bodyH: 0.46, cabinFrom: 0.3, cabinTo: 0.56, cabinH: 0.34,
@@ -170,6 +183,23 @@ export const CAR_TYPES: CarStats[] = [
     },
   },
 ];
+
+/**
+ * Rozdávač barev pro jeden závod. Každé auto jezdí ve své barvě; když si dva vyberou
+ * stejný vůz, ten druhý dostane první volnou barvu z palety, ať jdou od sebe rozeznat.
+ */
+export function colorPicker(): (typeIdx: number) => number {
+  const used = new Set<number>();
+  const signature = new Set(CAR_TYPES.map((c) => c.color));
+  // náhradní barvy: nejdřív ty, které nepatří žádnému autu, ať si je nevezmeme pod nosem
+  const spare = [...CAR_COLORS.filter((c) => !signature.has(c.hex)), ...CAR_COLORS].map((c) => c.hex);
+  return (typeIdx) => {
+    const own = CAR_TYPES[typeIdx].color;
+    const hex = used.has(own) ? (spare.find((h) => !used.has(h)) ?? own) : own;
+    used.add(hex);
+    return hex;
+  };
+}
 
 /** Hodnocení auta 1–10 pro ukazatele ve výběru aut. */
 export interface CarRatings { speed: number; accel: number; handling: number; armor: number }

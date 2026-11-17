@@ -62,7 +62,7 @@ export class Hud {
         return;
       }
       const c = sim.cars[r.carId];
-      el.style.setProperty('--pc', hexCss(c.color));
+      el.style.setProperty('--pc', hexCss(c.tagColor));
       el.innerHTML = `
         <div class="v-pos"><b class="n">1</b><span class="of">/<span class="t">${sim.cars.length}</span></span></div>
         <div class="v-top"><div class="v-name"></div><div class="v-lap">KOLO <b>1</b>/${sim.laps}</div></div>
@@ -169,7 +169,7 @@ export class Hud {
     if (c.dead) return;
     g.beginPath();
     g.arc(x, y, c.human ? 8 : 5.5, 0, Math.PI * 2);
-    g.fillStyle = hexCss(c.color);
+    g.fillStyle = hexCss(c.tagColor);
     g.fill();
     g.lineWidth = c.human ? 3 : 1.5;
     g.strokeStyle = c.human ? '#fff' : 'rgba(0,0,0,0.7)';

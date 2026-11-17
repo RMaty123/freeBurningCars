@@ -109,7 +109,7 @@ client/src/shared/           protokol zpráv mezi obrazovkou a ovladačem
 client/src/game/             čistá herní logika bez grafiky
     content/tracks.ts        DATA: seznam tratí (sem se přidávají nové)
     content/cars.ts          DATA: seznam aut (sem se přidávají nová)
-    cars.ts                  typy pro auta, barvy hráčů
+    cars.ts                  typy pro auta, paleta barev
     track.ts                 geometrie trati (křivka, vzorky, nejbližší bod)
     sim.ts                   fyzika, zbraně, bedny, kola, pořadí
     ai.ts                    AI soupeři
@@ -151,7 +151,7 @@ Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přepos�
   | `livery` | `center`, `twin`, `flash`, `none` (+ `liveryColor`) |
   | `rimSpokes`, `rimColor` | kola (barvy jsou v `RIM` v `game/cars.ts`) |
 
-- **Barvy:** hlavní barva auta je barva hráče, aby šlo poznat, kdo je kdo. K ní má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION karbonové prahy a blatníky. `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
+- **Barvy:** každý typ auta má **svoji pevnou barvu** (`color` v `content/cars.ts`) – stejnou pro hráče i pro boty, takže VIPER GT je vždy červená, HYPERION světle modrý, HAULER bílý atd. Když si dva hráči vyberou stejné auto, `colorPicker()` dá druhému volnou barvu z palety `CAR_COLORS` (přednost mají barvy, které nejsou ničí vlastní), aby se nepletli. Kdo je kdo se pozná podle barvy jména nad autem, tečky na minimapě a rámečku v HUD – to je `tagColor` (barva slotu hráče z `PLAYER_COLORS`), která je oddělená od barvy laku. K hlavní barvě má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION karbonové prahy a blatníky. `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
 - **Nový krok v menu (výběr zbraní…):** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `trackSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Ovladač se měnit nemusí – obrazovka LEFT / SELECT / RIGHT je obecná a co se vybírá, jí posílá hra (`MenuInfo` v `shared/protocol.ts`).
 - **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 
@@ -172,7 +172,7 @@ Ověřeno: test simulace (AI dojede všechny tratě), kontrola typů, hra v Chro
 **Neověřeno:** skutečný telefon, výkon na konkrétním PC a `npm run build` / `npm run prod`.
 Jízdní vlastnosti a obtížnost jsou vyladěné jen podle simulace – čísla jsou v `game/content/cars.ts` a nahoře v `sim.ts`.
 
-Nápady na další rozšíření: kariéra a odemykání aut, další zbraně, převýšení trati, hudba, výběr barvy auta.
+Nápady na další rozšíření: kariéra a odemykání aut, další zbraně, převýšení trati, hudba, vlastní lak nad barvu typu.
 
 ## Licence
 

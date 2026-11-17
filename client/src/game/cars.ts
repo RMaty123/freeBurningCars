@@ -82,6 +82,8 @@ export interface CarStats {
   id: string;
   name: string;
   tagline: string;
+  /** barva, ve které auto jezdí vždy – stejná pro hráče i pro AI */
+  color: number;
   /** max. rychlost m/s */
   top: number;
   /** zrychlení m/s² */
@@ -98,13 +100,29 @@ export interface CarStats {
   shape: CarShape;
 }
 
-/** Barvy hráčů (slot 0–3). */
+/** Barvy slotů hráčů v lobby (než si vyberou auto). */
 export const PLAYER_COLORS = [0xff2d2d, 0x1f8bff, 0xffc61a, 0x2fd35a];
-/** Barvy a jména AI soupeřů – každý závod vypadá jinak. */
-export const AI_COLORS = [
-  0xff7a1a, 0xb04dff, 0x18d6c8, 0xf2f2f2, 0xff4fa3, 0x8a8f99,
-  0x7bd430, 0x00a2ff, 0xffe14d, 0xc0392b, 0x4b3bd6, 0x12141a,
+
+/**
+ * Paleta, ze které si hráč může přebarvit auto (a ze které se berou náhradní barvy,
+ * když by dvě auta v závodě vyšla stejně). Pořadí je rozházené schválně,
+ * aby vedle sebe nestály podobné odstíny.
+ */
+export const CAR_COLORS: { name: string; hex: number }[] = [
+  { name: 'červená', hex: 0xe02d26 },
+  { name: 'světle modrá', hex: 0x4fb6f0 },
+  { name: 'žlutá', hex: 0xf2b02a },
+  { name: 'černá', hex: 0x15161b },
+  { name: 'mátová', hex: 0x3fc08a },
+  { name: 'oranžová', hex: 0xff6a13 },
+  { name: 'bílá', hex: 0xecebe6 },
+  { name: 'rallye modrá', hex: 0x1b5fd0 },
+  { name: 'magenta', hex: 0xe0218a },
+  { name: 'vojenská zelená', hex: 0x5f6b3c },
+  { name: 'vínová', hex: 0x7e1d22 },
+  { name: 'grafitová', hex: 0x3a3f47 },
 ];
+
 export const AI_NAMES = [
   'BLAZE', 'REX', 'NOVA', 'DIESEL', 'VIXEN', 'GHOST',
   'TURBO', 'SMILEY', 'CRUSHER', 'ZIGGY', 'BANDIT', 'SHADOW',

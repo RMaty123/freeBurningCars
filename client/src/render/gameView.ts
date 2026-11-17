@@ -163,7 +163,7 @@ export class GameView {
     const night = !!this.world?.theme.night;
     for (const c of sim.cars) {
       const v = buildCar(c.stats.shape, c.color);
-      const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTagTexture(c.name, hexCss(c.color)), depthWrite: false, transparent: true, fog: false }));
+      const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTagTexture(c.name, hexCss(c.tagColor)), depthWrite: false, transparent: true, fog: false }));
       tag.scale.set(3.0, 0.75, 1);
       tag.position.y = v.roofY + 1.15;
       tag.renderOrder = 20;

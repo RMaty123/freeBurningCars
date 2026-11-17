@@ -8,7 +8,7 @@
  * Nabídka se staví z game/content/cars.ts (peníze ani zamykání aut tu zatím nejsou).
  */
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
-import { CAR_TYPES, carRatings } from '../../game/content/cars';
+import { CAR_TYPES, carRatings, colorPicker } from '../../game/content/cars';
 import { Showroom } from '../../render/showroom';
 import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, Screen } from '../app';
@@ -75,11 +75,14 @@ export class CarSelectScreen implements Screen {
   private sync() {
     this.build();
     const players = this.app.session.active();
+    // auto v garáži stojí v barvě, ve které se pojede (dva stejné vozy dostanou různé odstíny)
+    const pick = colorPicker();
     players.forEach((p, i) => {
       const panel = this.panels[i];
       const car = CAR_TYPES[p.carIdx];
-      this.room.setCar(i, car, PLAYER_COLORS[p.slot]);
-      const key = `${p.carIdx}|${p.ready}`;
+      const color = pick(p.carIdx);
+      this.room.setCar(i, car, color);
+      const key = `${p.carIdx}|${p.ready}|${color}`;
       if (panel.shown === key) return;
       panel.shown = key;
       const q = (s: string) => panel.el.querySelector(s) as HTMLElement;
@@ -105,14 +108,13 @@ export class CarSelectScreen implements Screen {
     return players.length > 0 && players.every((p) => p.ready);
   }
 
-  /** Pošle hráči nabídku aut s náhledy v jeho barvě. */
+  /** Pošle hráči nabídku aut – každé auto v náhledu ve své barvě. */
   private sendCatalog(p: Player) {
     if (p.pid === KBD) return;
-    const color = PLAYER_COLORS[p.slot];
     CAR_TYPES.forEach((car, idx) => {
       this.app.session.send(p, {
         type: 'catalog', idx, total: CAR_TYPES.length, name: car.name, tagline: car.tagline,
-        img: this.room.thumbnail(car, color), ratings: carRatings(car),
+        img: this.room.thumbnail(car, car.color), ratings: carRatings(car),
       });
     });
   }

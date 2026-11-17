@@ -21,7 +21,7 @@ for (const def of TRACKS) {
     for (let i = 0; i < 6; i++) {
       // napříč závody se protočí všechny typy aut, ať se každé někdy projede
       const t = (i + offset) % CAR_TYPES.length;
-      entries.push({ name: 'AI' + i, color: 0, typeIdx: t, stats: CAR_TYPES[t], human: withHuman && i === 0, pid: null });
+      entries.push({ name: 'AI' + i, color: CAR_TYPES[t].color, tagColor: CAR_TYPES[t].color, typeIdx: t, stats: CAR_TYPES[t], human: withHuman && i === 0, pid: null });
     }
     offset += 6;
     const sim = new Sim(track, entries, { laps: 3, seed: 1234 + def.id.length });
