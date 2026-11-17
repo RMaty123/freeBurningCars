@@ -136,9 +136,10 @@ export class RaceScreen implements Screen {
     return {
       s: (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0),
       b: k('ArrowDown', 'KeyS') ? 1 : 0,
-      f: k('Space'),
-      r: k('KeyF', 'KeyE'),
-      d: k('ShiftLeft', 'ShiftRight'),
+      // Q a W jsou hlavní (levá ruka drží Q W A S D), MEZERNÍK a SHIFT zůstávají jako druhá možnost
+      f: k('KeyQ', 'Space'),
+      r: k('KeyE', 'KeyF'),
+      d: k('KeyW', 'ShiftLeft', 'ShiftRight'),
     };
   }
 

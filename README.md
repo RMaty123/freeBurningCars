@@ -62,10 +62,12 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 | --- | --- |
 | A D / šipky vlevo, vpravo | zatáčení |
 | S / šipka dolů | brzda, zpátečka |
-| MEZERNÍK | FIRE 1 (u PRISM držením nabíjíš, puštěním vystřelíš) |
-| F nebo E | raketa / mina |
-| SHIFT | drift |
+| Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš, puštěním vystřelíš) |
+| W (nebo SHIFT) | drift |
+| E (nebo F) | raketa / mina |
 | ESC | ukončit závod |
+
+Levá ruka tak drží celé ovládání na **Q W A S D** – palec má volný mezerník jako druhou možnost pro střelbu.
 
 **V lobby (klávesnice na PC):** `L` počet kol · `B` počet AI soupeřů · `O` obtížnost AI · `G` kvalita grafiky · `M` zvuk
 
