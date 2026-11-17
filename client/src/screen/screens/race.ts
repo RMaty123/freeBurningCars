@@ -8,7 +8,7 @@ import { gunAt } from '../../game/content/guns';
 import { TRACKS } from '../../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../../game/sim';
 import { CtrlMsg, EMPTY_INPUT, InputState } from '../../shared/protocol';
-import { $, App, DIFFS, Screen, TOTAL_CARS, esc } from '../app';
+import { $, App, DIFFS, MAX_CARS, Screen, esc } from '../app';
 import { KBD, Player } from '../session';
 
 /** body za 1.–6. místo (+1 za každé zničené auto) */
@@ -36,7 +36,9 @@ export class RaceScreen implements Screen {
       name: p.name, color: pick(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
       typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), human: true, pid: p.pid,
     }));
-    entries.push(...app.aiEntries(TOTAL_CARS - humans.length, Math.floor(Math.random() * 6), pick));
+    // AI soupeři: kolik si hráči nastavili v lobby (0 = jedou jen lidi), ať se vejdou na start
+    const bots = Math.max(0, Math.min(app.settings.bots, MAX_CARS - humans.length));
+    entries.push(...app.aiEntries(bots, Math.floor(Math.random() * 6), pick));
     const sim = new Sim(app.track(idx), entries, { laps: app.settings.laps, aiSkill: DIFFS[app.settings.diff].skill });
     app.sim = sim;
     app.attractIdx = -1;

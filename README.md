@@ -4,7 +4,7 @@
 Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače** (připojí se přes QR kód po domácí Wi-Fi).
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
-- až **4 hráči** ve split-screenu + AI soupeři (vždy 6 aut na trati)
+- až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
 - **3 primární zbraně na výběr** (kulomet, těžký kulomet, dvojice laserů na dveřích), k tomu rakety, miny, opravy a zrychlení z beden
 - **3 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
@@ -67,7 +67,9 @@ Kdyby to netrefilo, adresu jde vynutit: `set HOST_IP=192.168.1.50 && npm run dev
 | SHIFT | drift |
 | ESC | ukončit závod |
 
-**V lobby (klávesnice na PC):** `L` počet kol · `O` obtížnost AI · `G` kvalita grafiky · `M` zvuk
+**V lobby (klávesnice na PC):** `L` počet kol · `B` počet AI soupeřů · `O` obtížnost AI · `G` kvalita grafiky · `M` zvuk
+
+Počet AI soupeřů jde nastavit od 0 (pak jedou jen připojení hráči) až po tolik, kolik se jich vejde vedle hráčů do osmi aut – na telefonu prvního hráče tlačítky − / + u **SOUPEŘI (AI)**, na PC klávesou `B`. Když se připojí další hráč a místo už není, počet AI se sám sníží.
 
 ### Primární zbraně (FIRE 1)
 

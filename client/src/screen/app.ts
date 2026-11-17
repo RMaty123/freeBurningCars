@@ -22,7 +22,11 @@ import { GameAudio } from './audio';
 import { Hud } from './hud';
 import { Player, RoomInfo, Session } from './session';
 
+/** kolik aut jede v závodě, když si hráč nic nenastaví */
 export const TOTAL_CARS = 6;
+/** nejvíc aut na startu (lidi + AI) a nejvíc AI soupeřů */
+export const MAX_CARS = 8;
+export const MAX_BOTS = 7;
 export const DIFFS = [
   { name: 'lehká', skill: 0.86 },
   { name: 'střední', skill: 0.93 },
@@ -66,7 +70,7 @@ export class App {
   readonly hud = new Hud();
   readonly audio = new GameAudio();
   readonly session: Session;
-  readonly settings = { trackIdx: 0, laps: 3, diff: 1 };
+  readonly settings = { trackIdx: 0, laps: 3, diff: 1, bots: TOTAL_CARS - 1 };
   /** právě běžící simulace (závod, nebo ukázka AI na pozadí menu) */
   sim: Sim | null = null;
   phase: Phase = 'lobby';
@@ -94,6 +98,7 @@ export class App {
     this.session = new Session({
       phase: () => this.phase,
       laps: () => this.settings.laps,
+      bots: () => this.settings.bots,
       menu: () => this.current?.menu?.(),
       onRoom: (info) => { this.roomInfo = info; for (const s of Object.values(this.screens)) s.onRoom?.(info); },
       onJoin: (p, isNew) => { if (isNew) this.audio.ui(); this.current?.playerJoined?.(p, isNew); },

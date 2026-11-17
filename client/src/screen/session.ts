@@ -40,6 +40,7 @@ export interface RoomInfo {
 export interface SessionHooks {
   phase(): Phase;
   laps(): number;
+  bots(): number;
   /** popisek pro menu na ovladači (jen ve fázích s menu) */
   menu(): MenuInfo | undefined;
   onRoom(info: RoomInfo): void;
@@ -188,6 +189,7 @@ export class Session {
       master: this.isMaster(p),
       waiting,
       laps: this.hooks.laps(),
+      bots: this.hooks.bots(),
       menu: this.hooks.menu(),
     };
   }

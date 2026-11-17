@@ -189,6 +189,7 @@ socket.on('host:msg', (m: HostMsg) => {
     $('l-name').textContent = m.name;
     $('l-slot').textContent = 'hráč ' + (m.slot + 1);
     $('l-laps').textContent = String(m.laps);
+    $('l-bots').textContent = m.bots ? String(m.bots) : 'žádní';
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
     const wait = $('l-wait');
     wait.style.display = m.master && !m.waiting ? 'none' : '';
@@ -242,6 +243,8 @@ socket.on('host:msg', (m: HostMsg) => {
 const tap = (id: string, fn: () => void) => $(id).addEventListener('click', fn);
 tap('laps-dec', () => send({ type: 'laps', dir: -1 }));
 tap('laps-inc', () => send({ type: 'laps', dir: 1 }));
+tap('bots-dec', () => send({ type: 'bots', dir: -1 }));
+tap('bots-inc', () => send({ type: 'bots', dir: 1 }));
 tap('start', () => send({ type: 'select' }));
 tap('continue', () => send({ type: 'select' }));
 

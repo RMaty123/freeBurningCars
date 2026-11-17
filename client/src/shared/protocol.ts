@@ -26,6 +26,8 @@ export const EMPTY_INPUT: InputState = { s: 0, b: 0, f: false, r: false, d: fals
  */
 export type CtrlMsg =
   | { type: 'laps'; dir: 1 | -1 }
+  /** počet AI soupeřů (0 = jede se jen s lidmi) */
+  | { type: 'bots'; dir: 1 | -1 }
   | { type: 'nav'; dir: 1 | -1 }
   | { type: 'select' }
   | { type: 'back' }
@@ -68,6 +70,8 @@ export type HostMsg =
       /** připojil se během závodu a čeká na další */
       waiting: boolean;
       laps: number;
+      /** kolik AI soupeřů pojede */
+      bots: number;
       /** vyplněno ve fázích s menu (výběr tratě…) */
       menu?: MenuInfo;
     }
