@@ -1,8 +1,8 @@
 /**
- * Lobby – připojování hráčů (QR kód), výběr auta, počet kol a obtížnost.
+ * Lobby – připojování hráčů (QR kód), počet kol a obtížnost.
  * První hráč (nebo ENTER na PC) pokračuje na výběr tratě.
  */
-import { CAR_TYPES, PLAYER_COLORS, hexCss } from '../../game/cars';
+import { PLAYER_COLORS, hexCss } from '../../game/cars';
 import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, DIFFS, Screen, TOTAL_CARS, esc } from '../app';
 import { KBD, MAX_PLAYERS, Player, RoomInfo } from '../session';
@@ -43,10 +43,7 @@ export class LobbyScreen implements Screen {
   command(p: Player, m: CtrlMsg) {
     const { app } = this;
     const isMaster = app.session.isMaster(p);
-    if (m.type === 'car') {
-      p.carIdx = (p.carIdx + m.dir + CAR_TYPES.length) % CAR_TYPES.length;
-      app.audio.ui();
-    } else if (m.type === 'laps' && isMaster) {
+    if (m.type === 'laps' && isMaster) {
       app.settings.laps = Math.max(1, Math.min(9, app.settings.laps + m.dir));
       app.audio.ui();
     } else if (m.type === 'select' && isMaster) {
@@ -62,7 +59,7 @@ export class LobbyScreen implements Screen {
     if (e.code === 'Enter') {
       // první ENTER přidá hráče na klávesnici, další pokračuje na výběr tratě
       if (!kp) {
-        if (s.addKeyboard()) { app.audio.ui(); app.toast('Klávesnice připojena · ←/→ výběr auta · ENTER pokračovat'); }
+        if (s.addKeyboard()) { app.audio.ui(); app.toast('Klávesnice připojena · ENTER pokračovat na výběr tratě'); }
       } else this.proceed();
     } else if (e.code === 'Escape') {
       s.removeKeyboard();
@@ -74,8 +71,7 @@ export class LobbyScreen implements Screen {
       app.settings.diff = (app.settings.diff + 1) % DIFFS.length;
       app.audio.ui();
       this.refresh();
-    } else if (kp && (e.code === 'ArrowLeft' || e.code === 'KeyA')) this.command(kp, { type: 'car', dir: -1 });
-    else if (kp && (e.code === 'ArrowRight' || e.code === 'KeyD')) this.command(kp, { type: 'car', dir: 1 });
+    }
   }
 
   private proceed() {
@@ -93,11 +89,10 @@ export class LobbyScreen implements Screen {
         html += `<li class="empty" style="--pc:${hexCss(PLAYER_COLORS[s])}"><div class="badge">${s + 1}</div><div class="who"><b>volné místo</b><small>naskenuj QR kód</small></div><div class="tagr"></div></li>`;
         continue;
       }
-      const car = CAR_TYPES[p.carIdx];
       html += `<li style="--pc:${hexCss(PLAYER_COLORS[s])}">
         <div class="badge">${s + 1}</div>
-        <div class="who"><b>${esc(p.name)}</b><small>${car.name} · ${esc(car.tagline)}</small></div>
-        <div class="tagr">${m?.pid === p.pid ? '<span class="master">★ ovládá menu</span><br>' : ''}${p.pid === KBD ? 'klávesnice' : p.connected ? 'telefon' : 'odpojen'}${p.points ? `<br>${p.points} b.` : ''}</div>
+        <div class="who"><b>${esc(p.name)}</b><small>${p.pid === KBD ? 'klávesnice' : p.connected ? 'telefon' : 'odpojen'}${p.points ? ` · ${p.points} b.` : ''}</small></div>
+        <div class="tagr">${m?.pid === p.pid ? '<span class="master">★ ovládá menu</span>' : ''}</div>
       </li>`;
     }
     $('slots').innerHTML = html;

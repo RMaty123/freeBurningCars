@@ -164,7 +164,7 @@ export class TrackSelectScreen implements Screen {
   private confirm() {
     if (!this.app.session.active().length) return;
     this.app.settings.trackIdx = this.sel;
-    this.app.show('race');
+    this.app.show('cars');
   }
 
   private back() {

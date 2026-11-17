@@ -4,11 +4,13 @@
  * Jednotlivé části hry jsou "obrazovky" (Screen) ve složce screens/:
  *   lobby        připojení hráčů
  *   track        výběr tratě
+ *   cars         výběr aut
  *   race         odpočet, závod a výsledky
  * Další krok (výběr aut, zbraní…) = nový soubor ve screens/ + řádek v main.ts.
  * App mezi nimi přepíná a stará se o to, co mají společné (simulace na pozadí, zvuky, toast).
  */
-import { AI_COLORS, AI_NAMES, CAR_TYPES } from '../game/cars';
+import { AI_COLORS, AI_NAMES } from '../game/cars';
+import { CAR_TYPES } from '../game/content/cars';
 import { TRACKS } from '../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../game/sim';
 import { Track, buildTrack } from '../game/track';
@@ -28,7 +30,7 @@ export const DIFFS = [
 export const $ = (id: string) => document.getElementById(id)!;
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-export type ScreenName = 'lobby' | 'track' | 'race';
+export type ScreenName = 'lobby' | 'track' | 'cars' | 'race';
 
 export interface Screen {
   /** obrazovka se právě zobrazila */
@@ -46,6 +48,8 @@ export interface Screen {
   beforeStep?(dt: number): void;
   /** události ze simulace za tento snímek */
   events?(sim: Sim, events: SimEvent[]): void;
+  /** vlastní vykreslení místo trati (např. garáž ve výběru aut); vrať true, pokud jsi kreslil */
+  render?(): boolean;
   /** popisek pro menu na ovladači */
   menu?(): MenuInfo;
   /** ve hře se připojil / vrátil / odpojil hráč */
@@ -213,7 +217,7 @@ export class App {
       this.view.update(sim, dt);
     }
     cur?.update(dt);
-    this.view.render(this.sim);
+    if (!cur?.render?.()) this.view.render(this.sim);
 
     // slabší počítač? po pár vteřinách pod 30 fps automaticky vypni stíny
     this.fpsAcc += dt; this.fpsN++;

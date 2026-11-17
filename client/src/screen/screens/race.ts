@@ -1,8 +1,9 @@
 /**
  * Závod – odpočet, samotná jízda a tabulka výsledků.
- * enter() postaví závod z aktuálního nastavení (trať, kola, hráči) a po výsledcích se vrací na výběr tratě.
+ * enter() postaví závod z aktuálního nastavení (trať, kola, hráči a jejich auta) a po výsledcích se vrací na výběr tratě.
  */
-import { CAR_TYPES, PLAYER_COLORS, hexCss } from '../../game/cars';
+import { PLAYER_COLORS, hexCss } from '../../game/cars';
+import { CAR_TYPES } from '../../game/content/cars';
 import { TRACKS } from '../../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../../game/sim';
 import { CtrlMsg, EMPTY_INPUT, InputState } from '../../shared/protocol';

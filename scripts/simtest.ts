@@ -6,7 +6,7 @@
  */
 import { buildTrack } from '../client/src/game/track';
 import { TRACKS } from '../client/src/game/content/tracks';
-import { CAR_TYPES } from '../client/src/game/cars';
+import { CAR_TYPES } from '../client/src/game/content/cars';
 import { Sim, CarEntry } from '../client/src/game/sim';
 import { aiThink } from '../client/src/game/ai';
 

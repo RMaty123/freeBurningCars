@@ -4,7 +4,8 @@
  * O hře samotné nic neví – co se má stát po připojení / příkazu, řeší App přes "hooks".
  */
 import { io, Socket } from 'socket.io-client';
-import { CAR_TYPES, PLAYER_COLORS, hexCss, statBars } from '../game/cars';
+import { PLAYER_COLORS, hexCss } from '../game/cars';
+import { CAR_TYPES } from '../game/content/cars';
 import { CtrlMsg, EMPTY_INPUT, HostMsg, InputState, MenuInfo, Phase } from '../shared/protocol';
 
 export const MAX_PLAYERS = 4;
@@ -16,6 +17,8 @@ export interface Player {
   name: string;
   slot: number;
   carIdx: number;
+  /** auto potvrzené ve výběru aut */
+  ready: boolean;
   connected: boolean;
   input: InputState;
   points: number;
@@ -105,7 +108,7 @@ export class Session {
   }
 
   private makePlayer(pid: string, name: string, slot: number): Player {
-    return { pid, name, slot, carIdx: slot % CAR_TYPES.length, connected: true, input: { ...EMPTY_INPUT }, points: 0, waiting: false, lastBuzz: 0 };
+    return { pid, name, slot, carIdx: slot % CAR_TYPES.length, ready: false, connected: true, input: { ...EMPTY_INPUT }, points: 0, waiting: false, lastBuzz: 0 };
   }
 
   // ------------------------------------------------------------ dotazy
@@ -167,7 +170,6 @@ export class Session {
 
   // ------------------------------------------------------------ zprávy ovladačům
   private stateFor(p: Player): HostMsg {
-    const car = CAR_TYPES[p.carIdx];
     const phase = this.hooks.phase();
     const racing = phase === 'countdown' || phase === 'race' || phase === 'results';
     const waiting = p.waiting && racing;
@@ -177,9 +179,8 @@ export class Session {
       slot: p.slot,
       color: hexCss(PLAYER_COLORS[p.slot]),
       name: p.name,
-      carName: car.name,
       carIdx: p.carIdx,
-      carStats: statBars(car),
+      ready: p.ready,
       master: this.isMaster(p),
       waiting,
       laps: this.hooks.laps(),
@@ -192,6 +193,12 @@ export class Session {
       if (p.pid === KBD || !p.connected) continue;
       this.socket.emit('host:to', { pid: p.pid, m: this.stateFor(p) });
     }
+  }
+
+  /** Spolehlivá zpráva jednomu ovladači. */
+  send(p: Player, m: HostMsg) {
+    if (p.pid === KBD || !p.connected) return;
+    this.socket.emit('host:to', { pid: p.pid, m });
   }
 
   /** Průběžný stav během závodu (pořadí, zdraví…) – klidně se může ztratit. */

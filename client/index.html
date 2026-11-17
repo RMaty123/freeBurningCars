@@ -45,7 +45,7 @@
         <h2>3 · ZÁVOD</h2>
         <div class="opt"><span>KOLA</span><b id="laps">3</b><small><kbd>L</kbd> změnit</small></div>
         <div class="opt"><span>SOUPEŘI</span><b id="ai-count">5 AI</b><small><kbd>O</kbd> obtížnost: <i id="ai-level">střední</i></small></div>
-        <p class="hint next">Trať se vybírá v dalším kroku – první hráč ji vybere telefonem.</p>
+        <p class="hint next">Trať a auta se vybírají v dalších krocích na telefonu.</p>
         <div id="start-hint" class="start-hint">Čekám na hráče…</div>
       </div>
     </div>
@@ -67,6 +67,16 @@
       <p id="ts-info"></p>
       <p id="ts-room"></p>
     </footer>
+  </section>
+
+  <!-- Výběr aut (panely hráčů staví screens/carSelect.ts, 3D auta kreslí render/showroom.ts) -->
+  <section id="carselect" hidden>
+    <header>
+      <h1>VYBER AUTO</h1>
+      <p id="cs-hint"></p>
+    </header>
+    <div id="cs-stage"></div>
+    <div id="cs-banner" hidden>VŠICHNI PŘIPRAVENI</div>
   </section>
 
   <!-- Výsledky -->

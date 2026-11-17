@@ -32,19 +32,6 @@
   <!-- 2) lobby: výběr auta -->
   <section id="s-lobby" class="screen">
     <div class="who"><span class="dot"></span><b id="l-name">HRÁČ</b><i id="l-slot">hráč 1</i></div>
-    <div class="carsel">
-      <button id="car-prev" class="arrow" aria-label="předchozí auto">◀</button>
-      <div class="carinfo">
-        <b id="car-name">VIPER GT</b>
-        <div class="stats">
-          <span>RYCHLOST</span><div class="pips" id="st-speed"></div>
-          <span>ZRYCHLENÍ</span><div class="pips" id="st-accel"></div>
-          <span>ŘÍZENÍ</span><div class="pips" id="st-handling"></div>
-          <span>PANCÍŘ</span><div class="pips" id="st-armor"></div>
-        </div>
-      </div>
-      <button id="car-next" class="arrow" aria-label="další auto">▶</button>
-    </div>
     <div id="master-box">
       <div class="row"><button id="laps-dec" class="arrow sm">−</button><div class="val"><small>KOLA</small><b id="l-laps">3</b></div><button id="laps-inc" class="arrow sm">+</button></div>
       <button id="start" class="big">VYBRAT TRAŤ ▶</button>
@@ -64,6 +51,38 @@
       <div class="btn arrow-l" id="mn-left"><b>LEFT</b></div>
       <div class="btn sel" id="mn-select"><span><b>SELECT</b></span></div>
       <div class="btn arrow-r" id="mn-right"><b>RIGHT</b></div>
+    </div>
+  </section>
+
+  <!-- 2c) výběr auta: ťuknutím vybereš, tlačítkem POTVRDIT potvrdíš -->
+  <section id="s-cars" class="screen">
+    <div class="cs-top">
+      <button id="cs-back" class="mn-back sm" aria-label="Zpět"><i></i></button>
+      <b id="cs-player">HRÁČ</b>
+      <span id="cs-state">ťukni na auto a potvrď ho</span>
+    </div>
+    <div class="cs-body">
+      <div class="cs-grid" id="cs-grid"></div>
+      <div class="cs-detail">
+        <img id="cs-img" alt="" />
+        <b id="cs-carname">—</b>
+        <div class="cs-dstats" id="cs-dstats">
+          <span>RYCHLOST</span><div class="pips10" data-k="speed"></div>
+          <span>ZRYCHLENÍ</span><div class="pips10" data-k="accel"></div>
+          <span>ŘÍZENÍ</span><div class="pips10" data-k="handling"></div>
+          <span>PANCÍŘ</span><div class="pips10" data-k="armor"></div>
+        </div>
+        <button id="cs-confirm" class="big">POTVRDIT</button>
+      </div>
+    </div>
+    <div class="cs-ready" id="cs-ready" hidden>
+      <img id="cs-ready-img" alt="" />
+      <div>
+        <h2>PŘIPRAVEN</h2>
+        <p id="cs-ready-car"></p>
+        <button id="cs-change" class="mbtn">ZMĚNIT AUTO</button>
+        <p class="wait">Čekej na ostatní hráče…</p>
+      </div>
     </div>
   </section>
 

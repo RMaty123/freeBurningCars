@@ -25,14 +25,17 @@ export const EMPTY_INPUT: InputState = { s: 0, b: 0, f: false, r: false, d: fals
  * používá je výběr tratě a půjdou použít i pro další výběry (auta, zbraně…).
  */
 export type CtrlMsg =
-  | { type: 'car'; dir: 1 | -1 }
   | { type: 'laps'; dir: 1 | -1 }
   | { type: 'nav'; dir: 1 | -1 }
   | { type: 'select' }
-  | { type: 'back' };
+  | { type: 'back' }
+  /** výběr auta: ťuknutí na auto v nabídce (ještě nepotvrzeno) */
+  | { type: 'pick'; idx: number }
+  /** výběr auta: potvrzení / zrušení potvrzení */
+  | { type: 'ready'; on: boolean };
 
-/** lobby → track (výběr tratě) → countdown → race → results → track … */
-export type Phase = 'lobby' | 'track' | 'countdown' | 'race' | 'results';
+/** lobby → track (výběr tratě) → cars (výběr aut) → countdown → race → results → track … */
+export type Phase = 'lobby' | 'track' | 'cars' | 'countdown' | 'race' | 'results';
 
 /** Co má ovladač ukázat na obrazovce menu (LEFT / SELECT / RIGHT). */
 export interface MenuInfo {
@@ -54,9 +57,9 @@ export type HostMsg =
       slot: number;
       color: string;
       name: string;
-      carName: string;
+      /** vybrané auto (index do nabídky) a jestli už je potvrzené */
       carIdx: number;
-      carStats: { speed: number; accel: number; handling: number; armor: number };
+      ready: boolean;
       master: boolean;
       /** připojil se během závodu a čeká na další */
       waiting: boolean;
@@ -77,6 +80,18 @@ export type HostMsg =
       ammo: number;
       dead: boolean;
       finished: boolean;
+    }
+  /** jedna položka nabídky aut (posílá se při vstupu do výběru aut, auto po autu) */
+  | {
+      type: 'catalog';
+      idx: number;
+      total: number;
+      name: string;
+      tagline: string;
+      /** náhled auta v barvě hráče (data URL) */
+      img: string;
+      /** hodnocení 1–10 */
+      ratings: { speed: number; accel: number; handling: number; armor: number };
     }
   | { type: 'buzz'; ms: number }
   | { type: 'kicked'; reason: string };

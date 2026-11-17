@@ -2,6 +2,7 @@
  * Free Burning Cars – ovladač (telefon).
  * V závodě: plyn drží hra sama, tlačítka FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa/mina), LEFT, BRAKE, RIGHT.
  * V menu (výběr tratě…): LEFT / SELECT / RIGHT / zpět – co se vybírá, říká obrazovka (HostMsg.menu).
+ * Výběr auta: mřížka aut (nabídku s náhledy posílá obrazovka), ťuknutím vybrat, tlačítkem POTVRDIT potvrdit.
  * Stav tlačítek se posílá na obrazovku přes Socket.IO.
  */
 import { io } from 'socket.io-client';
@@ -29,10 +30,12 @@ let isMaster = false;
 let retryTimer = 0;
 
 // ------------------------------------------------------------------ obrazovky
-type ScreenId = 's-join' | 's-lobby' | 's-menu' | 's-pad' | 's-results';
+type ScreenId = 's-join' | 's-lobby' | 's-menu' | 's-cars' | 's-pad' | 's-results';
 function show(id: ScreenId) {
   for (const s of document.querySelectorAll('.screen')) s.classList.toggle('active', s.id === id);
-  // 'playing' = obrazovky jen na šířku (v režimu na výšku se ukáže výzva k otočení telefonu)
+  // 'landscape' = obrazovky jen na šířku (v režimu na výšku se ukáže výzva k otočení telefonu)
+  document.body.classList.toggle('landscape', id === 's-pad' || id === 's-menu' || id === 's-cars');
+  // 'playing' = obrazovky s tlačítky přes celou plochu (žádné posouvání stránky prstem)
   document.body.classList.toggle('playing', id === 's-pad' || id === 's-menu');
   if (id !== 's-pad') resetInput();
 }
@@ -184,8 +187,6 @@ socket.on('host:msg', (m: HostMsg) => {
     document.documentElement.style.setProperty('--pc', m.color);
     $('l-name').textContent = m.name;
     $('l-slot').textContent = 'hráč ' + (m.slot + 1);
-    $('car-name').textContent = m.carName;
-    pips('st-speed', m.carStats.speed); pips('st-accel', m.carStats.accel); pips('st-handling', m.carStats.handling); pips('st-armor', m.carStats.armor);
     $('l-laps').textContent = String(m.laps);
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
     const wait = $('l-wait');
@@ -202,6 +203,7 @@ socket.on('host:msg', (m: HostMsg) => {
     }
     if (m.phase === 'lobby') show('s-lobby');
     else if (m.phase === 'track') show('s-menu');
+    else if (m.phase === 'cars') { carState(m.carIdx, m.ready, m.master, m.name); show('s-cars'); }
     else if (m.phase === 'results') show('s-results');
     else show('s-pad');
   } else if (m.type === 'hud') {
@@ -216,6 +218,8 @@ socket.on('host:msg', (m: HostMsg) => {
     ov.classList.toggle('show', m.dead || m.finished);
     ov.classList.toggle('fin', m.finished);
     ov.textContent = m.finished ? `CÍL · ${m.pos}. MÍSTO` : m.dead ? 'ZNIČEN!' : '';
+  } else if (m.type === 'catalog') {
+    catalogItem(m);
   } else if (m.type === 'buzz') {
     try { navigator.vibrate?.(m.ms); } catch { /* iPhone vibrace neumí */ }
   } else if (m.type === 'kicked') {
@@ -229,8 +233,6 @@ socket.on('host:msg', (m: HostMsg) => {
 
 // ------------------------------------------------------------------ lobby tlačítka
 const tap = (id: string, fn: () => void) => $(id).addEventListener('click', fn);
-tap('car-prev', () => send({ type: 'car', dir: -1 }));
-tap('car-next', () => send({ type: 'car', dir: 1 }));
 tap('laps-dec', () => send({ type: 'laps', dir: -1 }));
 tap('laps-inc', () => send({ type: 'laps', dir: 1 }));
 tap('start', () => send({ type: 'select' }));
@@ -241,6 +243,67 @@ tap('mn-left', () => send({ type: 'nav', dir: -1 }));
 tap('mn-right', () => send({ type: 'nav', dir: 1 }));
 tap('mn-select', () => send({ type: 'select' }));
 tap('mn-back', () => send({ type: 'back' }));
+
+// ------------------------------------------------------------------ výběr auta
+type CatalogMsg = Extract<HostMsg, { type: 'catalog' }>;
+const catalog: CatalogMsg[] = [];
+let carPick = 0;      // auto zvýrazněné v nabídce
+let carReady = false; // už potvrzeno?
+
+/** Přišla (nebo se změnila) jedna položka nabídky → vytvoř / aktualizuj dlaždici. */
+function catalogItem(m: CatalogMsg) {
+  catalog[m.idx] = m;
+  catalog.length = m.total;
+  const grid = $('cs-grid');
+  let tile = grid.querySelector<HTMLElement>(`[data-i="${m.idx}"]`);
+  if (!tile) {
+    tile = document.createElement('button');
+    tile.className = 'tile';
+    tile.dataset.i = String(m.idx);
+    tile.innerHTML = '<img alt="" /><span></span>';
+    tile.addEventListener('click', () => {
+      if (carReady) return;
+      carPick = m.idx; // hned zvýrazni, obrazovka to potvrdí stavem
+      renderCars();
+      send({ type: 'pick', idx: m.idx });
+    });
+    // dlaždice drž v pořadí podle indexu, i kdyby zprávy přišly napřeskáčku
+    const after = [...grid.children].find((c) => Number((c as HTMLElement).dataset.i) > m.idx);
+    grid.insertBefore(tile, after ?? null);
+  }
+  (tile.querySelector('img') as HTMLImageElement).src = m.img;
+  (tile.querySelector('span') as HTMLElement).textContent = m.name;
+  for (const c of [...grid.children]) if (Number((c as HTMLElement).dataset.i) >= m.total) c.remove();
+  renderCars();
+}
+
+function carState(idx: number, ready: boolean, master: boolean, name: string) {
+  carPick = idx;
+  carReady = ready;
+  $('cs-player').textContent = name;
+  // zpět na výběr tratě může jen první hráč
+  $('cs-back').style.visibility = master ? 'visible' : 'hidden';
+  renderCars();
+}
+
+function renderCars() {
+  for (const t of $('cs-grid').children) t.classList.toggle('on', Number((t as HTMLElement).dataset.i) === carPick);
+  const car = catalog[carPick];
+  $('cs-ready').hidden = !carReady;
+  if (!car) return;
+  ($('cs-img') as HTMLImageElement).src = car.img;
+  $('cs-carname').textContent = car.name;
+  for (const row of $('cs-dstats').querySelectorAll<HTMLElement>('.pips10')) {
+    const n = car.ratings[row.dataset.k as keyof CatalogMsg['ratings']];
+    row.innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+  }
+  ($('cs-ready-img') as HTMLImageElement).src = car.img;
+  $('cs-ready-car').textContent = car.name;
+}
+
+tap('cs-confirm', () => { carReady = true; renderCars(); send({ type: 'ready', on: true }); });
+tap('cs-change', () => { carReady = false; renderCars(); send({ type: 'ready', on: false }); });
+tap('cs-back', () => send({ type: 'back' }));
 
 // ------------------------------------------------------------------ řízení (multi-touch)
 type Key = 'f' | 'd' | 'r' | 'left' | 'b' | 'right';
