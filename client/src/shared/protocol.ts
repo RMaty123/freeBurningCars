@@ -2,6 +2,7 @@
  * Zprávy mezi obrazovkou (host) a telefonem (ovladač).
  * Server je jen přeposílá, takže tenhle soubor je jediná "smlouva" mezi oběma stranami.
  */
+import type { SecKind } from '../game/secondary';
 
 /** Stav ovladače – posílá se při každé změně. Plyn drží hra sama, hráč jen zatáčí, brzdí a střílí. */
 export interface InputState {
@@ -11,7 +12,7 @@ export interface InputState {
   b: number;
   /** FIRE 1 – kulomet */
   f: boolean;
-  /** FIRE 2 – rakety */
+  /** FIRE 2 – sekundární zbraň (rakety / miny) */
   r: boolean;
   /** drift */
   d: boolean;
@@ -63,11 +64,11 @@ export type CtrlMsg =
   /** vypnutí / nastartování motoru (jen na testovacím placu) */
   | { type: 'engine'; on: boolean };
 
-/** lobby → track (trať) → cars (auta) → guns (zbraň FIRE 1) → countdown → race → results → track … */
-export type Phase = 'lobby' | 'track' | 'cars' | 'guns' | 'countdown' | 'race' | 'results';
+/** lobby → track → cars → guns (FIRE 1) → secs (FIRE 2) → countdown → race → results → track … */
+export type Phase = 'lobby' | 'track' | 'cars' | 'guns' | 'secs' | 'countdown' | 'race' | 'results';
 
-/** Co se zrovna vybírá – nabídka na telefonu je pro obojí stejná. */
-export type PickKind = 'car' | 'gun';
+/** Co se zrovna vybírá – nabídka na telefonu je pro všechno stejná. */
+export type PickKind = 'car' | 'gun' | 'sec';
 
 /** Co má ovladač ukázat na obrazovce menu (LEFT / SELECT / RIGHT). */
 export interface MenuInfo {
@@ -89,9 +90,10 @@ export type HostMsg =
       slot: number;
       color: string;
       name: string;
-      /** vybrané auto a zbraň (indexy do nabídky) a jestli je výběr potvrzený */
+      /** vybrané auto a zbraně (indexy do nabídek) a jestli je výběr potvrzený */
       carIdx: number;
       gunIdx: number;
+      secIdx: number;
       ready: boolean;
       master: boolean;
       /** připojil se během závodu a čeká na další */
@@ -119,7 +121,8 @@ export type HostMsg =
       hp: number;
       /** zbývající boost 0…1 */
       nitro: number;
-      sec: 'rocket';
+      /** která sekundární zbraň (ikona v HUD na telefonu) */
+      sec: SecKind;
       ammo: number;
       dead: boolean;
       finished: boolean;

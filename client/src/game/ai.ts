@@ -132,9 +132,9 @@ export function aiThink(sim: Sim, c: Car, dt: number) {
       fire = ai.burstT > 0;
     }
     ai.secT -= dt;
-    if (c.secAmmo > 0 && ai.secT <= 0) {
-      const t = sim.findTarget(c, 0.22, 90);
-      if (t && Math.hypot(t.x - c.x, t.z - c.z) > 14) { sec = true; ai.secT = 3 + sim.rnd() * 5; }
+    if (c.secAmmo > 0 && ai.secT <= 0 && wantSecondary(sim, c, 0.22, 90)) {
+      sec = true;
+      ai.secT = secPause(sim, c);
     }
   }
 
@@ -220,12 +220,40 @@ function aiRoam(sim: Sim, c: Car, dt: number, fx: number, fz: number) {
       fire = ai.burstT > 0;
     }
     ai.secT -= dt;
-    if (c.secAmmo > 0 && ai.secT <= 0) {
-      const t = sim.findTarget(c, 0.24, 110);
-      if (t && Math.hypot(t.x - c.x, t.z - c.z) > 14) { sec = true; ai.secT = 3 + sim.rnd() * 5; }
+    if (c.secAmmo > 0 && ai.secT <= 0 && wantSecondary(sim, c, 0.24, 110)) {
+      sec = true;
+      ai.secT = secPause(sim, c);
     }
   }
 
   inp.steer = steer; inp.throttle = throttle; inp.brake = brake;
   inp.fire = fire; inp.secondary = sec; inp.drift = false;
+}
+
+/**
+ * Má AI zmáčknout FIRE 2? Raketa se pouští na cíl vepředu, mina naopak tomu, kdo sedí vzadu
+ * na nárazníku – jinak by ji jen rozsypala do prázdna.
+ */
+function wantSecondary(sim: Sim, c: Car, cone: number, range: number): boolean {
+  if (c.sec.id === 'mine') return tailgater(sim, c, 34);
+  const t = sim.findTarget(c, cone, range);
+  return !!t && Math.hypot(t.x - c.x, t.z - c.z) > 14;
+}
+
+/** Jak dlouho počkat do dalšího použití – miny se dají sypat, raket je málo. */
+function secPause(sim: Sim, c: Car): number {
+  return c.sec.id === 'mine' ? 1.2 + sim.rnd() * 2.4 : 3 + sim.rnd() * 5;
+}
+
+/** Jede někdo za mnou (v kuželu dozadu, do `dist` metrů)? */
+function tailgater(sim: Sim, c: Car, dist: number): boolean {
+  const fx = Math.sin(c.h), fz = Math.cos(c.h);
+  for (const o of sim.cars) {
+    if (o === c || o.dead || o.finished) continue;
+    const dx = o.x - c.x, dz = o.z - c.z;
+    const d = Math.hypot(dx, dz);
+    if (d > dist || d < 2) continue;
+    if ((dx * fx + dz * fz) / d < -0.55) return true;
+  }
+  return false;
 }

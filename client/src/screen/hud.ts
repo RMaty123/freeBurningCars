@@ -3,7 +3,7 @@
  * Každý hráč má vlastní panel přesně nad svým výřezem obrazovky.
  */
 import { hexCss } from '../game/cars';
-import type { Car, PickupKind, Sim } from '../game/sim';
+import type { Car, Sim } from '../game/sim';
 import type { ViewRect } from '../render/gameView';
 import { drawPickupIcon } from '../render/textures';
 
@@ -20,7 +20,7 @@ interface Panel {
   shown: { pos: number; lap: number; speed: number; ammo: number; hp: number; nitro: number };
 }
 
-const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f' };
+const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f', mine: '#ff6a3c' };
 
 export class Hud {
   private root: HTMLElement;
@@ -164,11 +164,11 @@ export class Hud {
         p.laser.className = c.beam > 0 ? 'fire' : c.charge >= full ? 'full' : '';
       }
       if (c.secAmmo !== sh.ammo) { sh.ammo = c.secAmmo; p.ammo.textContent = '×' + c.secAmmo; }
-      if (p.lastSec !== c.secType) {
-        p.lastSec = c.secType;
+      if (p.lastSec !== c.sec.id) {
+        p.lastSec = c.sec.id;
         const g = p.icon.getContext('2d')!;
         g.clearRect(0, 0, 64, 64);
-        drawPickupIcon(g, c.secType as PickupKind, 32, 32, 22, SEC_COLORS[c.secType]);
+        drawPickupIcon(g, c.sec.id, 32, 32, 22, SEC_COLORS[c.sec.id]);
       }
       p.el.classList.toggle('noammo', c.secAmmo === 0);
       p.warn.classList.toggle('on', c.wrongWay > 1);

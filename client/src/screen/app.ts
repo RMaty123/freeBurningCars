@@ -12,6 +12,7 @@
 import { AI_NAMES } from '../game/cars';
 import { CAR_TYPES, carColor } from '../game/content/cars';
 import { GUNS } from '../game/content/guns';
+import { SECONDARIES } from '../game/content/secondaries';
 import { TRACKS } from '../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../game/sim';
 import { Track, buildTrack } from '../game/track';
@@ -36,7 +37,7 @@ export const DIFFS = [
 export const $ = (id: string) => document.getElementById(id)!;
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-export type ScreenName = 'lobby' | 'track' | 'cars' | 'guns' | 'race';
+export type ScreenName = 'lobby' | 'track' | 'cars' | 'guns' | 'secs' | 'race';
 
 export interface Screen {
   /** obrazovka se právě zobrazila */
@@ -158,7 +159,8 @@ export class App {
       const color = carColor(typeIdx);
       // boti mají zbraně na střídačku, ať je v závodě vidět všechno
       const gun = GUNS[(i + startAt) % GUNS.length];
-      out.push({ name: AI_NAMES[k], color, tagColor: color, typeIdx, stats: CAR_TYPES[typeIdx], gun, human: false, pid: null });
+      const sec = SECONDARIES[(i + startAt) % SECONDARIES.length];
+      out.push({ name: AI_NAMES[k], color, tagColor: color, typeIdx, stats: CAR_TYPES[typeIdx], gun, sec, human: false, pid: null });
     }
     return out;
   }
@@ -220,7 +222,7 @@ export class App {
         case 'pickup': a.pickup(this.volAt(e.x, e.z)); break;
         case 'launch': {
           const c = s.cars[e.car];
-          a.launch(this.volAt(c.x, c.z));
+          if (e.kind === 'mine') a.mine(this.volAt(c.x, c.z)); else a.launch(this.volAt(c.x, c.z));
           break;
         }
         case 'respawn': { const c = s.cars[e.car]; a.respawn(this.volAt(c.x, c.z)); break; }

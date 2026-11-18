@@ -228,6 +228,7 @@ socket.on('host:msg', (m: HostMsg) => {
     else if (m.phase === 'track') show('s-menu');
     else if (m.phase === 'cars') { pickState('car', m.carIdx, m.ready, m.master, m.name); show('s-cars'); }
     else if (m.phase === 'guns') { pickState('gun', m.gunIdx, m.ready, m.master, m.name); show('s-cars'); }
+    else if (m.phase === 'secs') { pickState('sec', m.secIdx, m.ready, m.master, m.name); show('s-cars'); }
     else if (m.phase === 'results') show('s-results');
     else show('s-pad');
   } else if (m.type === 'hud') {
@@ -240,7 +241,7 @@ socket.on('host:msg', (m: HostMsg) => {
     else { lapBox.innerHTML = 'ZNIČENO <b id="p-lap"></b>'; $('p-lap').textContent = String(m.kills); }
     $('p-hp').style.transform = `scaleX(${m.hp})`;
     $('p-nitro').style.transform = `scaleX(${m.nitro})`;
-    $('sec-ammo').textContent = 'raketa ×' + m.ammo;
+    $('sec-ammo').textContent = (m.sec === 'mine' ? 'miny ×' : 'rakety ×') + m.ammo;
     $('b-sec').classList.toggle('empty', m.ammo === 0);
     const chg = $('fire-chg');
     const lvl = m.beam > 0 ? m.beam : m.charge;
@@ -311,10 +312,11 @@ tap('mn-back', () => send({ type: 'back' }));
 // ------------------------------------------------------------------ výběr auta a zbraně
 // Obojí vypadá a funguje stejně, jen jiná mřížka a jiný nadpis.
 type CatalogMsg = Extract<HostMsg, { type: 'catalog' }>;
-const GRID: Record<PickKind, string> = { car: 'cs-grid', gun: 'gs-grid' };
-const TITLE: Record<PickKind, string> = { car: 'VYBER AUTO', gun: 'VYBER ZBRAŇ · FIRE 1' };
-const catalog: Record<PickKind, CatalogMsg[]> = { car: [], gun: [] };
-const picked: Record<PickKind, number> = { car: 0, gun: 0 };
+const KINDS: PickKind[] = ['car', 'gun', 'sec'];
+const GRID: Record<PickKind, string> = { car: 'cs-grid', gun: 'gs-grid', sec: 'ss-grid' };
+const TITLE: Record<PickKind, string> = { car: 'VYBER AUTO', gun: 'VYBER ZBRAŇ · FIRE 1', sec: 'VYBER ZBRAŇ · FIRE 2' };
+const catalog: Record<PickKind, CatalogMsg[]> = { car: [], gun: [], sec: [] };
+const picked: Record<PickKind, number> = { car: 0, gun: 0, sec: 0 };
 let pickKind: PickKind = 'car'; // co se zrovna vybírá
 let pickReady = false;          // už potvrzeno?
 
@@ -360,7 +362,7 @@ function pickState(kind: PickKind, idx: number, ready: boolean, master: boolean,
 
 function renderPick() {
   const kind = pickKind;
-  for (const k of ['car', 'gun'] as PickKind[]) $(GRID[k]).hidden = k !== kind;
+  for (const k of KINDS) $(GRID[k]).hidden = k !== kind;
   const idx = picked[kind];
   for (const t of $(GRID[kind]).children) t.classList.toggle('on', Number((t as HTMLElement).dataset.i) === idx);
   // po potvrzení se nabídka zamkne: ostatní dlaždice zešednou a místo POTVRDIT je ZMĚNIT
@@ -369,9 +371,11 @@ function renderPick() {
   $('cs-change').hidden = !pickReady;
   const item = catalog[kind][idx];
   $('cs-carname').textContent = item ? (pickReady ? '✔ ' : '') + item.name : '—';
-  // na tlačítku FIRE 1 ať je vidět, s čím se jede
+  // na tlačítkách FIRE ať je vidět, s čím se jede
   const gun = catalog.gun[picked.gun];
   if (gun) $('fire-name').textContent = gun.name.toLowerCase();
+  const sec = catalog.sec[picked.sec];
+  if (sec) $('sec-ammo').textContent = sec.name.toLowerCase();
 }
 
 tap('cs-confirm', () => { pickReady = true; renderPick(); send({ type: 'ready', on: true }); });

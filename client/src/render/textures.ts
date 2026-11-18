@@ -245,7 +245,7 @@ export function pickupTexture(kind: PickupKind): THREE.CanvasTexture {
   return tex(c, false);
 }
 
-export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind, cx: number, cy: number, r: number, color: string) {
+export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind | 'mine', cx: number, cy: number, r: number, color: string) {
   g.save();
   g.translate(cx, cy);
   g.fillStyle = color; g.strokeStyle = color;
@@ -258,6 +258,20 @@ export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind, cx
     g.moveTo(r * 0.25, -r * 1.1); g.lineTo(-r * 0.6, r * 0.15); g.lineTo(-r * 0.05, r * 0.15);
     g.lineTo(-r * 0.3, r * 1.1); g.lineTo(r * 0.6, -r * 0.25); g.lineTo(r * 0.05, -r * 0.25);
     g.closePath(); g.fill();
+  } else if (kind === 'mine') {
+    // mina: šestiúhelník s terčíkem uprostřed
+    g.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+      const px = Math.cos(a) * r, py = Math.sin(a) * r;
+      if (i) g.lineTo(px, py); else g.moveTo(px, py);
+    }
+    g.closePath();
+    g.lineWidth = r * 0.26;
+    g.stroke();
+    g.beginPath();
+    g.arc(0, 0, r * 0.34, 0, Math.PI * 2);
+    g.fill();
   } else {
     // raketa
     g.rotate(-Math.PI / 4);

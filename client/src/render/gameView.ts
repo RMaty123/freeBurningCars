@@ -5,9 +5,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hexCss } from '../game/cars';
-import type { Car, PickupKind, Sim, SimEvent } from '../game/sim';
+import { MAX_MINES, type Car, type PickupKind, type Sim, type SimEvent } from '../game/sim';
 import type { Track } from '../game/track';
 import { buildCar, CarVisual, disposeCar, setWrecked } from './carModel';
+import { mergeParts, MINE_COLORS, mineParts } from './secModel';
 import { Effects, pointScale } from './effects';
 import { headlightTexture, nameTagTexture, PICKUP_HEX, pickupTexture, blobTexture } from './textures';
 import { buildWorld, World } from './world';
@@ -71,6 +72,10 @@ export class GameView {
   private tmpVec = new THREE.Vector3();
   private tmpVec2 = new THREE.Vector3();
   private rockets: THREE.InstancedMesh;
+  /** miny: tělo, výstražný pruh a svítící čočka – každý materiál jedna instancovaná síť */
+  private mines: THREE.InstancedMesh[] = [];
+  /** ta z nich, co svítí – každá mina si v ní blikne vlastní barvou */
+  private mineLight: THREE.InstancedMesh | null = null;
   private pickupGroup = new THREE.Group();
   private pickupMeshes = new Map<number, THREE.Group>();
   private pickupMats = new Map<PickupKind, THREE.MeshStandardMaterial>();
@@ -114,7 +119,24 @@ export class GameView {
       new THREE.BoxGeometry(0.04, 0.5, 0.3).translate(0, 0, -0.45),
     ])!;
     this.rockets = new THREE.InstancedMesh(rocketGeo, new THREE.MeshStandardMaterial({ color: 0xe8e8e8, metalness: 0.6, roughness: 0.35, emissive: 0x551100 }), 24);
-    for (const m of [this.bullets, this.rockets]) {
+    // miny leží na zemi: stejný model jako v nabídce, jen kreslený instancovaně
+    const mp = mineParts();
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+    const mineMats: [THREE.BufferGeometry[], THREE.Material][] = [
+      [mp.metal, new THREE.MeshStandardMaterial({ color: MINE_COLORS.metal, metalness: 0.8, roughness: 0.34 })],
+      [mp.dark, new THREE.MeshStandardMaterial({ color: MINE_COLORS.dark, metalness: 0.5, roughness: 0.6 })],
+      [mp.stripe, new THREE.MeshStandardMaterial({ color: MINE_COLORS.stripe, metalness: 0.3, roughness: 0.5 })],
+      [mp.glow, lightMat],
+    ];
+    for (const [parts, mat] of mineMats) {
+      const geo = mergeParts(parts);
+      if (!geo) continue;
+      const im = new THREE.InstancedMesh(geo, mat, MAX_MINES);
+      im.castShadow = mat !== lightMat;
+      if (mat === lightMat) this.mineLight = im;
+      this.mines.push(im);
+    }
+    for (const m of [this.bullets, this.rockets, ...this.mines]) {
       m.count = 0;
       m.frustumCulled = false;
       this.scene.add(m);
@@ -466,6 +488,26 @@ export class GameView {
     const hadRockets = this.rockets.count;
     this.rockets.count = n;
     if (n || hadRockets) this.rockets.instanceMatrix.needsUpdate = true;
+
+    // miny: nenatažená jen slabě doutná, natažená zvolna pulzuje, zapálená bliká naplno
+    n = 0;
+    for (const m of sim.mines) {
+      if (n >= MAX_MINES) break;
+      d.position.set(m.x, 0, m.z);
+      d.rotation.set(0, m.id * 1.37, 0);
+      d.scale.setScalar(m.arm > 0 ? 0.75 + 0.25 * (1 - m.arm / (m.def.arm ?? 0.8)) : 1); // při položení "dosedne"
+      d.updateMatrix();
+      for (const im of this.mines) im.setMatrixAt(n, d.matrix);
+      const blink = m.fuse > 0 ? 1 : m.arm > 0 ? 0.2 : 0.45 + Math.sin(t * 5 + m.id) * 0.4;
+      this.mineLight?.setColorAt(n, this.tmpColor.setHex(MINE_COLORS.glow).multiplyScalar(0.35 + 0.8 * blink));
+      n++;
+    }
+    d.scale.setScalar(1);
+    const hadMines = this.mines[0]?.count ?? 0;
+    if (n || hadMines) {
+      for (const im of this.mines) { im.count = n; im.instanceMatrix.needsUpdate = true; }
+      if (this.mineLight?.instanceColor) this.mineLight.instanceColor.needsUpdate = true;
+    }
 
     // bedny
     for (const p of sim.pickups) {

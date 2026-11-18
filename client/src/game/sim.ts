@@ -6,6 +6,7 @@
  */
 import { CarStats } from './cars';
 import { BEAM_MIN_CHARGE, beamTime, type GunStats } from './guns';
+import type { SecKind, SecStats } from './secondary';
 import { Track, lateral, locate, wrapIdx } from './track';
 import { aiThink, AIState, newAI } from './ai';
 
@@ -19,7 +20,6 @@ export interface CarInput {
   drift: boolean;
 }
 
-export type SecType = 'rocket';
 export type PickupKind = 'repair' | 'rocket' | 'nitro';
 
 export interface Car {
@@ -64,7 +64,8 @@ export interface Car {
   nitro: number;
   nitroOn: boolean;
   drifting: boolean;
-  secType: SecType;
+  /** sekundární zbraň (FIRE 2) */
+  sec: SecStats;
   secAmmo: number;
   /** primární zbraň (FIRE 1) */
   gun: GunStats;
@@ -103,6 +104,11 @@ export interface Car {
 
 export interface Bullet { x: number; z: number; vx: number; vz: number; life: number; owner: number; ti: number; gun: GunStats; }
 export interface Rocket { x: number; z: number; h: number; speed: number; life: number; owner: number; target: number; ti: number; id: number; }
+/**
+ * Mina ležící na zemi. `arm` se musí odtikat, než začne reagovat (ať si ji auto nehodí pod sebe),
+ * `fuse` > 0 znamená, že ji zapálil cizí výbuch a za chvilku bouchne taky (řetězová reakce).
+ */
+export interface Mine { x: number; z: number; owner: number; arm: number; life: number; fuse: number; def: SecStats; id: number; }
 export interface Pickup { x: number; z: number; kind: PickupKind; cooldown: number; id: number; }
 
 export type SimEvent =
@@ -114,7 +120,7 @@ export type SimEvent =
   | { t: 'wall'; car: number; x: number; z: number; force: number }
   | { t: 'crash'; a: number; b: number; x: number; z: number; force: number }
   | { t: 'boom'; x: number; z: number; size: number }
-  | { t: 'launch'; car: number; kind: SecType }
+  | { t: 'launch'; car: number; kind: SecKind }
   /** laser vystřelil – `len` je, jak dlouho bude svítit (s) */
   | { t: 'beam'; car: number; len: number }
   | { t: 'destroyed'; car: number; by: number }
@@ -133,6 +139,8 @@ export interface CarEntry {
   stats: CarStats;
   /** vybraná primární zbraň */
   gun: GunStats;
+  /** vybraná sekundární zbraň */
+  sec: SecStats;
   human: boolean;
   pid: string | null;
   /** plynulé zatáčení (náklon telefonu) – volant se pak smí otáčet rychleji než u tlačítek */
@@ -172,7 +180,8 @@ export function mulberry(seed: number) {
 }
 
 export const COUNTDOWN_TIME = 3.6;
-const ROCKET_DMG = 58;
+/** Nejvíc min, co smí naráz ležet na trati – víc jich na zem nepustíme, ať se to nezahltí. */
+export const MAX_MINES = 200;
 const BEAM_TWIN: readonly number[] = [-1, 1];
 const BEAM_SINGLE: readonly number[] = [0];
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
@@ -217,6 +226,7 @@ export class Sim {
   cars: Car[] = [];
   bullets: Bullet[] = [];
   rockets: Rocket[] = [];
+  mines: Mine[] = [];
   pickups: Pickup[] = [];
   events: SimEvent[] = [];
   /** pracovní pole na řazení pořadí – ať se každý snímek nealokuje nové */
@@ -260,7 +270,7 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        secType: 'rocket', secAmmo: 2, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
+        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
         fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
         finished: false, finishTime: 0, place: 0, kills: 0, deaths: 0, bestLap: 0, lapStart: 0,
@@ -747,15 +757,26 @@ export class Sim {
   }
 
   private fireSecondary(c: Car) {
+    const g = c.sec;
     c.secAmmo--;
+    c.secCd = g.cd;
     const fx = Math.sin(c.h), fz = Math.cos(c.h);
-    c.secCd = 0.7;
-    const tgt = this.findTarget(c, 0.5, 130);
-    this.rockets.push({
-      x: c.x + fx * 2, z: c.z + fz * 2, h: c.h, speed: Math.max(35, c.speed + 25),
-      life: 3.2, owner: c.id, target: tgt ? tgt.id : -1, ti: c.ti, id: this.nextId++,
-    });
-    this.events.push({ t: 'launch', car: c.id, kind: c.secType });
+    if (g.id === 'mine') {
+      // mina se pustí kousek za zadní nárazník; chvíli se natahuje, ať si ji auto nehodí pod sebe
+      const back = c.stats.shape.length / 2 + 0.9;
+      if (this.mines.length >= MAX_MINES) this.mines.shift();
+      this.mines.push({
+        x: c.x - fx * back, z: c.z - fz * back, owner: c.id,
+        arm: g.arm ?? 0.8, life: g.life ?? 30, fuse: -1, def: g, id: this.nextId++,
+      });
+    } else {
+      const tgt = this.findTarget(c, 0.5, 130);
+      this.rockets.push({
+        x: c.x + fx * 2, z: c.z + fz * 2, h: c.h, speed: Math.max(35, c.speed + 25),
+        life: 3.2, owner: c.id, target: tgt ? tgt.id : -1, ti: c.ti, id: this.nextId++,
+      });
+    }
+    this.events.push({ t: 'launch', car: c.id, kind: g.id });
   }
 
   private stepWeapons(dt: number) {
@@ -814,14 +835,45 @@ export class Sim {
         if (Math.abs(lateral(tr, r.ti, r.x, r.z)) > tr.wallDist - 0.2) boom = true;
       }
       if (boom) {
-        this.explode(r.x, r.z, 8.5, ROCKET_DMG, r.owner);
+        const g = this.cars[r.owner]?.sec;
+        this.explode(r.x, r.z, g?.radius ?? 8.5, g?.dmg ?? 58, r.owner);
         this.rockets.splice(i, 1);
       }
+    }
+    this.stepMines(dt);
+  }
+
+  /** Miny: natahují se, pak čekají na cizí auto. Cizí výbuch je zapálí taky (řetězová reakce). */
+  private stepMines(dt: number) {
+    for (let i = this.mines.length - 1; i >= 0; i--) {
+      const m = this.mines[i];
+      if (m.arm > 0) m.arm -= dt;
+      m.life -= dt;
+      let boom = false;
+      if (m.fuse > 0) {
+        m.fuse -= dt;
+        boom = m.fuse <= 0;
+      } else if (m.arm <= 0) {
+        const r2 = (m.def.trigger ?? 2.2) ** 2;
+        for (const c of this.cars) {
+          if (c.dead || c.id === m.owner || c.finished) continue;
+          if ((c.x - m.x) ** 2 + (c.z - m.z) ** 2 < r2) { boom = true; break; }
+        }
+      }
+      if (!boom && m.life > 0) continue;
+      // nejdřív ven ze seznamu, ať ji vlastní výbuch nezapálí znovu
+      this.mines[i] = this.mines[this.mines.length - 1];
+      this.mines.pop();
+      if (boom) this.explode(m.x, m.z, m.def.radius, m.def.dmg, m.owner);
     }
   }
 
   explode(x: number, z: number, radius: number, dmg: number, owner: number) {
     this.events.push({ t: 'boom', x, z, size: radius / 8 });
+    // miny v dosahu to zapálí taky – vybouchnou s malým zpožděním za sebou
+    for (const m of this.mines) {
+      if (m.fuse < 0 && (m.x - x) ** 2 + (m.z - z) ** 2 < radius * radius) m.fuse = 0.06 + this.rnd() * 0.1;
+    }
     for (const c of this.cars) {
       if (c.dead) continue;
       const dx = c.x - x, dz = c.z - z;
@@ -921,7 +973,8 @@ export class Sim {
         } else if (p.kind === 'nitro') {
           c.boost = BOOST_TIME;
         } else {
-          c.secAmmo = Math.min(6, c.secAmmo + 3);
+          // bedna s municí doplní tu sekundární zbraň, se kterou hráč jede
+          c.secAmmo = Math.min(c.sec.maxAmmo, c.secAmmo + c.sec.pickup);
         }
         p.cooldown = 7;
         this.events.push({ t: 'pickup', car: c.id, kind: p.kind, x: p.x, z: p.z });

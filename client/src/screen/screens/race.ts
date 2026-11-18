@@ -5,6 +5,7 @@
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
 import { CAR_TYPES, carColor } from '../../game/content/cars';
 import { gunAt } from '../../game/content/guns';
+import { secAt } from '../../game/content/secondaries';
 import { TRACKS } from '../../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../../game/sim';
 import { CtrlMsg, EMPTY_INPUT, InputState } from '../../shared/protocol';
@@ -33,7 +34,7 @@ export class RaceScreen implements Screen {
     // každé auto jezdí ve své barvě (i dvě stejná auta); hráč se pozná podle jmenovky a HUD ve své slotové barvě
     const entries: CarEntry[] = humans.map((p) => ({
       name: p.name, color: carColor(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
-      typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), human: true, pid: p.pid,
+      typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), sec: secAt(p.secIdx), human: true, pid: p.pid,
       // náklon telefonu dává plynulé hodnoty, klávesnice pořád jen -1/0/1
       analog: app.settings.tilt && p.pid !== KBD,
     }));
@@ -209,7 +210,7 @@ export class RaceScreen implements Screen {
           type: 'hud', pos: car.rank, total: sim.cars.length, lap: Math.min(sim.laps, Math.max(1, car.lap + 1)), laps: sim.laps,
           kills: sim.track.def.open ? car.kills : undefined,
           engine: !car.engineOff,
-          hp: Math.max(0, car.hp / car.stats.hp), nitro: car.nitro, sec: car.secType, ammo: car.secAmmo, dead: car.dead, finished: car.finished,
+          hp: Math.max(0, car.hp / car.stats.hp), nitro: car.nitro, sec: car.sec.id, ammo: car.secAmmo, dead: car.dead, finished: car.finished,
           charge: car.gun.chargeMax ? car.charge / car.gun.chargeMax : 0,
           beam: car.beamT > 0 ? car.beam / car.beamT : 0,
         });

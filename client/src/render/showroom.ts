@@ -7,8 +7,10 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { CarStats } from '../game/cars';
 import type { GunStats } from '../game/guns';
+import type { SecStats } from '../game/secondary';
 import { buildCar, CarVisual, disposeCar } from './carModel';
 import { buildGun, disposeGun, GunVisual } from './gunModel';
+import { buildSec, disposeSec, SecVisual } from './secModel';
 
 export interface PxRect { x: number; y: number; w: number; h: number }
 
@@ -221,6 +223,14 @@ export class Showroom {
     });
   }
 
+  /** Postaví na místo `i` danou sekundární zbraň (rámuje se stejně jako zbraň). */
+  setSec(i: number, sec: SecStats) {
+    this.put(i, `sec|${sec.id}`, 'gun', () => {
+      const v: SecVisual = buildSec(sec);
+      return { root: v.root, free: () => disposeSec(v) };
+    });
+  }
+
   update(dt: number) {
     this.time += dt;
     for (const s of this.slots) {
@@ -354,6 +364,14 @@ export class Showroom {
     return this.shot(`gun|${gun.id}`, 'gun', () => {
       const v: GunVisual = buildGun(gun.shape);
       return { root: v.root, free: () => disposeGun(v) };
+    }, width, height);
+  }
+
+  /** Náhled sekundární zbraně. */
+  secThumbnail(sec: SecStats, width = 320, height = 200): string {
+    return this.shot(`sec|${sec.id}`, 'gun', () => {
+      const v: SecVisual = buildSec(sec);
+      return { root: v.root, free: () => disposeSec(v) };
     }, width, height);
   }
 }
