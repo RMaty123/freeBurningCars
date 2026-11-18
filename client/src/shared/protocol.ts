@@ -20,6 +20,27 @@ export interface InputState {
 export const EMPTY_INPUT: InputState = { s: 0, b: 0, f: false, r: false, d: false };
 
 /**
+ * Vstup se po síti posílá jako jedno celé číslo, ne jako objekt – ušetří to většinu paketu
+ * (z ~60 bajtů na ~14) i práci s JSONem na obou stranách. Rozložení bitů:
+ *   bit 0 = FIRE 1, bit 1 = FIRE 2, bit 2 = drift, bity 3–6 = brzda 0–10, bity 7+ = zatáčení 0–200.
+ */
+export function packInput(i: InputState): number {
+  const s = Math.round((Math.max(-1, Math.min(1, i.s)) + 1) * 100);   // 0…200
+  const b = Math.round(Math.max(0, Math.min(1, i.b)) * 10);           // 0…10
+  return (s << 7) | (b << 3) | (i.d ? 4 : 0) | (i.r ? 2 : 0) | (i.f ? 1 : 0);
+}
+
+export function unpackInput(n: number): InputState {
+  return {
+    s: ((n >> 7) & 255) / 100 - 1,
+    b: ((n >> 3) & 15) / 10,
+    d: (n & 4) !== 0,
+    r: (n & 2) !== 0,
+    f: (n & 1) !== 0,
+  };
+}
+
+/**
  * Ovladač -> obrazovka (spolehlivé zprávy).
  * nav / select / back jsou obecné příkazy pro menu (LEFT / SELECT / RIGHT / zpět) –
  * používá je výběr tratě a půjdou použít i pro další výběry (auta, zbraně…).

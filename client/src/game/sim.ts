@@ -34,6 +34,8 @@ export interface Car {
   /** řídí ho člověk? (když ne nebo když dojel, řídí AI) */
   human: boolean;
   pid: string | null;
+  /** zatáčí plynule (náklon telefonu) */
+  analog: boolean;
   ai: AIState;
   input: CarInput;
 
@@ -131,6 +133,8 @@ export interface CarEntry {
   gun: GunStats;
   human: boolean;
   pid: string | null;
+  /** plynulé zatáčení (náklon telefonu) – volant se pak smí otáčet rychleji než u tlačítek */
+  analog?: boolean;
 }
 
 export interface SimOptions {
@@ -241,7 +245,7 @@ export class Sim {
       const car: Car = {
         id: entries.indexOf(e),
         name: e.name, color: e.color, tagColor: e.tagColor, typeIdx: e.typeIdx, stats: e.stats,
-        human: e.human, pid: e.pid,
+        human: e.human, pid: e.pid, analog: !!e.analog,
         ai: newAI(this.rnd, skill),
         input: { steer: 0, throttle: 0, brake: 0, fire: false, secondary: false, drift: false },
         x: track.x[ti] + track.nx[ti] * off,
@@ -416,8 +420,10 @@ export class Sim {
 
     const inp = c.input;
     const steerIn = clamp(inp.steer, -1, 1);
-    // volant: do zatáčky pomaleji, zpět rychleji
-    const sr = Math.abs(steerIn) < Math.abs(c.steer) || steerIn * c.steer < 0 ? 8 : 5;
+    // Volant: u tlačítek se do zatáčky otáčí pomaleji a zpět rychleji (tlačítko dává jen -1/0/1,
+    // rampa tedy dělá plynulost za hráče). Náklon telefonu je plynulý sám, tak se jen mírně
+    // tlumí skoky po ztraceném paketu – jinak by rampa přidala až dvě desetiny vteřiny zpoždění.
+    const sr = c.analog ? 24 : Math.abs(steerIn) < Math.abs(c.steer) || steerIn * c.steer < 0 ? 8 : 5;
     c.steer = approach(c.steer, steerIn, sr * dt);
 
     let fx = Math.sin(c.h), fz = Math.cos(c.h);

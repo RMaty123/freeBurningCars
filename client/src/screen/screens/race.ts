@@ -34,6 +34,8 @@ export class RaceScreen implements Screen {
     const entries: CarEntry[] = humans.map((p) => ({
       name: p.name, color: carColor(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
       typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), human: true, pid: p.pid,
+      // náklon telefonu dává plynulé hodnoty, klávesnice pořád jen -1/0/1
+      analog: app.settings.tilt && p.pid !== KBD,
     }));
     // AI soupeři: kolik si hráči nastavili v lobby (0 = jedou jen lidi), ať se vejdou na start
     const bots = Math.max(0, Math.min(app.settings.bots, MAX_CARS - humans.length));

@@ -46,6 +46,8 @@ function newRoomCode(): string {
 async function main() {
   const app = express();
   const http = createServer(app);
+  // Nagle slučuje malé pakety a přidal by vstupům z telefonu i desítky ms – vypnout.
+  http.on('connection', (s) => s.setNoDelay(true));
   const io = new Server(http, {
     // malé zprávy, žádná komprese = menší latence
     perMessageDeflate: false,
@@ -133,8 +135,9 @@ async function main() {
     });
 
     // Vstupy z ovladače (plyn, zatáčení…) – "volatile": zastaralý paket se klidně zahodí.
-    socket.on('ctrl:input', (d: unknown) => {
-      if (role === 'ctrl' && room?.host) room.host.volatile.emit('player:input', { pid, d });
+    // Jméno události je krátké a vstup je jedno číslo, ať je paket co nejmenší (latence).
+    socket.on('i', (n: unknown) => {
+      if (role === 'ctrl' && room?.host && typeof n === 'number') room.host.volatile.emit('i', pid, n);
     });
     // Ostatní zprávy z ovladače (výběr auta, start…) – spolehlivě.
     socket.on('ctrl:msg', (m: unknown) => {

@@ -7,7 +7,7 @@ import { io, Socket } from 'socket.io-client';
 import { PLAYER_COLORS, hexCss } from '../game/cars';
 import { DEFAULT_GUN } from '../game/content/guns';
 import { CAR_TYPES } from '../game/content/cars';
-import { CtrlMsg, EMPTY_INPUT, HostMsg, InputState, MenuInfo, Phase } from '../shared/protocol';
+import { CtrlMsg, EMPTY_INPUT, HostMsg, InputState, MenuInfo, Phase, unpackInput } from '../shared/protocol';
 
 export const MAX_PLAYERS = 4;
 /** pid hráče na klávesnici u PC */
@@ -113,9 +113,9 @@ export class Session {
       this.changed();
     });
 
-    s.on('player:input', ({ pid, d }: { pid: string; d: InputState }) => {
+    s.on('i', (pid: string, n: number) => {
       const p = this.players.get(pid);
-      if (p && d) p.input = d;
+      if (p && typeof n === 'number') p.input = unpackInput(n);
     });
 
     s.on('player:msg', ({ pid, m }: { pid: string; m: CtrlMsg }) => {

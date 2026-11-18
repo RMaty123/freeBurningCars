@@ -180,6 +180,17 @@ scripts/simtest.ts           test simulace bez grafiky
 
 Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přeposílá zprávy.
 
+### Cesta vstupu z telefonu (proč je odezva krátká)
+
+Ovladač → server → obrazovka → simulace. Na každém kroku se škrtalo, co se dalo:
+
+1. **Telefon počítá v obsluze senzoru**, ne v časovači – mezi pohybem a odeslením není žádné čekání na další tik.
+2. **Adaptivní filtr** (`deviceorientation`): v klidu hladí silně, při pohybu se otevře. Skok na plný rejd je na 90 % za ~60 ms, při reálném otočení rukou (~250 ms) nepřidá prakticky nic.
+3. **Jeden malý paket**: celý stav ovladače (zatáčení, brzda, tři tlačítka) se balí do jednoho čísla (`packInput` / `unpackInput` v `shared/protocol.ts`) a posílá se událostí `i` – paket má ~14 B místo ~60 B a nic se nestringifikuje. Posílá se jen při změně, v klidu drží pojistka 8 paketů/s, při plném kroucení volantem ~40/s.
+4. **Volatile emit**: zastaralý paket se zahodí, místo aby se tlačil ve frontě za novějším.
+5. **Vypnutý Nagle** na serveru (`setNoDelay`) – jinak by TCP malé pakety slučoval a přidal desítky ms. Komprese je vypnutá taky.
+6. **Simulace bere vstup hned**: `beforeStep` přepíše vstupy aut těsně před krokem fyziky (max jeden snímek zpoždění) a u plynulého zatáčení (náklon) se volant smí otáčet 24/s místo 5/s, takže rampa, která u tlačítek dělá plynulost za hráče, nepřidává až dvě desetiny vteřiny.
+
 ### Jak se to rozšiřuje
 
 - **Nová trať:** další záznam v `game/content/tracks.ts`. Karta ve výběru, náhled i obrys vzniknou samy.

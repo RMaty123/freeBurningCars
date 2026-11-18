@@ -9,7 +9,7 @@
  * Stav tlačítek se posílá na obrazovku přes Socket.IO.
  */
 import { io } from 'socket.io-client';
-import type { CtrlMsg, HostMsg, InputState, Phase, PickKind } from '../shared/protocol';
+import { packInput, type CtrlMsg, type HostMsg, type InputState, type Phase, type PickKind } from '../shared/protocol';
 import { keepScreenAwake } from '../shared/wakeLock';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -367,16 +367,20 @@ tap('cs-back', () => send({ type: 'back' }));
  *               telefon; počítá se jen odchylka od téhle nuly, takže je jedno, jestli leží nebo stojí.
  *  3) křivka  – do TILT_DEAD° se nezatáčí vůbec (klid v rukou), TILT_FULL° je plný rejd a mezi tím
  *               mocnina TILT_CURVE, aby byl střed jemný a kraje svižné.
- *  4) hlazení – exponenciální filtr s časovou konstantou TILT_SMOOTH zabije chvění senzoru.
- *  5) odesílání – hodnota se zaokrouhlí na 0,02 a posílá se jen při změně (max ~30× za vteřinu).
+ *  4) hlazení – adaptivní filtr (á la "1€"): když telefon leží v klidu, hladí silně (klid v ruce),
+ *               jakmile s ním hneš, se otevře a skoro nezpožďuje. Pevný filtr by buď šuměl, nebo zpožďoval.
+ *  5) odesílání – počítá se rovnou v obsluze senzoru (žádné čekání na časovač), hodnota se zaokrouhlí
+ *               na 0,02 a pošle jen při změně – jeden malý paket, nejvýš tolikrát, kolikrát tiká senzor.
  *  6) pojistka – když do 1,8 s nepřijde ze senzoru nic (nepovolený přístup, chybí HTTPS, starý telefon),
  *               ovladač se sám vrátí k tlačítkům a napíše proč.
  */
 const TILT_DEAD = 3;        // ° kolem nuly, kde se ještě nezatáčí
 const TILT_FULL = 26;       // ° = plný rejd
 const TILT_CURVE = 1.35;    // > 1 = jemnější střed
-const TILT_SMOOTH = 0.07;   // s – časová konstanta vyhlazení
 const TILT_STEP = 1 / 50;   // na kolik se zaokrouhluje posílaná hodnota
+const TILT_CUT = 2.5;       // Hz – mez filtru v klidu (silnější hlazení)
+const TILT_BETA = 0.06;     // o kolik se filtr otevře na každý °/s pohybu
+const TILT_DCUT = 1.0;      // Hz – hlazení odhadu rychlosti
 
 let tiltMode = false;       // typ hry zvolený na obrazovce
 let tiltLive = false;       // senzor opravdu posílá data
@@ -385,6 +389,7 @@ let tiltRaw = 0;            // poslední úhel ze senzoru (°)
 let tiltZero = 0;           // srovnaná nula
 let tiltVal = 0;            // vyhlazený výstup -1…1
 let tiltSeen = 0;           // čas posledního vzorku
+let oeAng = 0, oeVel = 0, oeT = 0, oeReady = false; // stav adaptivního filtru
 let tiltFlip = store('fbc-tilt-flip') === '1' ? -1 : 1;
 let tiltDenied = false;      // povolení senzoru zamítnuto – nezkoušíme to pak při každém ťuknutí
 
@@ -401,13 +406,36 @@ function tiltAngle(e: OrientEvt): number | null {
   return e.gamma;
 }
 
+/** Adaptivní filtr: v klidu hladí, při pohybu pouští signál skoro bez zpoždění. */
+function tiltFilter(raw: number, dt: number): number {
+  const a = (cut: number) => 1 / (1 + 1 / (2 * Math.PI * cut * dt));
+  if (!oeReady) { oeReady = true; oeAng = raw; oeVel = 0; return raw; }
+  const vel = (raw - oeAng) / dt;
+  oeVel += a(TILT_DCUT) * (vel - oeVel);
+  oeAng += a(TILT_CUT + TILT_BETA * Math.abs(oeVel)) * (raw - oeAng);
+  return oeAng;
+}
+
 function onOrient(e: OrientEvt) {
   const ang = tiltAngle(e);
   if (ang == null) return;
-  if (!tiltSeen) { tiltZero = ang; tiltNote('', ''); }
-  tiltSeen = performance.now();
+  const now = performance.now();
+  if (!tiltSeen) { tiltZero = ang; oeReady = false; tiltNote('', ''); }
+  const dt = Math.min(0.1, Math.max(0.004, (now - oeT) / 1000 || 0.016));
+  oeT = now;
+  tiltSeen = now;
   tiltRaw = ang;
   if (!tiltLive) { tiltLive = true; applyPad(); tiltNote('náklon zapnutý ✓', 'ok'); }
+  // hodnota se počítá i posílá hned tady – žádný časovač mezi senzorem a sítí
+  const d = (tiltFilter(ang, dt) - tiltZero) * tiltFlip;
+  const mag = Math.min(1, Math.max(0, Math.abs(d) - TILT_DEAD) / (TILT_FULL - TILT_DEAD));
+  tiltVal = Math.sign(d) * Math.pow(mag, TILT_CURVE);
+  const q = Math.round(tiltVal / TILT_STEP) * TILT_STEP;
+  if (q !== input.s) {
+    input.s = q;
+    flush(false);
+    $('t-bubble').style.transform = `translateX(${(q * 230).toFixed(1)}%)`;
+  }
 }
 
 function tiltNote(text: string, cls: 'ok' | 'bad' | '') {
@@ -451,7 +479,10 @@ async function tiltEnable(fromTap: boolean) {
 
 /** Zapamatuje si, jak hráč zrovna drží telefon – od téhle polohy se počítá zatáčení. */
 function tiltZeroNow() {
-  if (tiltLive) { tiltZero = tiltRaw; tiltVal = 0; }
+  if (!tiltLive) return;
+  tiltZero = tiltRaw;
+  tiltVal = 0;
+  oeReady = false; // filtr začne od nové polohy, ať se nula nepřitahuje ze starého stavu
 }
 
 function setTiltMode(on: boolean) {
@@ -481,23 +512,15 @@ function tiltOn(): boolean {
   return tiltMode && tiltLive;
 }
 
-// vyhlazení + odesílání (30× za vteřinu stačí, sim stejně běží na 60 a hodnotu si dointerpoluje)
+// hlídač: kdyby senzor zmlkl (vypnutá obrazovka, odepřené povolení), vrať se k tlačítkům
 setInterval(() => {
-  if (!tiltOn()) return;
-  if (performance.now() - tiltSeen > 1500) { tiltFail('Senzor přestal posílat náklon.'); return; }
-  const d = (tiltRaw - tiltZero) * tiltFlip;
-  const mag = Math.min(1, Math.max(0, Math.abs(d) - TILT_DEAD) / (TILT_FULL - TILT_DEAD));
-  const target = Math.sign(d) * Math.pow(mag, TILT_CURVE);
-  tiltVal += (target - tiltVal) * (1 - Math.exp(-0.033 / TILT_SMOOTH));
-  const q = Math.round(tiltVal / TILT_STEP) * TILT_STEP;
-  $('t-bubble').style.transform = `translateX(${(q * 230).toFixed(1)}%)`;
-  if (q !== input.s) { input.s = q; flush(false); }
-}, 33);
+  if (tiltOn() && performance.now() - tiltSeen > 1500) tiltFail('Senzor přestal posílat náklon.');
+}, 500);
 
 // ------------------------------------------------------------------ řízení (multi-touch)
 type Key = 'f' | 'd' | 'r' | 'left' | 'b' | 'right';
 const input: InputState = { s: 0, b: 0, f: false, r: false, d: false };
-let lastSent = '';
+let lastSent = -1;
 let lastSentAt = 0;
 const pointers = new Map<number, { x: number; y: number }>();
 const pad = $('pad');
@@ -543,11 +566,12 @@ function recompute() {
 
 function flush(force: boolean) {
   if (!joined || (phase !== 'race' && phase !== 'countdown')) return;
-  const s = JSON.stringify(input);
-  const now = performance.now();
-  if (!force && s === lastSent) return;
-  lastSent = s; lastSentAt = now;
-  socket.volatile.emit('ctrl:input', input);
+  // celý stav ovladače je jedno číslo – nic se nestringifikuje a paket je pár bajtů
+  const n = packInput(input);
+  if (!force && n === lastSent) return;
+  lastSent = n;
+  lastSentAt = performance.now();
+  socket.volatile.emit('i', n);
 }
 
 function resetInput() {
@@ -555,7 +579,8 @@ function resetInput() {
   input.s = 0; input.b = 0; input.f = false; input.r = false; input.d = false;
   tiltVal = 0;
   btns.forEach((b) => b.el.classList.remove('on'));
-  if (joined) socket.emit('ctrl:input', input);
+  lastSent = packInput(input);
+  if (joined) socket.emit('i', lastSent); // puštěná tlačítka se musí doručit vždycky
 }
 
 pad.addEventListener('pointerdown', (e) => {
