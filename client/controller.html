@@ -32,7 +32,12 @@
     <div id="master-box">
       <div class="row"><button id="laps-dec" class="arrow sm">−</button><div class="val"><small>KOLA</small><b id="l-laps">3</b></div><button id="laps-inc" class="arrow sm">+</button></div>
       <div class="row"><button id="bots-dec" class="arrow sm">−</button><div class="val"><small>SOUPEŘI (AI)</small><b id="l-bots">5</b></div><button id="bots-inc" class="arrow sm">+</button></div>
+      <button id="tilt-btn" class="rowbtn">ZATÁČENÍ: <b id="tilt-mode">TLAČÍTKA</b></button>
       <button id="start" class="big">VYBRAT TRAŤ ▶</button>
+    </div>
+    <div id="tilt-box" hidden>
+      <button id="tilt-allow" class="rowbtn">ZAPNOUT NÁKLON</button>
+      <p id="tilt-note" class="wait"></p>
     </div>
     <p id="l-wait" class="wait">Čekej, až první hráč vybere trať…</p>
   </section>
@@ -85,6 +90,14 @@
       <div class="btn arrow-l" id="b-left"><b>LEFT</b></div>
       <div class="btn brake" id="b-brake"><span><b>BRAKE</b></span></div>
       <div class="btn arrow-r" id="b-right"><b>RIGHT</b></div>
+      <!-- prostředek při zatáčení náklonem: jméno, ukazatel natočení a srovnání nuly -->
+      <div class="tiltbar" id="tiltbar">
+        <b id="t-name">HRÁČ</b>
+        <div class="gauge"><i id="t-bubble"></i></div>
+        <button class="tilt-ui" id="t-zero">SROVNAT</button>
+        <button class="tilt-ui small" id="t-flip">⇄ STRANY</button>
+        <small class="tilt-ui" id="t-note"></small>
+      </div>
     </div>
     <div class="overlay" id="pad-overlay"></div>
   </section>

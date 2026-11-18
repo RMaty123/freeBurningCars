@@ -52,6 +52,8 @@ export interface SessionHooks {
   phase(): Phase;
   laps(): number;
   bots(): number;
+  /** typ hry: zatáčí se náklonem telefonu? */
+  tilt(): boolean;
   /** popisek pro menu na ovladači (jen ve fázích s menu) */
   menu(): MenuInfo | undefined;
   onRoom(info: RoomInfo): void;
@@ -201,6 +203,7 @@ export class Session {
       waiting,
       laps: this.hooks.laps(),
       bots: this.hooks.bots(),
+      tilt: this.hooks.tilt(),
       menu: this.hooks.menu(),
     };
   }

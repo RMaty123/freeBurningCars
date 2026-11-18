@@ -26,6 +26,8 @@ export const EMPTY_INPUT: InputState = { s: 0, b: 0, f: false, r: false, d: fals
  */
 export type CtrlMsg =
   | { type: 'laps'; dir: 1 | -1 }
+  /** přepnutí způsobu zatáčení (tlačítka / náklon telefonu) – smí jen první hráč */
+  | { type: 'tilt' }
   /** počet AI soupeřů (0 = jede se jen s lidmi) */
   | { type: 'bots'; dir: 1 | -1 }
   | { type: 'nav'; dir: 1 | -1 }
@@ -72,6 +74,8 @@ export type HostMsg =
       laps: number;
       /** kolik AI soupeřů pojede */
       bots: number;
+      /** typ hry: true = zatáčí se náklonem telefonu, false = tlačítky LEFT/RIGHT */
+      tilt: boolean;
       /** vyplněno ve fázích s menu (výběr tratě…) */
       menu?: MenuInfo;
     }

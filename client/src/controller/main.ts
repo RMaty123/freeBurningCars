@@ -1,6 +1,8 @@
 /**
  * Free Burning Cars – ovladač (telefon).
  * V závodě: plyn drží hra sama, tlačítka FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa), LEFT, BRAKE, RIGHT.
+ * Druhý typ hry ("náklon"): LEFT/RIGHT zmizí, zatáčí se nakláněním telefonu jako volantem
+ * (viz blok "zatáčení náklonem" níž) a pad má jen FIRE 1 | FIRE 2 nahoře a DRIFT | BRAKE dole.
  * V menu (výběr tratě…): LEFT / SELECT / RIGHT / zpět – co se vybírá, říká obrazovka (HostMsg.menu).
  * Výběr auta i zbraně (FIRE 1): stejná obrazovka – lišta (zpět | jméno | potvrzení) a mřížka;
  * nabídku s náhledy posílá obrazovka. Ťuknutím vybereš, tlačítkem POTVRDIT potvrdíš.
@@ -44,6 +46,8 @@ function show(id: ScreenId) {
   // 'playing' = obrazovky s tlačítky přes celou plochu (žádné posouvání stránky prstem)
   document.body.classList.toggle('playing', id === 's-pad' || id === 's-menu');
   if (id !== 's-pad') resetInput();
+  // při vstupu do závodu si zapamatuj, jak hráč drží telefon (a zkus zapnout senzor, kdyby čekal na dotyk)
+  if (id === 's-pad') { void tiltEnable(false); tiltZeroNow(); }
 }
 
 function send(m: CtrlMsg) { socket.emit('ctrl:msg', m); }
@@ -207,6 +211,8 @@ socket.on('host:msg', (m: HostMsg) => {
     $('l-slot').textContent = 'hráč ' + (m.slot + 1);
     $('l-laps').textContent = String(m.laps);
     $('l-bots').textContent = m.bots ? String(m.bots) : 'žádní';
+    setTiltMode(m.tilt);
+    $('t-name').textContent = m.name;
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
     const wait = $('l-wait');
     wait.style.display = m.master && !m.waiting ? 'none' : '';
@@ -259,11 +265,21 @@ socket.on('host:msg', (m: HostMsg) => {
 
 // ------------------------------------------------------------------ lobby tlačítka
 const tap = (id: string, fn: () => void) => $(id).addEventListener('click', fn);
+const vibe = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* iPhone vibrace neumí */ } };
 tap('laps-dec', () => send({ type: 'laps', dir: -1 }));
 tap('laps-inc', () => send({ type: 'laps', dir: 1 }));
 tap('bots-dec', () => send({ type: 'bots', dir: -1 }));
 tap('bots-inc', () => send({ type: 'bots', dir: 1 }));
 tap('start', () => send({ type: 'select' }));
+tap('tilt-btn', () => send({ type: 'tilt' }));
+tap('tilt-allow', () => { tiltDenied = false; void tiltEnable(true); });
+tap('t-zero', () => { tiltZeroNow(); vibe(30); });
+tap('t-flip', () => {
+  tiltFlip = -tiltFlip;
+  store('fbc-tilt-flip', tiltFlip < 0 ? '1' : '0');
+  tiltZeroNow();
+  vibe(30);
+});
 tap('continue', () => send({ type: 'select' }));
 
 // ------------------------------------------------------------------ menu (výběr tratě…)
@@ -342,6 +358,142 @@ tap('cs-confirm', () => { pickReady = true; renderPick(); send({ type: 'ready', 
 tap('cs-change', () => { pickReady = false; renderPick(); send({ type: 'ready', on: false }); });
 tap('cs-back', () => send({ type: 'back' }));
 
+// ------------------------------------------------------------------ zatáčení náklonem (gyroskop)
+/*
+ * Jak to funguje:
+ *  1) senzor  – 'deviceorientation' dá beta/gamma; podle natočení obrazovky (screen.orientation.angle)
+ *               z nich vybereme úhel, o který je telefon natočený kolem osy pohledu (jako volant).
+ *  2) nula    – při zapnutí (a tlačítkem SROVNAT nebo na startu závodu) si zapamatujeme, jak hráč drží
+ *               telefon; počítá se jen odchylka od téhle nuly, takže je jedno, jestli leží nebo stojí.
+ *  3) křivka  – do TILT_DEAD° se nezatáčí vůbec (klid v rukou), TILT_FULL° je plný rejd a mezi tím
+ *               mocnina TILT_CURVE, aby byl střed jemný a kraje svižné.
+ *  4) hlazení – exponenciální filtr s časovou konstantou TILT_SMOOTH zabije chvění senzoru.
+ *  5) odesílání – hodnota se zaokrouhlí na 0,02 a posílá se jen při změně (max ~30× za vteřinu).
+ *  6) pojistka – když do 1,8 s nepřijde ze senzoru nic (nepovolený přístup, chybí HTTPS, starý telefon),
+ *               ovladač se sám vrátí k tlačítkům a napíše proč.
+ */
+const TILT_DEAD = 3;        // ° kolem nuly, kde se ještě nezatáčí
+const TILT_FULL = 26;       // ° = plný rejd
+const TILT_CURVE = 1.35;    // > 1 = jemnější střed
+const TILT_SMOOTH = 0.07;   // s – časová konstanta vyhlazení
+const TILT_STEP = 1 / 50;   // na kolik se zaokrouhluje posílaná hodnota
+
+let tiltMode = false;       // typ hry zvolený na obrazovce
+let tiltLive = false;       // senzor opravdu posílá data
+let tiltListening = false;
+let tiltRaw = 0;            // poslední úhel ze senzoru (°)
+let tiltZero = 0;           // srovnaná nula
+let tiltVal = 0;            // vyhlazený výstup -1…1
+let tiltSeen = 0;           // čas posledního vzorku
+let tiltFlip = store('fbc-tilt-flip') === '1' ? -1 : 1;
+let tiltDenied = false;      // povolení senzoru zamítnuto – nezkoušíme to pak při každém ťuknutí
+
+type OrientEvt = DeviceOrientationEvent;
+type PermDOE = typeof DeviceOrientationEvent & { requestPermission?: () => Promise<'granted' | 'denied'> };
+
+/** Úhel natočení telefonu kolem osy pohledu, přepočtený podle toho, jak je otočená obrazovka. */
+function tiltAngle(e: OrientEvt): number | null {
+  if (e.beta == null || e.gamma == null) return null;
+  const a = screen.orientation?.angle ?? (window as unknown as { orientation?: number }).orientation ?? 0;
+  if (a === 90) return e.beta;
+  if (a === 270 || a === -90) return -e.beta;
+  if (a === 180) return -e.gamma;
+  return e.gamma;
+}
+
+function onOrient(e: OrientEvt) {
+  const ang = tiltAngle(e);
+  if (ang == null) return;
+  if (!tiltSeen) { tiltZero = ang; tiltNote('', ''); }
+  tiltSeen = performance.now();
+  tiltRaw = ang;
+  if (!tiltLive) { tiltLive = true; applyPad(); tiltNote('náklon zapnutý ✓', 'ok'); }
+}
+
+function tiltNote(text: string, cls: 'ok' | 'bad' | '') {
+  const l = $('tilt-note'), p = $('t-note');
+  l.textContent = text; l.className = 'wait ' + cls;
+  p.textContent = cls === 'bad' ? text : '';
+  $('tilt-allow').hidden = tiltLive; // když senzor jede, není co povolovat
+}
+
+function tiltFail(why: string) {
+  tiltLive = false;
+  tiltListening = false;
+  window.removeEventListener('deviceorientation', onOrient);
+  input.s = 0;
+  tiltNote(why + ' Jedeš na tlačítka.', 'bad');
+  applyPad();
+}
+
+/** Zapne poslouchání senzoru. Na iOS to jde jen jako reakce na dotyk, proto fromTap. */
+async function tiltEnable(fromTap: boolean) {
+  if (!tiltMode || tiltListening) return;
+  const DOE = window.DeviceOrientationEvent as PermDOE | undefined;
+  if (!DOE) { tiltFail('Telefon neumí číst náklon.'); return; }
+  if (typeof DOE.requestPermission === 'function') {
+    // prohlížeč se musí zeptat na povolení a smí to jen po dotyku
+    if (!fromTap) { tiltNote('Ťukni na ZAPNOUT NÁKLON – telefon se zeptá na povolení.', ''); return; }
+    try {
+      if (await DOE.requestPermission() !== 'granted') { tiltDenied = true; tiltFail('Přístup k pohybovým senzorům je zakázaný.'); return; }
+    } catch { tiltFail('Přístup k senzorům se nepodařilo vyžádat.'); return; }
+  }
+  tiltListening = true;
+  tiltSeen = 0;
+  window.addEventListener('deviceorientation', onOrient);
+  tiltNote('zapínám náklon…', '');
+  setTimeout(() => {
+    if (tiltListening && !tiltSeen) {
+      tiltFail(window.isSecureContext ? 'Telefon náklon neposílá.' : 'Prohlížeč pustí náklon jen přes HTTPS.');
+    }
+  }, 1800);
+}
+
+/** Zapamatuje si, jak hráč zrovna drží telefon – od téhle polohy se počítá zatáčení. */
+function tiltZeroNow() {
+  if (tiltLive) { tiltZero = tiltRaw; tiltVal = 0; }
+}
+
+function setTiltMode(on: boolean) {
+  $('tilt-mode').textContent = on ? 'NÁKLON' : 'TLAČÍTKA';
+  $('tilt-btn').hidden = !isMaster;
+  $('tilt-box').hidden = !on;
+  if (on === tiltMode) { if (on) void tiltEnable(false); return; }
+  tiltMode = on;
+  if (on) void tiltEnable(false);
+  else {
+    tiltListening = false;
+    tiltLive = false;
+    window.removeEventListener('deviceorientation', onOrient);
+    tiltNote('', '');
+  }
+  applyPad();
+}
+
+/** Pad má dvě podoby: klasickou (6 tlačítek) a náklonovou (4 tlačítka + ukazatel). */
+function applyPad() {
+  pad.classList.toggle('tilt', tiltOn());
+  resetInput();
+}
+
+/** Jede se na náklon? (Jen když to obrazovka chce a senzor opravdu posílá data.) */
+function tiltOn(): boolean {
+  return tiltMode && tiltLive;
+}
+
+// vyhlazení + odesílání (30× za vteřinu stačí, sim stejně běží na 60 a hodnotu si dointerpoluje)
+setInterval(() => {
+  if (!tiltOn()) return;
+  if (performance.now() - tiltSeen > 1500) { tiltFail('Senzor přestal posílat náklon.'); return; }
+  const d = (tiltRaw - tiltZero) * tiltFlip;
+  const mag = Math.min(1, Math.max(0, Math.abs(d) - TILT_DEAD) / (TILT_FULL - TILT_DEAD));
+  const target = Math.sign(d) * Math.pow(mag, TILT_CURVE);
+  tiltVal += (target - tiltVal) * (1 - Math.exp(-0.033 / TILT_SMOOTH));
+  const q = Math.round(tiltVal / TILT_STEP) * TILT_STEP;
+  $('t-bubble').style.transform = `translateX(${(q * 230).toFixed(1)}%)`;
+  if (q !== input.s) { input.s = q; flush(false); }
+}, 33);
+
 // ------------------------------------------------------------------ řízení (multi-touch)
 type Key = 'f' | 'd' | 'r' | 'left' | 'b' | 'right';
 const input: InputState = { s: 0, b: 0, f: false, r: false, d: false };
@@ -355,20 +507,34 @@ const btns: { el: HTMLElement; key: Key }[] = [
   { el: $('b-left'), key: 'left' }, { el: $('b-brake'), key: 'b' }, { el: $('b-right'), key: 'right' },
 ];
 
+/** V náklonovém padu jsou čtyři kvadranty: FIRE 1 | FIRE 2 nahoře, DRIFT | BRAKE dole. */
+const TILT_KEYS: Key[] = ['f', 'r', 'd', 'b'];
+
 function recompute() {
   const down: Record<Key, boolean> = { f: false, d: false, r: false, left: false, b: false, right: false };
-  const rects = btns.map((b) => b.el.getBoundingClientRect());
-  // hranice sloupců a řádků leží uprostřed mezer, takže mezi tlačítky není hluché místo
-  const colA = (rects[0].right + rects[1].left) / 2, colB = (rects[1].right + rects[2].left) / 2;
-  const rowY = (rects[1].bottom + rects[4].top) / 2;
-  const top = pad.getBoundingClientRect().top;
-  for (const p of pointers.values()) {
-    if (p.y < top) continue;
-    const col = p.x < colA ? 0 : p.x < colB ? 1 : 2;
-    const row = p.y < rowY ? 0 : 1;
-    down[btns[row * 3 + col].key] = true;
+  const box = pad.getBoundingClientRect();
+  if (tiltOn()) {
+    // hranice vede středem mezery mezi řadami, takže nikde není hluché místo
+    const fr = btns[0].el.getBoundingClientRect(), dr = btns[1].el.getBoundingClientRect();
+    const rowY = (fr.bottom + dr.top) / 2, colX = box.left + box.width / 2;
+    for (const p of pointers.values()) {
+      if (p.y < box.top) continue;
+      down[TILT_KEYS[(p.y < rowY ? 0 : 2) + (p.x < colX ? 0 : 1)]] = true;
+    }
+    // input.s drží náklon, tlačítka do zatáčení nemluví
+  } else {
+    const rects = btns.map((b) => b.el.getBoundingClientRect());
+    // hranice sloupců a řádků leží uprostřed mezer, takže mezi tlačítky není hluché místo
+    const colA = (rects[0].right + rects[1].left) / 2, colB = (rects[1].right + rects[2].left) / 2;
+    const rowY = (rects[1].bottom + rects[4].top) / 2;
+    for (const p of pointers.values()) {
+      if (p.y < box.top) continue;
+      const col = p.x < colA ? 0 : p.x < colB ? 1 : 2;
+      const row = p.y < rowY ? 0 : 1;
+      down[btns[row * 3 + col].key] = true;
+    }
+    input.s = (down.right ? 1 : 0) - (down.left ? 1 : 0);
   }
-  input.s = (down.right ? 1 : 0) - (down.left ? 1 : 0);
   input.b = down.b ? 1 : 0;
   input.f = down.f; input.r = down.r; input.d = down.d;
   btns.forEach((b) => b.el.classList.toggle('on', down[b.key]));
@@ -387,11 +553,18 @@ function flush(force: boolean) {
 function resetInput() {
   pointers.clear();
   input.s = 0; input.b = 0; input.f = false; input.r = false; input.d = false;
+  tiltVal = 0;
   btns.forEach((b) => b.el.classList.remove('on'));
   if (joined) socket.emit('ctrl:input', input);
 }
 
-pad.addEventListener('pointerdown', (e) => { e.preventDefault(); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); recompute(); });
+pad.addEventListener('pointerdown', (e) => {
+  // SROVNAT / ⇄ uprostřed jsou normální tlačítka, ne část volantu
+  if ((e.target as HTMLElement).closest('.tilt-ui')) return;
+  e.preventDefault();
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  recompute();
+});
 pad.addEventListener('pointermove', (e) => {
   const p = pointers.get(e.pointerId);
   if (!p) return;
@@ -402,6 +575,9 @@ const up = (e: PointerEvent) => { pointers.delete(e.pointerId); recompute(); };
 pad.addEventListener('pointerup', up);
 pad.addEventListener('pointercancel', up);
 pad.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') up(e); });
+
+// iOS pustí senzory jen po ťuknutí – zkusíme to při prvním dotyku kdekoli
+document.addEventListener('pointerdown', () => { if (tiltMode && !tiltListening && !tiltDenied) void tiltEnable(true); }, { capture: true });
 
 // pojistka: stav se pravidelně opakuje (kdyby se nějaký paket ztratil)
 setInterval(() => { if (performance.now() - lastSentAt > 120) flush(true); }, 60);

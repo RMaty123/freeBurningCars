@@ -65,6 +65,10 @@ Na počítači to jede přes `http://localhost:3000`. Kdyby prohlížeč Wake Lo
 
 **Telefon (na šířku):** nahoře FIRE 1 (vybraná zbraň), DRIFT, FIRE 2 (raketa); dole LEFT, BRAKE (podržením couvá), RIGHT.
 
+**Dva typy hry – čím se zatáčí.** V lobby se klávesou `T` (nebo tlačítkem ZATÁČENÍ na telefonu prvního hráče) přepíná mezi *tlačítky* a *náklonem*. Při náklonu se telefon drží na šířku a naklání jako volant; pad se promění na čtyři velká tlačítka (FIRE 1 | FIRE 2 nahoře, DRIFT | BRAKE dole) a uprostřed je vodováha, tlačítko **SROVNAT** (zapamatuje si, jak telefon zrovna držíš – od téhle polohy se měří) a **⇄ STRANY** (otočí smysl zatáčení, kdyby ho telefon hlásil obráceně).
+
+Náklon čte `deviceorientation`: ±3° kolem nuly je klid, ±26° je plný rejd, mezi tím mocninná křivka (jemný střed), výstup se vyhlazuje filtrem s konstantou 70 ms a posílá se zaokrouhlený na 0,02 maximálně 30× za vteřinu. Nula se nastaví při zapnutí a znovu na začátku každého závodu. Prohlížeče pouští senzory jen po povolení (na iPhonu je k tomu tlačítko ZAPNOUT NÁKLON v lobby) a **jen na HTTPS nebo localhostu** – když senzor do 1,8 s nic nepošle, ovladač se sám vrátí k tlačítkům a napíše proč.
+
 **Klávesnice:**
 
 | Klávesa | Akce |
@@ -75,6 +79,8 @@ Na počítači to jede přes `http://localhost:3000`. Kdyby prohlížeč Wake Lo
 | W (nebo SHIFT) | drift |
 | E (nebo F) | raketa |
 | ESC | ukončit závod |
+
+V lobby navíc: `L` kola, `B` počet AI, `O` obtížnost, `T` typ hry (tlačítka / náklon), `N` síťovka v QR kódu.
 
 Levá ruka tak drží celé ovládání na **Q W A S D** – palec má volný mezerník jako druhou možnost pro střelbu.
 

@@ -70,7 +70,7 @@ export class App {
   readonly hud = new Hud();
   readonly audio = new GameAudio();
   readonly session: Session;
-  readonly settings = { trackIdx: 0, laps: 3, diff: 1, bots: TOTAL_CARS - 1 };
+  readonly settings = { trackIdx: 0, laps: 3, diff: 1, bots: TOTAL_CARS - 1, tilt: false };
   /** právě běžící simulace (závod, nebo ukázka AI na pozadí menu) */
   sim: Sim | null = null;
   phase: Phase = 'lobby';
@@ -99,6 +99,7 @@ export class App {
       phase: () => this.phase,
       laps: () => this.settings.laps,
       bots: () => this.settings.bots,
+      tilt: () => this.settings.tilt,
       menu: () => this.current?.menu?.(),
       onRoom: (info) => { this.roomInfo = info; for (const s of Object.values(this.screens)) s.onRoom?.(info); },
       onJoin: (p, isNew) => { if (isNew) this.audio.ui(); this.current?.playerJoined?.(p, isNew); },

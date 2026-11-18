@@ -109,6 +109,10 @@ export class LobbyScreen implements Screen {
     if (m.type === 'laps' && isMaster) {
       app.settings.laps = Math.max(1, Math.min(9, app.settings.laps + m.dir));
       app.audio.ui();
+    } else if (m.type === 'tilt' && isMaster) {
+      app.settings.tilt = !app.settings.tilt;
+      app.audio.ui();
+      this.refresh();
     } else if (m.type === 'bots' && isMaster) {
       app.settings.bots = Math.max(0, Math.min(this.maxBots(), app.settings.bots + m.dir));
       app.audio.ui();
@@ -139,6 +143,12 @@ export class LobbyScreen implements Screen {
       const max = this.maxBots();
       app.settings.bots = app.settings.bots >= max ? 0 : app.settings.bots + 1;
       app.audio.ui();
+      s.changed();
+    } else if (e.code === 'KeyT') {
+      // T = čím se zatáčí: tlačítka na telefonu, nebo náklon telefonu
+      app.settings.tilt = !app.settings.tilt;
+      app.audio.ui();
+      this.refresh();
       s.changed();
     } else if (e.code === 'KeyN') {
       this.pickNet(this.netIdx + 1); // další síťovka v QR kódu
@@ -177,6 +187,7 @@ export class LobbyScreen implements Screen {
     }
     $('slots').innerHTML = html;
     $('laps').textContent = String(app.settings.laps);
+    $('steer-mode').textContent = app.settings.tilt ? 'náklon telefonu' : 'tlačítka';
     $('ai-level').textContent = DIFFS[app.settings.diff].name;
     // nabídku zúží, když se připojí další hráči
     app.settings.bots = Math.min(app.settings.bots, this.maxBots());
