@@ -235,6 +235,7 @@ socket.on('host:msg', (m: HostMsg) => {
     $('p-pos').textContent = String(m.pos);
     $('p-total').textContent = '/' + m.total;
     // na testovacím placu se nejezdí na kola – místo počitadla jsou zničená auta
+    document.body.classList.toggle('free', m.kills !== undefined);
     const lapBox = $('p-lap').parentElement as HTMLElement;
     if (m.kills === undefined) { lapBox.innerHTML = 'KOLO <b id="p-lap"></b>'; $('p-lap').textContent = `${m.lap}/${m.laps}`; }
     else { lapBox.innerHTML = 'ZNIČENO <b id="p-lap"></b>'; $('p-lap').textContent = String(m.kills); }
