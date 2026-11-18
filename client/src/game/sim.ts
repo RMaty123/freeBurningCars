@@ -878,6 +878,7 @@ export class Sim {
     c.speed = 14; c.steer = 0; c.yawRate = 0;
     c.hp = c.stats.hp;
     c.dead = false;
+    c.engineOff = false;
     c.invuln = 2.5;
     c.lastHitBy = -1;
     c.ai.stuckT = 0;
@@ -899,6 +900,7 @@ export class Sim {
     c.speed = 10; c.steer = 0; c.yawRate = 0;
     c.hp = c.stats.hp;
     c.dead = false;
+    c.engineOff = false; // po zničení se auto vrací nastartované
     c.invuln = 2.5;
     c.lastHitBy = -1;
     c.ai.stuckT = 0;

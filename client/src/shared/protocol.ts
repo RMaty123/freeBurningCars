@@ -114,6 +114,8 @@ export type HostMsg =
       laps: number;
       /** na volné ploše místo kol: kolik aut hráč zničil (jinak chybí) */
       kills?: number;
+      /** běží motor? (vypínač na testovacím placu – stav drží obrazovka) */
+      engine: boolean;
       hp: number;
       /** zbývající boost 0…1 */
       nitro: number;

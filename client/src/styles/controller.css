@@ -164,7 +164,7 @@ small.tilt-ui:empty { display: none; }
 .padbtn.off b { color: #7de08a; }
 .padbtn:active { filter: brightness(1.4); }
 .padbtn[hidden] { display: none; }
-.overlay { position: absolute; inset: 13vh 0 0 0; display: none; align-items: center; justify-content: center; background: rgba(8, 8, 12, 0.78); font-family: var(--display); font-style: italic; font-size: 14vh; color: #ff5a3d; pointer-events: none; text-align: center; }
+.overlay { position: absolute; inset: 13vh 0 0 0; z-index: 4; display: none; align-items: center; justify-content: center; background: rgba(8, 8, 12, 0.78); font-family: var(--display); font-style: italic; font-size: 14vh; color: #ff5a3d; pointer-events: none; text-align: center; }
 .overlay.show { display: flex; }
 .overlay.fin { color: var(--fire2); }
 

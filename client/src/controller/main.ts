@@ -208,8 +208,7 @@ socket.on('host:msg', (m: HostMsg) => {
     $('l-laps').textContent = String(m.laps);
     $('l-bots').textContent = m.bots ? String(m.bots) : 'žádní';
     setTiltMode(m.tilt);
-    $('b-engine').hidden = !m.open;
-    if (!m.open && !engineOn) setEngine(true); // mimo plac motor vždycky jede
+    if (!m.open) { $('b-engine').hidden = true; if (!engineOn) setEngine(true); } // mimo plac motor vždycky jede
     $('t-name').textContent = m.name;
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
     const wait = $('l-wait');
@@ -248,6 +247,11 @@ socket.on('host:msg', (m: HostMsg) => {
     chg.classList.toggle('on', lvl > 0.001);
     chg.classList.toggle('fire', m.beam > 0);
     chg.style.transform = `scaleX(${lvl})`;
+    // vypínač motoru patří jen živému autu na placu – u vraku by jen ležel přes nápis
+    $('b-engine').hidden = m.kills === undefined || m.dead || m.finished;
+    // Stav motoru drží obrazovka (vrací ho třeba po respawnu), ale hned po ťuknutí má přednost
+    // to, co hráč zrovna zmáčkl – jinak by starší zpráva "v letu" na chvilku přepsala nápis zpátky.
+    if (m.engine !== engineOn && performance.now() - engineTapAt > 700) showEngine(m.engine);
     const ov = $('pad-overlay');
     ov.classList.toggle('show', m.dead || m.finished);
     ov.classList.toggle('fin', m.finished);
@@ -523,11 +527,17 @@ function tiltZeroNow() {
 
 // ------------------------------------------------------------------ vypínač motoru (testovací plac)
 let engineOn = true;
-function setEngine(on: boolean) {
+let engineTapAt = 0;
+/** Jen popisek tlačítka – nic neposílá (používá se i při zprávě z obrazovky). */
+function showEngine(on: boolean) {
   engineOn = on;
   const el = $('b-engine');
   el.classList.toggle('off', !on);
   (el.querySelector('b') as HTMLElement).textContent = on ? 'STOP' : 'START';
+}
+function setEngine(on: boolean) {
+  engineTapAt = performance.now();
+  showEngine(on);
   send({ type: 'engine', on });
   vibe(25);
 }
