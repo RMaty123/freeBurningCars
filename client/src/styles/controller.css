@@ -138,6 +138,12 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .gauge i { position: absolute; left: 50%; top: 8%; bottom: 8%; width: 18%; margin-left: -9%; border-radius: 3vh; background: linear-gradient(180deg, var(--fire2), var(--fire1)); box-shadow: 0 0 1.6vh rgba(255, 140, 0, 0.6); transition: transform 0.05s linear; }
 .tilt-ui { font-size: 2.6vh; font-weight: 800; letter-spacing: 0.1em; padding: 1vh 1.2vh; border-radius: 1.2vh; background: #262935; color: #e9e8ef; box-shadow: 0 0.5vh 0 #0c0d12; width: 92%; }
 .tilt-ui.small { font-size: 2.2vh; opacity: 0.85; }
+/* rozsah náklonu: − hodnota + */
+.tilt-range { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.6vh; padding: 0.4vh; }
+.tilt-range span { font-size: 1.9vh; letter-spacing: 0.08em; opacity: 0.75; }
+.tilt-range b { display: block; font-size: 2.8vh; font-weight: 900; opacity: 1; }
+.tilt-range button { width: 100%; padding: 0.6vh 0; font-size: 3vh; line-height: 1; background: #343848; box-shadow: none; }
+.tilt-range button.off { opacity: 0.3; }
 .tilt-ui:active { transform: translateY(0.4vh); box-shadow: none; }
 small.tilt-ui { background: none; box-shadow: none; color: #ff8a6a; font-weight: 700; letter-spacing: 0.02em; line-height: 1.2; padding: 0; }
 small.tilt-ui:empty { display: none; }
