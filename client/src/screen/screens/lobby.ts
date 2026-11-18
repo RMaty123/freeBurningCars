@@ -7,8 +7,8 @@ import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, DIFFS, MAX_BOTS, MAX_CARS, Screen, esc } from '../app';
 import { KBD, MAX_PLAYERS, NetOption, Player, RoomInfo } from '../session';
 
-/** jak dlouho běží jedna trať jako kulisa na úvodní obrazovce (s) */
-const BG_TIME = 24;
+/** jak dlouho běží jedna trať jako kulisa na úvodní obrazovce (s); 0 = nestřídat */
+const BG_TIME = 60;
 
 export class LobbyScreen implements Screen {
   /** která trať se zrovna promítá za okny a kolik jí zbývá */
@@ -26,8 +26,10 @@ export class LobbyScreen implements Screen {
     this.app.phase = 'lobby';
     // naváž na trať, kterou si hráči vybrali; plac mezi kulisy nepatří
     const pool = this.app.menuTracks();
-    this.bgIdx = pool.includes(this.app.settings.trackIdx) ? this.app.settings.trackIdx : pool[0];
+    // po návratu z menu naváž na vybranou trať, jinak ber náhodnou (plac mezi kulisy nepatří)
+    this.bgIdx = pool.includes(this.app.settings.trackIdx) ? this.app.settings.trackIdx : pool[Math.floor(Math.random() * pool.length)];
     this.bgT = BG_TIME;
+    this.app.view.menuCam = true;
     this.app.startAttract(this.bgIdx);
     $('lobby').hidden = false;
     this.netOpen = false; // seznam sítí se vždy vrací zabalený
@@ -37,10 +39,12 @@ export class LobbyScreen implements Screen {
 
   exit() {
     $('lobby').hidden = true;
+    this.app.view.menuCam = false;
   }
 
   update(dt: number) {
     // kulisa se po chvíli přepne na další trať, ať úvodní obrazovka neusne
+    if (BG_TIME <= 0) return;
     this.bgT -= dt;
     if (this.bgT > 0) return;
     this.bgT = BG_TIME;

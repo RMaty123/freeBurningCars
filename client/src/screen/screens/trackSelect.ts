@@ -163,12 +163,14 @@ export class TrackSelectScreen implements Screen {
     this.layout(true);
     this.refresh();
     $('trackselect').hidden = false;
+    app.view.menuCam = true; // kulisa za kartami jen pomalu plyne
     app.startAttract(this.sel);
   }
 
   exit() {
     clearTimeout(this.bgTimer);
     $('trackselect').hidden = true;
+    this.app.view.menuCam = false;
   }
 
   update() {
