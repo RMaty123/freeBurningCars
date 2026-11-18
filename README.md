@@ -180,6 +180,8 @@ scripts/simtest.ts           test simulace bez grafiky
 
 Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přeposílá zprávy.
 
+**Když je odezva v ovladači vysoká, hledej ji v tomhle pořadí:** snímkování obrazovky (prohlížeč zpracuje paket mezi snímky, takže 30 fps = až 33 ms navíc a к tomu ještě vykreslení), režim TV (bez „game mode" přidá televize klidně 50–150 ms), Wi-Fi telefonu (úsporný režim rádia) a až pak síť samotná – přeposlání přes server trvá na localhostu 0,3 ms (měřeno 300 pakety: medián 0,31 ms, 95 % pod 0,57 ms).
+
 ### Cesta vstupu z telefonu (proč je odezva krátká)
 
 Ovladač → server → obrazovka → simulace. Na každém kroku se škrtalo, co se dalo:
@@ -189,7 +191,8 @@ Ovladač → server → obrazovka → simulace. Na každém kroku se škrtalo, c
 3. **Jeden malý paket**: celý stav ovladače (zatáčení, brzda, tři tlačítka) se balí do jednoho čísla (`packInput` / `unpackInput` v `shared/protocol.ts`) a posílá se událostí `i` – paket má ~14 B místo ~60 B a nic se nestringifikuje. Posílá se jen při změně, v klidu drží pojistka 8 paketů/s, při plném kroucení volantem ~40/s.
 4. **Volatile emit**: zastaralý paket se zahodí, místo aby se tlačil ve frontě za novějším.
 5. **Vypnutý Nagle** na serveru (`setNoDelay`) – jinak by TCP malé pakety slučoval a přidal desítky ms. Komprese je vypnutá taky.
-6. **Simulace bere vstup hned**: `beforeStep` přepíše vstupy aut těsně před krokem fyziky (max jeden snímek zpoždění) a u plynulého zatáčení (náklon) se volant smí otáčet 24/s místo 5/s, takže rampa, která u tlačítek dělá plynulost za hráče, nepřidává až dvě desetiny vteřiny.
+6. **Odezva se dá změřit**: telefon každou vteřinu pošle `ping`, obrazovka hned odpoví `pong` (odpovídá přímo `session.ts`, ne až herní smyčka) a v liště ovladače svítí odezva v ms – zeleně do 35 ms, žlutě do 80, červeně nad.
+7. **Simulace bere vstup hned**: `beforeStep` přepíše vstupy aut těsně před krokem fyziky (max jeden snímek zpoždění) a u plynulého zatáčení (náklon) se volant smí otáčet 24/s místo 5/s, takže rampa, která u tlačítek dělá plynulost za hráče, nepřidává až dvě desetiny vteřiny.
 
 ### Jak se to rozšiřuje
 

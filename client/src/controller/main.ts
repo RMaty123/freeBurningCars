@@ -183,10 +183,6 @@ socket.on('host:gone', rejoinLoop);
 socket.on('host:back', () => join(true));
 
 // ------------------------------------------------------------------ zprávy z obrazovky
-function pips(id: string, n: number) {
-  $(id).innerHTML = [1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('');
-}
-
 /**
  * Zmenší písmo, dokud se text vejde do své škatulky (dlouhé názvy tratí se tak neuseknou).
  * Měří se až po vykreslení – ve skryté obrazovce mají prvky nulovou šířku.
@@ -252,6 +248,8 @@ socket.on('host:msg', (m: HostMsg) => {
     ov.textContent = m.finished ? `CÍL · ${m.pos}. MÍSTO` : m.dead ? 'ZNIČEN!' : '';
   } else if (m.type === 'catalog') {
     catalogItem(m);
+  } else if (m.type === 'pong') {
+    pingShow(performance.now() - m.t);
   } else if (m.type === 'buzz') {
     try { navigator.vibrate?.(m.ms); } catch { /* iPhone vibrace neumí */ }
   } else if (m.type === 'kicked') {
@@ -604,8 +602,22 @@ pad.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') up(
 // iOS pustí senzory jen po ťuknutí – zkusíme to při prvním dotyku kdekoli
 document.addEventListener('pointerdown', () => { if (tiltMode && !tiltListening && !tiltDenied) void tiltEnable(true); }, { capture: true });
 
-// pojistka: stav se pravidelně opakuje (kdyby se nějaký paket ztratil)
-setInterval(() => { if (performance.now() - lastSentAt > 120) flush(true); }, 60);
+// Pojistka proti ztracenému paketu – a zároveň drží Wi-Fi rádio telefonu "teplé".
+// Když ovladač chvíli mlčí, telefon uspí rádio a další paket pak čeká na probuzení (klidně desítky ms).
+setInterval(() => { if (performance.now() - lastSentAt > 35) flush(true); }, 20);
+
+// ------------------------------------------------------------------ měření odezvy (ping)
+let pingAvg = 0;
+function pingShow(ms: number) {
+  pingAvg = pingAvg ? pingAvg * 0.7 + ms * 0.3 : ms;
+  const el = $('p-ping');
+  el.hidden = false;
+  el.textContent = Math.round(pingAvg) + ' ms';
+  el.className = 'tb-ping' + (pingAvg > 80 ? ' bad' : pingAvg > 35 ? ' mid' : '');
+}
+setInterval(() => {
+  if (joined && (phase === 'race' || phase === 'countdown')) send({ type: 'ping', t: performance.now() });
+}, 1000);
 
 // zákaz zoomu, výběru textu a kontextového menu při hraní
 for (const ev of ['contextmenu', 'gesturestart', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault());

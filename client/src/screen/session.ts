@@ -120,7 +120,10 @@ export class Session {
 
     s.on('player:msg', ({ pid, m }: { pid: string; m: CtrlMsg }) => {
       const p = this.players.get(pid);
-      if (p && m) hooks.onCommand(p, m);
+      if (!p || !m) return;
+      // odezvu měříme co nejblíž síti: odpovíme hned, bez čekání na snímek hry
+      if (m.type === 'ping') { this.sendHud(p, { type: 'pong', t: m.t }); return; }
+      hooks.onCommand(p, m);
     });
   }
 

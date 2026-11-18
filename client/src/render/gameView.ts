@@ -125,7 +125,9 @@ export class GameView {
 
   resize() {
     this.width = window.innerWidth; this.height = window.innerHeight;
-    this.renderer.setPixelRatio(this.quality === 'high' ? Math.min(window.devicePixelRatio || 1, 2) : 1);
+    // Na 4K TV znamená pixelRatio 2 čtyřnásobek pixelů a tím i delší snímek – a delší snímek
+    // je přímo odezva ovládání (vstup se zpracuje mezi snímky). 1,5 je rozumný strop.
+    this.renderer.setPixelRatio(this.quality === 'high' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1);
     this.renderer.setSize(this.width, this.height, false);
   }
 
@@ -277,7 +279,6 @@ export class GameView {
           break;
         case 'spark': fx.sparks(e.x, 0.7, e.z, 4, 7); break;
         case 'beam': {
-          const c = sim.cars[e.car];
           const cv = this.cars[e.car];
           cv.v.body.updateWorldMatrix(true, false);
           for (const mz of cv.v.muzzles) {
@@ -498,7 +499,8 @@ export class GameView {
         const sp = Math.hypot(c.vx, c.vz);
         if (sp > 6 && c.speed > 0 && !c.dead) want = c.h + angDiff(Math.atan2(c.vx, c.vz), c.h) * 0.55;
         if (!r.init) { r.heading = want; r.init = true; }
-        r.heading += angDiff(want, r.heading) * (1 - Math.exp(-(c.dead ? 1 : 7) * dt));
+        // kamera se dotahuje svižně – pomalé dotahování působí jako zpoždění ovládání
+        r.heading += angDiff(want, r.heading) * (1 - Math.exp(-(c.dead ? 1 : 11) * dt));
         const dx = Math.sin(r.heading), dz = Math.cos(r.heading);
         const speedK = THREE.MathUtils.clamp(Math.abs(c.speed) / 70, 0, 1);
         const dist = (c.dead ? 9.5 : 5.5 + speedK * 1.3) + c.stats.shape.length * 0.22;
@@ -506,7 +508,7 @@ export class GameView {
         cam.position.set(c.x - dx * dist + sx, hgt + sy, c.z - dz * dist + sx);
         cam.lookAt(c.x + dx * 5, 1.25 + sy * 0.5, c.z + dz * 5);
         const fovT = 60 + speedK * 13 + (c.nitroOn ? 9 : 0);
-        r.fov += (fovT - r.fov) * Math.min(1, dt * 5);
+        r.fov += (fovT - r.fov) * Math.min(1, dt * 8);
       }
     }
   }

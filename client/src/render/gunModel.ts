@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { GunShape, GunStats } from '../game/guns';
+import type { GunShape } from '../game/guns';
 
 export interface GunVisual {
   root: THREE.Group;
@@ -213,5 +213,3 @@ export function disposeGun(v: GunVisual) {
   for (const m of v.materials) m.dispose();
 }
 
-/** Zbraň i s modelem – zkratka pro volající, kteří mají jen `GunStats`. */
-export const buildGunModel = (gun: GunStats) => buildGun(gun.shape);

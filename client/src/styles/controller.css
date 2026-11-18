@@ -39,16 +39,9 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .who .dot { width: 22px; height: 22px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 14px var(--pc); }
 .who b { font-weight: 900; letter-spacing: 0.04em; }
 .who i { color: var(--dim); font-style: normal; font-size: 14px; }
-.carsel { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: min(560px, 100%); background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--pc); border-radius: 14px; padding: 10px; }
 .arrow { width: 62px; height: 62px; border-radius: 14px; background: #262935; font-size: 26px; box-shadow: 0 4px 0 #0c0d12; }
 .arrow:active { transform: translateY(3px); box-shadow: 0 1px 0 #0c0d12; background: #343848; }
 .arrow.sm { width: 68px; height: 60px; font-size: 30px; }
-.carinfo { text-align: center; min-width: 0; }
-.carinfo > b { font-family: var(--display); font-style: italic; font-weight: 400; font-size: 30px; letter-spacing: 0.04em; display: block; margin-bottom: 6px; }
-.stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; font-size: 10px; letter-spacing: 0.14em; color: var(--dim); text-align: left; max-width: 300px; margin: 0 auto; }
-.pips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
-.pips i { height: 8px; border-radius: 2px; background: #2c2f3b; }
-.pips i.on { background: linear-gradient(90deg, var(--fire1), var(--fire2)); }
 #master-box { display: grid; gap: 8px; width: min(560px, 100%); justify-items: center; }
 .row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; width: 100%; }
 .val { text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; }
@@ -71,6 +64,10 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .tb-pos small { font-size: 5vh; opacity: 0.8; }
 .tb-lap { font-size: 5vh; letter-spacing: 0.06em; }
 .tb-lap b { font-weight: 400; color: var(--fire2); }
+.tb-ping { font-size: 3.6vh; letter-spacing: 0.06em; color: #7de08a; font-style: normal; font-family: var(--body); font-weight: 800; }
+.tb-ping.mid { color: #ffd166; }
+.tb-ping.bad { color: #ff7a5a; }
+.tb-ping[hidden] { display: none; }
 .tb-bars { flex: 1; display: grid; gap: 1.2vh; }
 .tbar { height: 2.6vh; background: #05060a; border-radius: 2vh; overflow: hidden; border: 1px solid #333; }
 .tbar i { display: block; height: 100%; width: 100%; transform-origin: left; transition: transform 0.2s linear; }

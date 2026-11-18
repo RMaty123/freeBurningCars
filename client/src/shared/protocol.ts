@@ -57,7 +57,9 @@ export type CtrlMsg =
   /** výběr auta / zbraně: ťuknutí na položku v nabídce (ještě nepotvrzeno) */
   | { type: 'pick'; idx: number }
   /** výběr auta / zbraně: potvrzení / zrušení potvrzení */
-  | { type: 'ready'; on: boolean };
+  | { type: 'ready'; on: boolean }
+  /** měření odezvy: obrazovka hned vrátí stejné `t` zpátky (viz 'pong') */
+  | { type: 'ping'; t: number };
 
 /** lobby → track (trať) → cars (auta) → guns (zbraň FIRE 1) → countdown → race → results → track … */
 export type Phase = 'lobby' | 'track' | 'cars' | 'guns' | 'countdown' | 'race' | 'results';
@@ -132,4 +134,6 @@ export type HostMsg =
       ratings: { l: string; v: number }[];
     }
   | { type: 'buzz'; ms: number }
+  /** odpověď na 'ping' – telefon z toho spočítá odezvu tam a zpátky */
+  | { type: 'pong'; t: number }
   | { type: 'kicked'; reason: string };

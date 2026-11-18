@@ -6,7 +6,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "tsx watch --clear-screen=false --exclude \"client/**\" server/index.ts",
+    "dev:once": "tsx server/index.ts",
     "start": "tsx server/index.ts",
     "build": "vite build",
     "prod": "cross-env NODE_ENV=production tsx server/index.ts",
