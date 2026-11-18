@@ -578,6 +578,7 @@ export class GameView {
         world.sun.target.position.set(fxp, 0, fzp);
         world.sun.position.set(fxp + world.theme.sunDir.x * 160, world.theme.sunDir.y * 160, fzp + world.theme.sunDir.z * 160);
         world.sky.position.copy(cam.position).setY(0);
+        world.follow(cam.position.x, cam.position.z); // otevřený plac: zem jede s kamerou
       }
       // vlastní jmenovku ve svém okně nevidíš (nezaclání ve výhledu)
       const own = r.carId >= 0 ? this.cars[r.carId] : null;

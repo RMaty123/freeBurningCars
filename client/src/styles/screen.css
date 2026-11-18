@@ -167,6 +167,7 @@ kbd {
   position: absolute; left: calc(var(--u) * 3.6); bottom: calc(var(--u) * 4); top: calc(var(--u) * 27); width: 71%;
   background: #1c1e26 center / cover no-repeat; clip-path: polygon(0 0, 100% 0, 76% 100%, 0 100%);
 }
+.ts-plan svg { width: 100%; height: 100%; display: block; }
 .ts-side { position: absolute; right: calc(var(--u) * 3.6); bottom: calc(var(--u) * 4); top: calc(var(--u) * 27); width: 30%; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: calc(var(--u) * 2.4); text-align: right; }
 .ts-outline { flex: 1; min-height: 0; width: 100%; color: var(--fire2); display: flex; justify-content: flex-end; }
 .ts-outline svg { height: 100%; max-width: 100%; filter: drop-shadow(0 0 calc(var(--u) * 1.5) rgba(255, 150, 0, 0.45)); }

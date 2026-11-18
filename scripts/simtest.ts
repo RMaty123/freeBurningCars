@@ -42,7 +42,7 @@ for (const def of TRACKS) {
       sim.events.length = 0;
       for (const c of sim.cars) {
         if (!Number.isFinite(c.x + c.z + c.h + c.vx + c.vz + c.hp)) { fail(`NaN ve stavu auta ${c.name}`); steps = 1e9; break; }
-        if (Math.abs(c.lat) > track.wallDist + 0.5) fail(`auto ${c.name} je mimo trať (lat ${c.lat.toFixed(1)})`);
+        if (!track.def.open && Math.abs(c.lat) > track.wallDist + 0.5) fail(`auto ${c.name} je mimo trať (lat ${c.lat.toFixed(1)})`);
         maxSpeed = Math.max(maxSpeed, c.speed);
       }
     }

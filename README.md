@@ -6,7 +6,7 @@ Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
 - **3 primární zbraně na výběr** (kulomet, těžký kulomet, dvojice laserů na dveřích), k tomu rakety, miny, opravy a zrychlení z beden
-- **3 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory)
+- **4 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory) a Test Strip (osmipruhový testovací ovál)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
 - dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
 - zničení soupeřů, respawn, pořadí, kola, body za umístění i za zničení
@@ -81,6 +81,12 @@ Levá ruka tak drží celé ovládání na **Q W A S D** – palec má volný me
 **V lobby (klávesnice na PC):** `L` počet kol · `B` počet AI soupeřů · `O` obtížnost AI · `G` kvalita grafiky · `M` zvuk
 
 Počet AI soupeřů jde nastavit od 0 (pak jedou jen připojení hráči) až po tolik, kolik se jich vejde vedle hráčů do osmi aut – na telefonu prvního hráče tlačítky − / + u **SOUPEŘI (AI)**, na PC klávesou `B`. Když se připojí další hráč a místo už není, počet AI se sám sníží.
+
+### Test Strip
+
+Poslední trať v nabídce je **testovací plac**: ovál se dvěma kilometrovými rovinkami, 64 m širokou vozovkou a osmi pruhy (3,8 km na kolo). Je tam schválně skoro pořád rovně, takže auta jedou plným plynem vedle sebe a hlavně se střílí – hodí se na zkoušení aut, zbraní a přestřelek bez zatáček. V testovací simulaci na ní padne čtyřikrát víc ran a aut než na normální trati.
+
+Šířka a pruhy jsou obyčejná data (`width`, `lanes` v `game/content/tracks.ts`), takže stejným způsobem jde přidat jakkoli široká trať – čáry mezi pruhy se dokreslí samy.
 
 ### Primární zbraně (FIRE 1)
 

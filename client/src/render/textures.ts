@@ -33,7 +33,7 @@ function speckle(g: CanvasRenderingContext2D, w: number, h: number, n: number, r
  * krajnice | obrubník | bílá čára | asfalt s přerušovanou středovou čárou | …
  * shoulderFrac = jaký podíl šířky zabírá krajnice na každé straně.
  */
-export function roadTexture(theme: ThemeId, shoulderFrac: number): THREE.CanvasTexture {
+export function roadTexture(theme: ThemeId, shoulderFrac: number, lanes = 2): THREE.CanvasTexture {
   const W = 512, H = 512;
   const [c, g] = canvas(W, H);
   const rnd = mulberry(7);
@@ -76,12 +76,18 @@ export function roadTexture(theme: ThemeId, shoulderFrac: number): THREE.CanvasT
     g.fillStyle = 'rgba(240,240,235,0.92)';
     g.fillRect(side === 0 ? sh + 6 : W - sh - 14, 0, 8, H);
   }
-  // středová přerušovaná čára
+  // přerušované čáry mezi pruhy (při lanes = 2 vyjde přesně středová čára)
   g.fillStyle = theme === 'city' ? 'rgba(255,214,70,0.95)' : 'rgba(240,240,235,0.9)';
-  g.fillRect(W / 2 - 4, 0, 8, H * 0.5);
+  const inner = W - 2 * sh;
+  for (let k = 1; k < Math.max(2, Math.round(lanes)); k++) {
+    g.fillRect(sh + (inner * k) / Math.max(2, Math.round(lanes)) - 4, 0, 8, H * 0.5);
+  }
   speckle(g, W, H, 2500, rnd, 0.05, 0.12);
   return tex(c);
 }
+
+/** Hrana dlaždice asfaltu na testovacím placu v metrech (zem se o ni posouvá, aby plac působil nekonečně). */
+export const PAD_TILE = 80;
 
 export function groundTexture(theme: ThemeId): THREE.CanvasTexture {
   const S = 512;
@@ -107,6 +113,47 @@ export function groundTexture(theme: ThemeId): THREE.CanvasTexture {
       g.beginPath(); g.moveTo((i * S) / 8, 0); g.lineTo((i * S) / 8, S); g.stroke();
       g.beginPath(); g.moveTo(0, (i * S) / 8); g.lineTo(S, (i * S) / 8); g.stroke();
     }
+  }
+  return tex(c);
+}
+
+/**
+ * Testovací plac: asfalt s přerušovanými čarami po celé ploše (nekonečně pruhů).
+ * Dlaždice je 80 m: pruh 8 m, čára 4 m + mezera 6 m – obojí dělí 80 beze zbytku, takže napojení není vidět.
+ */
+export function padTexture(theme: ThemeId): THREE.CanvasTexture {
+  const S = 1024, M = S / PAD_TILE; // pixelů na metr
+  const [c, g] = canvas(S, S);
+  const rnd = mulberry(33);
+  g.fillStyle = theme === 'city' ? '#23252c' : theme === 'desert' ? '#3a3531' : '#34363a';
+  g.fillRect(0, 0, S, S);
+  speckle(g, S, S, 26000, rnd, 0.08, 0.2);
+  // praskliny a flekaté záplaty, ať asfalt není jen plocha
+  g.globalAlpha = 0.5;
+  for (let i = 0; i < 70; i++) {
+    g.fillStyle = rnd() > 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.035)';
+    g.beginPath();
+    g.ellipse(rnd() * S, rnd() * S, 20 + rnd() * 90, 14 + rnd() * 60, rnd() * 3, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+  g.strokeStyle = 'rgba(0,0,0,0.3)';
+  g.lineWidth = 1.2;
+  for (let i = 0; i < 26; i++) {
+    g.beginPath();
+    let x = rnd() * S, y = rnd() * S;
+    g.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { x += (rnd() - 0.5) * 90; y += (rnd() - 0.5) * 90; g.lineTo(x, y); }
+    g.stroke();
+  }
+  // čáry mezi pruhy (vodorovně = podél rovinek); každá pátá je plná, ať je vidět, kam jedeš
+  const lane = 8 * M, dash = 4 * M, gap = 6 * M, th = Math.max(2, 0.22 * M);
+  for (let k = 0; k * lane <= S; k++) {
+    const y = k * lane - th / 2;
+    const solid = k % 5 === 0;
+    g.fillStyle = solid ? 'rgba(245,245,238,0.75)' : 'rgba(240,240,235,0.9)';
+    if (solid) g.fillRect(0, y, S, th);
+    else for (let x = 0; x < S; x += dash + gap) g.fillRect(x, y, dash, th);
   }
   return tex(c);
 }

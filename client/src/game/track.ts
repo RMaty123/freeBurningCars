@@ -16,6 +16,13 @@ export interface TrackDef {
   theme: ThemeId;
   /** šířka vozovky (m) */
   width: number;
+  /** na kolik pruhů je vozovka rozdělená čarami (2 = běžná silnice se středovou čárou) */
+  lanes?: number;
+  /**
+   * Otevřená plocha: žádná svodidla, žádná scenérie a země pokračuje do nekonečna.
+   * Trať samotná zůstává jako vodicí linka (AI, kola, pořadí, minimapa), jen nic nedrží auta uvnitř.
+   */
+  open?: boolean;
   /** řídicí body [x, z] v metrech; křivka se uzavírá sama */
   points: [number, number][];
 }

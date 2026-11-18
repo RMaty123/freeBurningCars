@@ -170,6 +170,8 @@ export const COUNTDOWN_TIME = 3.6;
 const ROCKET_DMG = 58;
 const MINE_DMG = 52;
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
+/** Otevřená trať: jak daleko od vodicí linky se smí zajet, než tě měkká pojistka vrátí (m). */
+const OPEN_LIMIT = 700;
 const CAR_OFF = 1.0;
 
 /**
@@ -240,7 +242,7 @@ export class Sim {
       const row = Math.floor(k / 2);
       const ti = wrapIdx(track, track.n - 5 - row * 5);
       const side = k % 2 === 0 ? 1 : -1;
-      const off = side * track.halfWidth * 0.42;
+      const off = side * Math.min(track.halfWidth * 0.42, 4.5); // na široké trati drž rošt pohromadě
       const car: Car = {
         id: entries.indexOf(e),
         name: e.name, color: e.color, tagColor: e.tagColor, typeIdx: e.typeIdx, stats: e.stats,
@@ -510,7 +512,9 @@ export class Sim {
     c.ti = locate(tr, c.x, c.z, c.ti);
     const i = c.ti;
     c.lat = lateral(tr, i, c.x, c.z);
-    const limit = tr.wallDist - 1.05;
+    // Otevřený plac nemá svodidla, jen měkkou pojistku daleko za obzorem, ať se nedá vyjet ze světa.
+    const open = !!tr.def.open;
+    const limit = open ? OPEN_LIMIT : tr.wallDist - 1.05;
     if (Math.abs(c.lat) <= limit) return;
     const sgn = Math.sign(c.lat);
     const nx = tr.nx[i] * sgn, nz = tr.nz[i] * sgn; // směr ven
@@ -522,7 +526,7 @@ export class Sim {
       c.vx -= nx * vn * 1.25; c.vz -= nz * vn * 1.25;
       const fr = 1 - Math.min(0.35, vn * 0.012);
       c.vx *= fr; c.vz *= fr;
-      if (!wreck) {
+      if (!wreck && !open) {
         // Do svodidel se auto jen otře – žádné poškození, jen ztráta rychlosti a jiskry.
         if (vn > 2.5 && c.wallT <= 0) {
           c.wallT = 0.12;
@@ -530,7 +534,7 @@ export class Sim {
         }
       }
     }
-    if (!wreck) {
+    if (!wreck && !open) {
       // arkádová pomoc: srovnej auto podél zdi, ať se nezasekne čumákem ve svodidlech
       const fx = Math.sin(c.h), fz = Math.cos(c.h);
       const dir = fx * tr.tx[i] + fz * tr.tz[i] >= -0.2 ? 1 : -1;
@@ -750,7 +754,7 @@ export class Sim {
           }
         }
       }
-      if (!gone) {
+      if (!gone && !tr.def.open) {
         b.ti = locate(tr, b.x, b.z, b.ti, 5);
         if (Math.abs(lateral(tr, b.ti, b.x, b.z)) > tr.wallDist) {
           gone = true;
@@ -775,7 +779,7 @@ export class Sim {
         if (c.id === r.owner || c.dead) continue;
         if ((c.x - r.x) ** 2 + (c.z - r.z) ** 2 < 5.3) { boom = true; break; }
       }
-      if (!boom) {
+      if (!boom && !tr.def.open) {
         r.ti = locate(tr, r.x, r.z, r.ti, 5);
         if (Math.abs(lateral(tr, r.ti, r.x, r.z)) > tr.wallDist - 0.2) boom = true;
       }

@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Track, ThemeId, distToTrack } from '../game/track';
 import { mulberry } from '../game/sim';
-import { bannerTexture, buildingTexture, checkerTexture, groundTexture, roadTexture, wallTexture } from './textures';
+import { PAD_TILE, bannerTexture, buildingTexture, checkerTexture, groundTexture, padTexture, roadTexture, wallTexture } from './textures';
 import { makeGlowPoints } from './effects';
 
 export interface Theme {
@@ -52,6 +52,8 @@ export interface World {
   theme: Theme;
   sun: THREE.DirectionalLight;
   sky: THREE.Mesh;
+  /** u otevřených tratí posune zem za kameru (jinak nic nedělá) */
+  follow(x: number, z: number): void;
   update(time: number): void;
   dispose(): void;
 }
@@ -157,7 +159,7 @@ function trackCenter(tr: Track): [number, number, number] {
 
 // ---------------------------------------------------------------- obloha
 
-function makeSky(theme: Theme): THREE.Mesh {
+function makeSky(theme: Theme, simple = false): THREE.Mesh {
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
@@ -183,14 +185,17 @@ function makeSky(theme: Theme): THREE.Mesh {
         vec3 d = normalize(vDir);
         vec3 col = mix(horizon, top, pow(clamp(d.y, 0.0, 1.0), 0.5));
         col = mix(col, bottom, clamp(-d.y * 5.0, 0.0, 1.0));
+        #ifndef SIMPLE_SKY
         float s = max(dot(d, sunDir), 0.0);
         col += sunColor * (pow(s, 900.0) * 9.0 * sunDisc + pow(s, 40.0) * 0.55 * sunDisc + pow(s, 5.0) * 0.16);
+        #endif
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
   });
-  const m = new THREE.Mesh(new THREE.SphereGeometry(1800, 32, 16), mat);
+  if (simple) mat.defines = { SIMPLE_SKY: '' }; // holý přechod bez slunce – nejlevnější obloha
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1800, simple ? 12 : 32, simple ? 6 : 16), mat);
   m.frustumCulled = false;
   m.renderOrder = -10;
   return m;
@@ -403,12 +408,13 @@ function addCity(group: THREE.Group, tr: Track, rnd: () => number) {
 
 export function buildWorld(tr: Track): World {
   const themeId = tr.def.theme;
+  const open = !!tr.def.open; // otevřený plac: bez svodidel a scenérie, zem jde do nekonečna
   const theme = THEMES[themeId];
   const group = new THREE.Group();
   const rnd = mulberry(tr.def.id.length * 977 + tr.n);
 
   // obloha + světla
-  const sky = makeSky(theme);
+  const sky = makeSky(theme, open);
   group.add(sky);
   const hemi = new THREE.HemisphereLight(theme.hemiSky, theme.hemiGround, theme.hemiIntensity);
   group.add(hemi);
@@ -422,47 +428,55 @@ export function buildWorld(tr: Track): World {
   group.add(sun, sun.target);
 
   // země
-  const gt = groundTexture(themeId);
-  gt.repeat.set(110, 110);
+  // Na otevřeném placu není zem terén, ale rovnou vozovka – asfalt s čarami pokračuje do nekonečna.
+  const GTILE = open ? PAD_TILE : 4400 / 110;
+  const gt = open ? padTexture(themeId) : groundTexture(themeId);
+  gt.repeat.setScalar(4400 / GTILE);
   // Země je dělená na menší čtverce (obří trojúhelníky dělají na některých GPU nepřesnou hloubku)
   // a polygonOffset ji drží bezpečně pod vozovkou.
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(4400, 4400, 64, 64).rotateX(-Math.PI / 2),
-    new THREE.MeshStandardMaterial({ map: gt, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 4 }),
+    new THREE.MeshStandardMaterial({ map: gt, roughness: open ? 0.85 : 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 4 }),
   );
   const [ccx, ccz] = trackCenter(tr);
-  ground.position.set(ccx, -0.08, ccz);
+  // Když zemí posouváme po celých dlaždicích textury, švy nejsou vidět a plocha o poloměru 2200 m
+  // je pořád dál než mlha → plac působí nekonečně do všech stran.
+  ground.position.set(open ? 0 : ccx, -0.08, open ? 0 : ccz);
   ground.receiveShadow = true;
   group.add(ground);
 
-  // vozovka od svodidla ke svodidlu
-  const shoulder = (tr.wallDist - tr.halfWidth) / (2 * tr.wallDist);
-  const roadMat = new THREE.MeshStandardMaterial({ map: roadTexture(themeId, shoulder), roughness: themeId === 'city' ? 0.55 : 0.85, metalness: themeId === 'city' ? 0.25 : 0.0 });
-  const road = new THREE.Mesh(strip(tr, tr.wallDist, 0, -tr.wallDist, 0, 12), roadMat);
-  road.receiveShadow = true;
-  group.add(road);
+  // vozovka od svodidla ke svodidlu (na otevřeném placu je vozovkou rovnou celá zem)
+  if (!open) {
+    const shoulder = (tr.wallDist - tr.halfWidth) / (2 * tr.wallDist);
+    const roadMat = new THREE.MeshStandardMaterial({ map: roadTexture(themeId, shoulder, tr.def.lanes), roughness: themeId === 'city' ? 0.55 : 0.85, metalness: themeId === 'city' ? 0.25 : 0.0 });
+    const road = new THREE.Mesh(strip(tr, tr.wallDist, 0, -tr.wallDist, 0, 12), roadMat);
+    road.receiveShadow = true;
+    group.add(road);
+  }
 
-  // svodidla (profil betonového bloku)
+  // svodidla (profil betonového bloku) – otevřený plac je bez nich
   const wd = tr.wallDist;
-  const wallGeo = mergeGeometries([
-    strip(tr, wd, 0, wd + 0.16, 1.05, 8, true), strip(tr, wd + 0.16, 1.05, wd + 0.56, 1.05, 8, true), strip(tr, wd + 0.56, 1.05, wd + 0.72, 0, 8, true),
-    strip(tr, -wd, 0, -wd - 0.16, 1.05, 8, true), strip(tr, -wd - 0.16, 1.05, -wd - 0.56, 1.05, 8, true), strip(tr, -wd - 0.56, 1.05, -wd - 0.72, 0, 8, true),
-  ])!;
-  const wall = new THREE.Mesh(wallGeo, new THREE.MeshStandardMaterial({ map: wallTexture(themeId), roughness: 0.9, side: THREE.DoubleSide }));
-  wall.castShadow = true;
-  wall.receiveShadow = true;
-  group.add(wall);
-
   const neon: THREE.MeshBasicMaterial[] = [];
-  if (theme.night) {
-    // neonové pásky na svodidlech
-    const mk = (side: number, color: THREE.Color) => {
-      const mat = new THREE.MeshBasicMaterial({ color, toneMapped: false, side: THREE.DoubleSide });
-      neon.push(mat);
-      group.add(new THREE.Mesh(strip(tr, side * (wd + 0.1), 0.72, side * (wd + 0.15), 0.98, 8, true), mat));
-    };
-    mk(1, new THREE.Color(1.0, 0.1, 0.75));
-    mk(-1, new THREE.Color(0.1, 0.9, 1.0));
+  if (!open) {
+    const wallGeo = mergeGeometries([
+      strip(tr, wd, 0, wd + 0.16, 1.05, 8, true), strip(tr, wd + 0.16, 1.05, wd + 0.56, 1.05, 8, true), strip(tr, wd + 0.56, 1.05, wd + 0.72, 0, 8, true),
+      strip(tr, -wd, 0, -wd - 0.16, 1.05, 8, true), strip(tr, -wd - 0.16, 1.05, -wd - 0.56, 1.05, 8, true), strip(tr, -wd - 0.56, 1.05, -wd - 0.72, 0, 8, true),
+    ])!;
+    const wall = new THREE.Mesh(wallGeo, new THREE.MeshStandardMaterial({ map: wallTexture(themeId), roughness: 0.9, side: THREE.DoubleSide }));
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    group.add(wall);
+
+    if (theme.night) {
+      // neonové pásky na svodidlech
+      const mk = (side: number, color: THREE.Color) => {
+        const mat = new THREE.MeshBasicMaterial({ color, toneMapped: false, side: THREE.DoubleSide });
+        neon.push(mat);
+        group.add(new THREE.Mesh(strip(tr, side * (wd + 0.1), 0.72, side * (wd + 0.15), 0.98, 8, true), mat));
+      };
+      mk(1, new THREE.Color(1.0, 0.1, 0.75));
+      mk(-1, new THREE.Color(0.1, 0.9, 1.0));
+    }
   }
 
   // cílová brána + šachovnice
@@ -498,12 +512,19 @@ export function buildWorld(tr: Track): World {
   gate.add(checker);
   group.add(gate);
 
-  if (themeId === 'desert') { addDesert(group, tr, rnd); addClouds(group, tr, rnd, 0xffc0a0); }
+  // scenérie (na otevřeném placu žádná – holá plocha a jednoduchá obloha nic nezatěžují)
+  if (open) { /* nic */ }
+  else if (themeId === 'desert') { addDesert(group, tr, rnd); addClouds(group, tr, rnd, 0xffc0a0); }
   else if (themeId === 'forest') { addForest(group, tr, rnd); addClouds(group, tr, rnd, 0xffffff); }
   else addCity(group, tr, rnd);
 
   return {
     group, theme, sun, sky,
+    follow(x: number, z: number) {
+      if (!open) return;
+      ground.position.x = Math.round(x / GTILE) * GTILE;
+      ground.position.z = Math.round(z / GTILE) * GTILE;
+    },
     update(time: number) {
       // neony lehce pulzují
       neon.forEach((m, i) => {

@@ -29,6 +29,7 @@ export function loadPreviews(app: App, keepIdx: number): Map<string, string> {
   const out = new Map<string, string>();
   const missing: number[] = [];
   TRACKS.forEach((d, i) => {
+    if (d.open) return; // testovací plac má schematický náhled, nic se nerenderuje
     let url: string | null = null;
     try { url = localStorage.getItem(keyFor(i)); } catch { /* localStorage může být vypnutý */ }
     if (url) out.set(d.id, url); else missing.push(i);
