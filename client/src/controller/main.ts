@@ -8,6 +8,7 @@
  */
 import { io } from 'socket.io-client';
 import type { CtrlMsg, HostMsg, InputState, Phase, PickKind } from '../shared/protocol';
+import { keepScreenAwake } from '../shared/wakeLock';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -19,6 +20,9 @@ function store(key: string, value?: string): string {
 }
 
 const pid = store('fbc-pid') || store('fbc-pid', Math.random().toString(36).slice(2) + Date.now().toString(36));
+// ať telefon během závodu nezhasne obrazovku
+keepScreenAwake();
+
 const params = new URLSearchParams(location.search);
 const nameEl = $<HTMLInputElement>('name');
 nameEl.value = store('fbc-name');

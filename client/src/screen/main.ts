@@ -6,6 +6,7 @@
  *   session.ts    hráči a spojení s ovladači
  *   screens/      lobby → výběr tratě → výběr aut → výběr zbraně → závod (+ výsledky) → výběr tratě …
  */
+import { keepScreenAwake } from '../shared/wakeLock';
 import { $, App } from './app';
 import { loadPreviews } from './previews';
 import { CarSelectScreen } from './screens/carSelect';
@@ -15,6 +16,8 @@ import { RaceScreen } from './screens/race';
 import { TrackSelectScreen } from './screens/trackSelect';
 
 const app = new App($('game') as HTMLCanvasElement);
+// při hraní se myš ani klávesnice nehnou – ať počítač nezhasne obrazovku
+keepScreenAwake();
 const trackSelect = new TrackSelectScreen(app);
 app.register('lobby', new LobbyScreen(app));
 app.register('track', trackSelect);

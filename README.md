@@ -45,6 +45,12 @@ Adresu jde pořád i vynutit: `set HOST_IP=192.168.1.50 && npm run dev`
 - **Android:** přepne se po připojení / prvním dotyku a otočí na šířku. Vpravo nahoře je tlačítko **menu (❚❚)** – Pokračovat, Zrušit / zapnout celou obrazovku, Odejít ze hry. Menu otevře i systémové **Zpět**, takže jím omylem neodejdeš ze hry. Když celou obrazovku vypneš, hra ji už sama nezapíná. Ještě lepší je v Chromu dát *⋮ → Přidat na plochu* – ovladač se pak spouští rovnou přes celou obrazovku jako aplikace.
 - **iPhone:** Safari celou obrazovku pro webové stránky neumí. Použij *Sdílet → Přidat na plochu* a spouštěj ovladač z ikony na ploše.
 
+### Zhasínání obrazovky
+
+Hra si sama drží obrazovku rozsvícenou (Screen Wake Lock), takže při hraní nezhasne ani nenaskočí spořič – na počítači i na telefonu. Zámek se pouští, jen když je okno vidět, a po přepnutí na jinou záložku si ho hra zase vezme.
+
+Na počítači to jede přes `http://localhost:3000`. Kdyby prohlížeč Wake Lock neuměl, zapne se záloha: němé video o velikosti 1 px, které systém bere jako puštěné video a obrazovku nechá svítit. Pokud počítač zhasíná i tak, bývá to nastavením **spánku** ve Windows (Nastavení → Systém → Napájení), které Wake Lock neovlivní – obrazovku udrží, uspání celého PC ne.
+
 ### Když se telefon nepřipojí
 
 - Windows Firewall: při prvním spuštění povol Node.js přístup do **soukromé sítě**.
