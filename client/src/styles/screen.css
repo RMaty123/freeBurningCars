@@ -31,6 +31,10 @@ kbd {
   font-size: clamp(44px, 9.5vh, 120px);
   background: linear-gradient(180deg, #fff3c4 0%, var(--fire2) 38%, var(--fire1) 78%, #a81800 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
+  /* kurzíva přetéká za okraj rámečku a gradient se ořezává přesně na něj – bez odsazení
+     by poslední písmeno zůstalo bez barvy (vypadá to jako uříznuté). Gradient je svislý,
+     takže vodorovné odsazení barvy neposune. */
+  padding: 0 0.16em;
   filter: drop-shadow(0 0.06em 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 0 0.5em rgba(255, 90, 0, 0.35));
   transform: skewX(-6deg);
 }
