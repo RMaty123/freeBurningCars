@@ -16,6 +16,8 @@ interface Panel {
   /** vlastní radar hráče (jen na otevřené ploše – každé okno má svůj) */
   radar: HTMLCanvasElement | null; rctx: CanvasRenderingContext2D | null;
   msgT: number; lastSec: string; lastHp: number;
+  /** poslední zapsané hodnoty – do DOMu se sahá jen při změně */
+  shown: { pos: number; lap: number; speed: number; ammo: number; hp: number; nitro: number };
 }
 
 const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f' };
@@ -97,6 +99,7 @@ export class Hud {
         ammo: q('.v-weapon b'), icon: q('.v-weapon canvas') as HTMLCanvasElement,
         msg: q('.v-msg'), warn: q('.v-warn'), dmg: q('.v-dmg'),
         radar, rctx: radar ? radar.getContext('2d') : null,
+        shown: { pos: -1, lap: -1, speed: -1, ammo: -1, hp: -1, nitro: -1 },
         msgT: 0, lastSec: '', lastHp: c.hp,
       });
     });
@@ -135,13 +138,21 @@ export class Hud {
       if (p.carId < 0) continue;
       const c = sim.cars[p.carId];
       if (!c) continue;
-      p.pos.textContent = String(c.rank);
-      p.lap.textContent = sim.track.def.open ? String(c.kills) : String(Math.min(sim.laps, Math.max(1, c.lap + 1)));
-      p.speed.textContent = String(Math.round(Math.abs(c.speed) * 3.6));
-      const hk = Math.max(0, c.hp / c.stats.hp);
-      p.hp.style.transform = `scaleX(${hk})`;
-      p.hp.className = hk < 0.3 ? 'low' : '';
-      p.nitro.style.transform = `scaleX(${c.nitro})`;
+      const sh = p.shown;
+      if (c.rank !== sh.pos) { sh.pos = c.rank; p.pos.textContent = String(c.rank); }
+      const lapVal = sim.track.def.open ? c.kills : Math.min(sim.laps, Math.max(1, c.lap + 1));
+      if (lapVal !== sh.lap) { sh.lap = lapVal; p.lap.textContent = String(lapVal); }
+      const kmh = Math.round(Math.abs(c.speed) * 3.6);
+      if (kmh !== sh.speed) { sh.speed = kmh; p.speed.textContent = String(kmh); }
+      // pruhy: stačí dvě desetinná místa, pod to už to oko nepozná a ušetří se zápis do stylu
+      const hk = Math.round(Math.max(0, c.hp / c.stats.hp) * 100) / 100;
+      if (hk !== sh.hp) {
+        sh.hp = hk;
+        p.hp.style.transform = `scaleX(${hk})`;
+        p.hp.className = hk < 0.3 ? 'low' : '';
+      }
+      const nk = Math.round(c.nitro * 100) / 100;
+      if (nk !== sh.nitro) { sh.nitro = nk; p.nitro.style.transform = `scaleX(${nk})`; }
       p.nitro.className = c.nitroOn ? 'on' : '';
       // laser: dokud se nabíjí, ukazuje nabití; když pálí, ubývající paprsek
       const beamGun = c.gun.kind === 'beam';
@@ -152,7 +163,7 @@ export class Hud {
         p.laser.style.transform = `scaleX(${k})`;
         p.laser.className = c.beam > 0 ? 'fire' : c.charge >= full ? 'full' : '';
       }
-      p.ammo.textContent = '×' + c.secAmmo;
+      if (c.secAmmo !== sh.ammo) { sh.ammo = c.secAmmo; p.ammo.textContent = '×' + c.secAmmo; }
       if (p.lastSec !== c.secType) {
         p.lastSec = c.secType;
         const g = p.icon.getContext('2d')!;

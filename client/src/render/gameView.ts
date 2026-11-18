@@ -403,9 +403,13 @@ export class GameView {
       this.bullets.setColorAt(n, this.tmpColor.setHex(b.gun.color));
       n++;
     }
+    // na GPU posíláme jen když je co kreslit (nebo se to zrovna vyprázdnilo)
+    const hadBullets = this.bullets.count;
     this.bullets.count = n;
-    this.bullets.instanceMatrix.needsUpdate = true;
-    if (this.bullets.instanceColor) this.bullets.instanceColor.needsUpdate = true;
+    if (n || hadBullets) {
+      this.bullets.instanceMatrix.needsUpdate = true;
+      if (this.bullets.instanceColor) this.bullets.instanceColor.needsUpdate = true;
+    }
 
     // paprsky laseru: vedou z ústí zbraní (u PRISM z obou dveří) a končí tam, kam dosáhly
     this.beams.forEach((m) => (m.visible = false));
@@ -450,8 +454,9 @@ export class GameView {
       this.rockets.setMatrixAt(n++, d.matrix);
       fx.rocketTrail(r.x, 0.95, r.z, Math.sin(r.h), Math.cos(r.h));
     }
+    const hadRockets = this.rockets.count;
     this.rockets.count = n;
-    this.rockets.instanceMatrix.needsUpdate = true;
+    if (n || hadRockets) this.rockets.instanceMatrix.needsUpdate = true;
 
     // bedny
     for (const p of sim.pickups) {

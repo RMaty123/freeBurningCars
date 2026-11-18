@@ -171,6 +171,8 @@ export function mulberry(seed: number) {
 
 export const COUNTDOWN_TIME = 3.6;
 const ROCKET_DMG = 58;
+const BEAM_TWIN: readonly number[] = [-1, 1];
+const BEAM_SINGLE: readonly number[] = [0];
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
 const CAR_OFF = 1.0;
 
@@ -215,6 +217,8 @@ export class Sim {
   rockets: Rocket[] = [];
   pickups: Pickup[] = [];
   events: SimEvent[] = [];
+  /** pracovní pole na řazení pořadí – ať se každý snímek nealokuje nové */
+  private rankBuf: Car[] = [];
 
   phase: 'countdown' | 'racing' | 'over' = 'countdown';
   countdown = COUNTDOWN_TIME;
@@ -333,11 +337,13 @@ export class Sim {
     this.updateRanks();
 
     if (this.phase === 'racing' && !this.attract) {
-      const humans = this.cars.filter((c) => c.human);
-      const allHumansDone = humans.length > 0 && humans.every((c) => c.finished);
+      let humans = 0, humansDone = 0, anyFinished = false;
+      for (const c of this.cars) {
+        if (c.human) { humans++; if (c.finished) humansDone++; }
+        if (c.finished) anyFinished = true;
+      }
       const timeout = this.firstHumanFinish >= 0 && this.time - this.firstHumanFinish > 30;
-      const noHumans = humans.length === 0 && this.cars.some((c) => c.finished);
-      if (allHumansDone || timeout || noHumans) this.endRace();
+      if ((humans > 0 && humansDone === humans) || timeout || (humans === 0 && anyFinished)) this.endRace();
     }
   }
 
@@ -378,19 +384,21 @@ export class Sim {
   }
 
   private updateRanks() {
+    const buf = this.rankBuf;
+    buf.length = 0;
+    for (const c of this.cars) buf.push(c);
     if (this.track.def.open) {
       // volná jízda: pořadí podle zničených aut (při shodě rozhoduje, kdo míň umíral)
-      const free = [...this.cars].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.id - b.id);
-      free.forEach((c, i) => (c.rank = i + 1));
-      return;
+      buf.sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.id - b.id);
+    } else {
+      buf.sort((a, b) => {
+        if (a.finished && b.finished) return a.place - b.place;
+        if (a.finished) return -1;
+        if (b.finished) return 1;
+        return this.progress(b) - this.progress(a);
+      });
     }
-    const sorted = [...this.cars].sort((a, b) => {
-      if (a.finished && b.finished) return a.place - b.place;
-      if (a.finished) return -1;
-      if (b.finished) return 1;
-      return this.progress(b) - this.progress(a);
-    });
-    sorted.forEach((c, i) => (c.rank = i + 1));
+    for (let i = 0; i < buf.length; i++) buf[i].rank = i + 1;
   }
 
   // ------------------------------------------------------------------ auto
@@ -678,15 +686,15 @@ export class Sim {
   private fireBeam(c: Car) {
     c.beamT = beamTime(c.gun, c.charge);
     c.beam = c.beamT;
-    c.beamLen = this.beamSides(c).map(() => c.gun.range);
+    c.beamLen = this.beamSides(c).map(() => c.gun.range); // jen při výstřelu, ne každý snímek
     c.beamHitAt = [];
     c.charge = 0;
     this.events.push({ t: 'beam', car: c.id, len: c.beamT });
   }
 
   /** Z kolika míst auto pálí: dvojitá zbraň zleva i zprava, jinak jen ze středu. */
-  private beamSides(c: Car): number[] {
-    return c.gun.twin ? [-1, 1] : [0];
+  private beamSides(c: Car): readonly number[] {
+    return c.gun.twin ? BEAM_TWIN : BEAM_SINGLE;
   }
 
   /**

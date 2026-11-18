@@ -502,6 +502,7 @@ function setTiltMode(on: boolean) {
 /** Pad má dvě podoby: klasickou (6 tlačítek) a náklonovou (4 tlačítka + ukazatel). */
 function applyPad() {
   pad.classList.toggle('tilt', tiltOn());
+  padBox = null; // jiné rozložení tlačítek = přeměřit při dalším doteku
   resetInput();
 }
 
@@ -531,20 +532,34 @@ const btns: { el: HTMLElement; key: Key }[] = [
 /** V náklonovém padu jsou čtyři kvadranty: FIRE 1 | FIRE 2 nahoře, DRIFT | BRAKE dole. */
 const TILT_KEYS: Key[] = ['f', 'r', 'd', 'b'];
 
+/**
+ * Rozměry tlačítek se čtou z layoutu, což prohlížeč nutí dopočítat stránku. Při tažení prstem
+ * by to bylo několikrát za snímek, takže si je držíme a obnovujeme jen při novém doteku,
+ * otočení telefonu nebo změně podoby padu.
+ */
+let padBox: DOMRect | null = null;
+let btnBox: DOMRect[] = [];
+function measurePad() {
+  padBox = pad.getBoundingClientRect();
+  btnBox = btns.map((b) => b.el.getBoundingClientRect());
+}
+window.addEventListener('resize', () => { padBox = null; });
+window.addEventListener('orientationchange', () => { padBox = null; });
+
 function recompute() {
   const down: Record<Key, boolean> = { f: false, d: false, r: false, left: false, b: false, right: false };
-  const box = pad.getBoundingClientRect();
+  if (!padBox) measurePad();
+  const box = padBox!;
   if (tiltOn()) {
     // hranice vede středem mezery mezi řadami, takže nikde není hluché místo
-    const fr = btns[0].el.getBoundingClientRect(), dr = btns[1].el.getBoundingClientRect();
-    const rowY = (fr.bottom + dr.top) / 2, colX = box.left + box.width / 2;
+    const rowY = (btnBox[0].bottom + btnBox[1].top) / 2, colX = box.left + box.width / 2;
     for (const p of pointers.values()) {
       if (p.y < box.top) continue;
       down[TILT_KEYS[(p.y < rowY ? 0 : 2) + (p.x < colX ? 0 : 1)]] = true;
     }
     // input.s drží náklon, tlačítka do zatáčení nemluví
   } else {
-    const rects = btns.map((b) => b.el.getBoundingClientRect());
+    const rects = btnBox;
     // hranice sloupců a řádků leží uprostřed mezer, takže mezi tlačítky není hluché místo
     const colA = (rects[0].right + rects[1].left) / 2, colB = (rects[1].right + rects[2].left) / 2;
     const rowY = (rects[1].bottom + rects[4].top) / 2;
@@ -585,6 +600,7 @@ pad.addEventListener('pointerdown', (e) => {
   // SROVNAT / ⇄ uprostřed jsou normální tlačítka, ne část volantu
   if ((e.target as HTMLElement).closest('.tilt-ui')) return;
   e.preventDefault();
+  if (!pointers.size) measurePad(); // první prst v padu: přeměř, layout se mohl změnit
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   recompute();
 });
