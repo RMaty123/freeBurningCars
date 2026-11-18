@@ -120,6 +120,16 @@ export class RaceScreen implements Screen {
   }
 
   key(e: KeyboardEvent) {
+    // X = vypínač motoru pro hráče na klávesnici (jen na testovacím placu, stejně jako na telefonu)
+    if (e.code === 'KeyX') {
+      const sim = this.app.sim;
+      const car = sim?.carByPid(KBD);
+      if (sim?.track.def.open && car && !car.dead) {
+        car.engineOff = !car.engineOff;
+        this.app.audio.ui();
+      }
+      return;
+    }
     if (e.code === 'Escape') { if (this.app.phase === 'results') this.next(); else this.abort(); }
     else if (e.code === 'Enter' && this.app.phase === 'results') this.next();
   }

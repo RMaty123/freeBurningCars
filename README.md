@@ -78,6 +78,7 @@ Náklon čte `deviceorientation`: ±3° kolem nuly je klid, ±26° je plný rejd
 | Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš, puštěním vystřelíš) |
 | W (nebo SHIFT) | drift |
 | E (nebo F) | raketa |
+| X | vypnout/nastartovat motor (jen testovací plac) |
 | ESC | ukončit závod |
 
 V lobby navíc: `L` kola, `B` počet AI, `O` obtížnost, `T` typ hry (tlačítka / náklon), `N` síťovka v QR kódu.
