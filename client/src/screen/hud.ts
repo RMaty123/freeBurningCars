@@ -13,6 +13,8 @@ interface Panel {
   pos: HTMLElement; total: HTMLElement; lap: HTMLElement; speed: HTMLElement;
   hp: HTMLElement; nitro: HTMLElement; laser: HTMLElement; laserBar: HTMLElement; ammo: HTMLElement; icon: HTMLCanvasElement;
   msg: HTMLElement; warn: HTMLElement; dmg: HTMLElement;
+  /** vlastní radar hráče (jen na otevřené ploše – každé okno má svůj) */
+  radar: HTMLCanvasElement | null; rctx: CanvasRenderingContext2D | null;
   msgT: number; lastSec: string; lastHp: number;
 }
 
@@ -25,6 +27,8 @@ export class Hud {
   private mctx: CanvasRenderingContext2D;
   private feedEl: HTMLElement;
   private miniBounds = { minX: 0, minZ: 0, scale: 1, ox: 0, oz: 0 };
+  /** na okruhu je jedna společná minimapa, na volné ploše má radar každý hráč ve svém okně */
+  private sharedMini = true;
   private frame = 0;
 
   constructor() {
@@ -42,7 +46,7 @@ export class Hud {
 
   show(on: boolean) {
     this.root.style.display = on ? '' : 'none';
-    this.mini.style.display = on ? '' : 'none';
+    this.mini.style.display = on && this.sharedMini ? '' : 'none';
     this.feedEl.style.display = on ? '' : 'none';
   }
 
@@ -50,6 +54,11 @@ export class Hud {
   layout(rects: ViewRect[], sim: Sim) {
     this.clear();
     const humans = rects.filter((r) => r.carId >= 0);
+    // volná jízda: společná minimapa nedává smysl, každý hráč dostane vlastní radar ve svém okně
+    const open = !!sim.track.def.open;
+    this.sharedMini = !open;
+    this.mini.style.display = open ? 'none' : '';
+    this.root.classList.toggle('radar', open);
     rects.forEach((r, idx) => {
       const el = document.createElement('div');
       // třída podle pozice výřezu: HUD se u minimapy odsune stranou
@@ -73,18 +82,21 @@ export class Hud {
           <div class="bar laser hide"><i></i><em>LASER</em></div>
         </div>
         <div class="v-weapon"><canvas width="64" height="64"></canvas><b>×0</b></div>
+        ${open ? '<canvas class="v-radar" width="200" height="200"></canvas>' : ''}
         <div class="v-msg"></div>
         <div class="v-warn">◀ PROTISMĚR ▶</div>
         <div class="v-dmg"></div>`;
       this.root.appendChild(el);
       const q = (s: string) => el.querySelector(s) as HTMLElement;
       q('.v-name').textContent = c.name;
+      const radar = (el.querySelector('.v-radar') as HTMLCanvasElement | null) ?? null;
       this.panels.push({
         carId: r.carId, el,
         pos: q('.v-pos .n'), total: q('.v-pos .t'), lap: q('.v-lap b'), speed: q('.v-speed b'),
         hp: q('.bar.hp i'), nitro: q('.bar.nitro i'), laser: q('.bar.laser i'), laserBar: q('.bar.laser'),
         ammo: q('.v-weapon b'), icon: q('.v-weapon canvas') as HTMLCanvasElement,
         msg: q('.v-msg'), warn: q('.v-warn'), dmg: q('.v-dmg'),
+        radar, rctx: radar ? radar.getContext('2d') : null,
         msgT: 0, lastSec: '', lastHp: c.hp,
       });
     });
@@ -160,7 +172,11 @@ export class Hud {
   }
 
   private drawMini(sim: Sim) {
-    if (sim.track.def.open) return this.drawRadar(sim);
+    if (sim.track.def.open) {
+      // každé okno má svůj radar se svým autem uprostřed
+      for (const p of this.panels) if (p.carId >= 0 && p.rctx) this.drawRadar(p, sim);
+      return;
+    }
     const g = this.mctx, tr = sim.track, b = this.miniBounds, S = this.mini.width;
     const X = (x: number) => b.ox + (x - b.minX) * b.scale, Z = (z: number) => b.oz + (z - b.minZ) * b.scale;
     g.clearRect(0, 0, S, S);
@@ -178,12 +194,12 @@ export class Hud {
   }
 
   /**
-   * Volná jízda: místo obrysu trati radar kolem hráče (nahoře je vždy směr jízdy).
+   * Volná jízda: místo obrysu trati radar kolem hráče (nahoře je vždy směr jeho jízdy).
    * Auta za dosahem se přilepí na okraj, ať je vidět, odkud přijedou.
    */
-  private drawRadar(sim: Sim) {
-    const g = this.mctx, S = this.mini.width, R = S / 2;
-    const me = sim.cars.find((c) => c.human) ?? sim.cars[0];
+  private drawRadar(p: Panel, sim: Sim) {
+    const g = p.rctx!, S = p.radar!.width, R = S / 2;
+    const me = sim.cars[p.carId];
     g.clearRect(0, 0, S, S);
     if (!me) return;
     const rim = R - 9, range = 420, k = rim / range; // poloměr radaru v metrech
@@ -199,12 +215,13 @@ export class Hud {
     g.beginPath();
     g.moveTo(-rim, 0); g.lineTo(rim, 0); g.moveTo(0, -rim); g.lineTo(0, rim);
     g.stroke();
-    // ostatní auta, otočená tak, aby můj směr byl nahoru
+    // Ostatní auta. Mapa se otáčí o (h + π), aby směr jízdy mířil nahoru – proto jdou obě
+    // složky se záporným znaménkem; se samotným (dx·cos − dz·sin) by byl radar zrcadlený.
     const ch = Math.cos(me.h), sh = Math.sin(me.h);
     for (const c of sim.cars) {
       if (c === me || c.dead) continue;
       const dx = c.x - me.x, dz = c.z - me.z;
-      let px = (dx * ch - dz * sh) * k, py = -(dx * sh + dz * ch) * k;
+      let px = -(dx * ch - dz * sh) * k, py = -(dx * sh + dz * ch) * k;
       const d = Math.hypot(px, py);
       const out = d > rim - 6;
       if (out && d > 0) { px = (px / d) * (rim - 6); py = (py / d) * (rim - 6); }

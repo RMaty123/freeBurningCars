@@ -300,10 +300,14 @@ kbd {
 #minimap.corner { right: 1.5vw; top: 19vh; }
 #minimap.mid-right { right: 1.2vw; top: 50%; transform: translateY(-50%); width: 20vh; height: 20vh; }
 #minimap.center { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 21vh; height: 21vh; background: rgba(0, 0, 0, 0.55); border-radius: 50%; }
-/* split-screen: HUD se vyhne minimapě */
-.view.h0 .v-speed, .view.h1 .v-top { right: calc(var(--u) * 3.2 + 23vh); }
-.view.q0 .v-speed, .view.q2 .v-top { right: calc(var(--u) * 3.2 + 11vh); }
-.view.q1 .v-bars, .view.q1 .v-weapon, .view.q3 .v-pos, .view.q3 .tv-label { left: calc(var(--u) * 3.2 + 11vh); }
+/* vlastní radar v okně hráče (volná jízda) – každý vidí svoje okolí */
+.v-radar { position: absolute; right: calc(var(--u) * 3.2); top: calc(var(--u) * 17); width: calc(var(--u) * 27); height: calc(var(--u) * 27); pointer-events: none; }
+/* split-screen: HUD se vyhne společné minimapě (s vlastními radary není čemu uhýbat) */
+#hud:not(.radar) .view.h0 .v-speed, #hud:not(.radar) .view.h1 .v-top { right: calc(var(--u) * 3.2 + 23vh); }
+#hud:not(.radar) .view.q0 .v-speed, #hud:not(.radar) .view.q2 .v-top { right: calc(var(--u) * 3.2 + 11vh); }
+#hud:not(.radar) .view.q1 .v-bars, #hud:not(.radar) .view.q1 .v-weapon, #hud:not(.radar) .view.q3 .v-pos, #hud:not(.radar) .view.q3 .tv-label { left: calc(var(--u) * 3.2 + 11vh); }
+/* se svým radarem si rychlost a jméno nepřekáží */
+#hud.radar .view .v-speed { bottom: calc(var(--u) * 3); }
 #feed { position: fixed; z-index: 12; left: 50%; top: 1.4vh; transform: translateX(-50%); display: grid; gap: 0.5vh; justify-items: center; pointer-events: none; font-weight: 800; font-size: clamp(11px, 2vh, 20px); }
 #feed div { background: rgba(0, 0, 0, 0.62); padding: 0.4vh 1.2vw; border-radius: 0.8vh; animation: feedIn 0.25s ease-out; white-space: nowrap; }
 #feed .x { color: #ff5a3d; margin: 0 0.5em; }
