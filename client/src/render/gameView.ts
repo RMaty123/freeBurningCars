@@ -60,6 +60,7 @@ export class GameView {
   private beamGeo: THREE.BufferGeometry | null = null;
   private tmpColor = new THREE.Color();
   private tmpVec = new THREE.Vector3();
+  private tmpVec2 = new THREE.Vector3();
   private rockets: THREE.InstancedMesh;
   private pickupGroup = new THREE.Group();
   private pickupMeshes = new Map<number, THREE.Group>();
@@ -74,6 +75,14 @@ export class GameView {
   tvDist = 12.5;
   private tvTarget = 0;
   private tvSwitch = 0;
+  /** televizní kamera: typ záběru, zbývající čas, pevný bod (průlet / jeřáb) a vyhlazená pozice */
+  private tvShot = 0;
+  private tvShotT = 0;
+  private tvCut = true;
+  private tvAnchor = new THREE.Vector3();
+  private tvPos = new THREE.Vector3();
+  private tvLook = new THREE.Vector3();
+  private tvFov = 52;
   private width = 1; private height = 1;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -456,10 +465,11 @@ export class GameView {
     // televizní kamera: krouží kolem auta a občas přepne na jiné
     this.tvSwitch -= dt;
     if (this.tvSwitch <= 0 || !sim.cars[this.tvTarget] || sim.cars[this.tvTarget].dead) {
-      this.tvSwitch = 9;
+      this.tvSwitch = 11;
       const alive = sim.cars.filter((c) => !c.dead);
       const lead = alive.sort((a, b) => a.rank - b.rank)[Math.floor(Math.random() * Math.min(3, alive.length))];
       this.tvTarget = lead ? lead.id : 0;
+      this.tvShotT = 0; // nové auto = nový záběr
     }
     for (const r of this.rigs) {
       const cam = r.cam;
@@ -470,14 +480,7 @@ export class GameView {
       const sx = (Math.random() - 0.5) * sh, sy = (Math.random() - 0.5) * sh;
 
       if (r.carId < 0) {
-        // krouží kolem auta; vyhlazuje se jen úhel, takže kamera autu neujede
-        const want = c.h + 2.5 + Math.sin(t * 0.22) * 1.1;
-        if (!r.init) { r.heading = want; r.init = true; }
-        r.heading += angDiff(want, r.heading) * (1 - Math.exp(-2.5 * dt));
-        const dist = this.tvDist, hgt = dist * 0.37 + Math.sin(t * 0.3) * 1.2;
-        cam.position.set(c.x + Math.sin(r.heading) * dist, hgt, c.z + Math.cos(r.heading) * dist);
-        cam.lookAt(c.x, 1.0, c.z);
-        r.fov = 52;
+        this.tvCamera(r, cam, c, t, dt);
       } else {
         // za autem: směr kamery se plynule dotahuje ke směru jízdy (v driftu je vidět bok auta)
         let want = c.h;
@@ -494,6 +497,80 @@ export class GameView {
         const fovT = 60 + speedK * 13 + (c.nitroOn ? 9 : 0);
         r.fov += (fovT - r.fov) * Math.min(1, dt * 5);
       }
+    }
+  }
+
+  /**
+   * Televizní kamera v menu a v okně bez hráče: střídá několik typů záběrů
+   * (obletění, nízká honička, průlet kolem, jeřáb, jízda před autem) a mezi nimi střihá.
+   * Uvnitř záběru se pozice vyhlazuje, takže kamera „letí“ a necuká.
+   */
+  private tvCamera(r: Rig, cam: THREE.PerspectiveCamera, c: Car, t: number, dt: number) {
+    const fx = Math.sin(c.h), fz = Math.cos(c.h);
+    const sp = Math.abs(c.speed), speedK = THREE.MathUtils.clamp(sp / 70, 0, 1);
+    this.tvShotT -= dt;
+    // průlet skončí, jakmile auto přejede kolem kamery
+    if (this.tvShot === 2 && (c.x - this.tvAnchor.x) * fx + (c.z - this.tvAnchor.z) * fz > 26) this.tvShotT = 0;
+    if (this.tvShotT <= 0) this.pickTvShot(c, fx, fz, sp);
+
+    const want = this.tmpVec.set(0, 0, 0);
+    let lookX = c.x, lookY = 1.1, lookZ = c.z, fov = 52, k = 6;
+    if (this.tvShot === 0) {
+      // oblet: pomalu krouží kolem auta
+      const a = c.h + 2.5 + Math.sin(t * 0.22) * 1.1;
+      const dist = this.tvDist, hgt = dist * 0.37 + Math.sin(t * 0.3) * 1.2;
+      want.set(c.x + Math.sin(a) * dist, hgt, c.z + Math.cos(a) * dist);
+      k = 7;
+    } else if (this.tvShot === 1) {
+      // nízká honička za autem (drží se těsně, ať auto neujede)
+      const dist = 8 + speedK * 3;
+      want.set(c.x - fx * dist, 1.5, c.z - fz * dist);
+      lookX = c.x + fx * 7; lookZ = c.z + fz * 7; lookY = 1.3;
+      fov = 62 + speedK * 10;
+      k = 9;
+    } else if (this.tvShot === 2) {
+      // průlet: kamera stojí u trati a auto ji mine
+      want.copy(this.tvAnchor);
+      fov = 44;
+      k = 2.5;
+    } else if (this.tvShot === 3) {
+      // jeřáb: shora se snáší za auto
+      const p = THREE.MathUtils.clamp(1 - this.tvShotT / 7, 0, 1);
+      want.set(c.x - fx * (30 - p * 12), 24 - p * 11, c.z - fz * (30 - p * 12));
+      fov = 48;
+      k = 3;
+    } else {
+      // jízda před autem, kamera kouká zpátky
+      const dist = 12 + speedK * 6;
+      want.set(c.x + fx * dist, 2.3 + Math.sin(t * 0.5) * 0.3, c.z + fz * dist);
+      fov = 55;
+      k = 4;
+    }
+    if (this.tvCut) { this.tvPos.copy(want); this.tvLook.set(lookX, lookY, lookZ); this.tvFov = fov; this.tvCut = false; }
+    else {
+      const a = 1 - Math.exp(-k * dt);
+      this.tvPos.lerp(want, a);
+      this.tvLook.lerp(this.tmpVec2.set(lookX, lookY, lookZ), 1 - Math.exp(-5 * dt));
+      this.tvFov += (fov - this.tvFov) * Math.min(1, dt * 3);
+    }
+    cam.position.copy(this.tvPos);
+    cam.lookAt(this.tvLook);
+    r.fov = this.tvFov;
+    r.init = true;
+  }
+
+  /** Vybere další typ záběru (nikdy dvakrát po sobě stejný) a připraví mu pevný bod. */
+  private pickTvShot(c: Car, fx: number, fz: number, sp: number) {
+    const opts = sp > 14 ? [0, 1, 2, 3, 4] : [0, 1, 3];
+    const pool = opts.filter((o) => o !== this.tvShot);
+    this.tvShot = pool[Math.floor(Math.random() * pool.length)] ?? 0;
+    this.tvShotT = this.tvShot === 2 ? 7 : 6 + Math.random() * 3;
+    this.tvCut = true;
+    if (this.tvShot === 2) {
+      // bod kus před autem a stranou – auto kolem něj projede
+      const side = Math.random() < 0.5 ? 1 : -1;
+      const ahead = 36 + sp * 0.9;
+      this.tvAnchor.set(c.x + fx * ahead + fz * side * 10, 2.2, c.z + fz * ahead - fx * side * 10);
     }
   }
 

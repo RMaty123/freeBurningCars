@@ -7,7 +7,13 @@ import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, DIFFS, MAX_BOTS, MAX_CARS, Screen, esc } from '../app';
 import { KBD, MAX_PLAYERS, NetOption, Player, RoomInfo } from '../session';
 
+/** jak dlouho běží jedna trať jako kulisa na úvodní obrazovce (s) */
+const BG_TIME = 24;
+
 export class LobbyScreen implements Screen {
+  /** která trať se zrovna promítá za okny a kolik jí zbývá */
+  private bgIdx = 0;
+  private bgT = 0;
   /** adresy, na kterých je hra vidět (jedna na síťovku) a která je zrovna v QR kódu */
   private nets: NetOption[] = [];
   private netIdx = 0;
@@ -18,7 +24,11 @@ export class LobbyScreen implements Screen {
 
   enter() {
     this.app.phase = 'lobby';
-    this.app.startAttract();
+    // naváž na trať, kterou si hráči vybrali; plac mezi kulisy nepatří
+    const pool = this.app.menuTracks();
+    this.bgIdx = pool.includes(this.app.settings.trackIdx) ? this.app.settings.trackIdx : pool[0];
+    this.bgT = BG_TIME;
+    this.app.startAttract(this.bgIdx);
     $('lobby').hidden = false;
     this.netOpen = false; // seznam sítí se vždy vrací zabalený
     this.showNet();
@@ -29,7 +39,16 @@ export class LobbyScreen implements Screen {
     $('lobby').hidden = true;
   }
 
-  update() { /* lobby je statické */ }
+  update(dt: number) {
+    // kulisa se po chvíli přepne na další trať, ať úvodní obrazovka neusne
+    this.bgT -= dt;
+    if (this.bgT > 0) return;
+    this.bgT = BG_TIME;
+    const pool = this.app.menuTracks();
+    if (pool.length < 2) return;
+    this.bgIdx = pool[(pool.indexOf(this.bgIdx) + 1) % pool.length];
+    this.app.startAttract(this.bgIdx);
+  }
 
   onRoom(r: RoomInfo) {
     this.nets = r.nets;

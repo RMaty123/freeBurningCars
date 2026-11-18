@@ -172,9 +172,12 @@ export class App {
   }
 
   /** Ukázková jízda AI na pozadí menu. */
+  /** Tratě, které smí běžet jako kulisa na úvodní obrazovce (testovací plac mezi ně nepatří). */
+  menuTracks(): number[] {
+    return TRACKS.map((_, i) => i).filter((i) => !TRACKS[i].open);
+  }
+
   startAttract(i = this.settings.trackIdx) {
-    // testovací plac je holá plocha – jako kulisa v menu (QR obrazovka, výběr tratě) nevypadá dobře
-    if (TRACKS[i]?.open) i = Math.max(0, TRACKS.findIndex((d) => !d.open));
     if (this.attractIdx === i) return;
     this.loadWorld(i);
     this.sim = this.attractSim(i);
