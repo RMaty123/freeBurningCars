@@ -170,8 +170,6 @@ export const COUNTDOWN_TIME = 3.6;
 const ROCKET_DMG = 58;
 const MINE_DMG = 52;
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
-/** Otevřená trať: jak daleko od vodicí linky se smí zajet, než tě měkká pojistka vrátí (m). */
-const OPEN_LIMIT = 700;
 const CAR_OFF = 1.0;
 
 /**
@@ -269,9 +267,21 @@ export class Sim {
     if (this.attract) { this.phase = 'racing'; this.countdown = 0; }
   }
 
-  /** Bedny: po trati v řadách po třech. */
+  /** Bedny: po trati v řadách po třech (na volné ploše v mřížce kolem startu). */
   private placePickups() {
     const tr = this.track;
+    if (tr.def.open) {
+      const kinds: PickupKind[] = ['rocket', 'repair', 'nitro', 'mine'];
+      const [cx, cz] = [tr.x[0], tr.z[0]];
+      let k = 0;
+      for (let gx = -4; gx <= 4; gx++) {
+        for (let gz = -4; gz <= 4; gz++) {
+          this.pickups.push({ x: cx + gx * 90, z: cz + gz * 90, kind: kinds[k++ % kinds.length], cooldown: 0, id: this.nextId++ });
+        }
+        k++;
+      }
+      return;
+    }
     const rows = Math.max(6, Math.round(tr.length / 150));
     const kinds: PickupKind[] = ['rocket', 'repair', 'nitro', 'mine'];
     let k = 0;
@@ -343,6 +353,10 @@ export class Sim {
   }
 
   private updateRubberBand() {
+    if (this.track.def.open) {
+      for (const c of this.cars) c.speedScale = c.human ? 1 : c.ai.skill;
+      return;
+    }
     // AI trochu zpomalí, když ujíždí lidem, a přidá, když zaostává – závod zůstane napínavý.
     let best = -Infinity;
     for (const c of this.cars) if (c.human && !c.finished) best = Math.max(best, this.progress(c));
@@ -363,6 +377,12 @@ export class Sim {
   }
 
   private updateRanks() {
+    if (this.track.def.open) {
+      // volná jízda: pořadí podle zničených aut (při shodě rozhoduje, kdo míň umíral)
+      const free = [...this.cars].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.id - b.id);
+      free.forEach((c, i) => (c.rank = i + 1));
+      return;
+    }
     const sorted = [...this.cars].sort((a, b) => {
       if (a.finished && b.finished) return a.place - b.place;
       if (a.finished) return -1;
@@ -467,11 +487,12 @@ export class Sim {
     const prev = c.ti;
     this.keepInside(c, dt, false);
 
-    this.lapCheck(c, prev);
-
-    // protisměr
-    const along = fx * tr.tx[c.ti] + fz * tr.tz[c.ti];
-    if (along < -0.3 && vf > 4) c.wrongWay += dt; else c.wrongWay = 0;
+    if (!tr.def.open) {
+      this.lapCheck(c, prev);
+      // protisměr
+      const along = fx * tr.tx[c.ti] + fz * tr.tz[c.ti];
+      if (along < -0.3 && vf > 4) c.wrongWay += dt; else c.wrongWay = 0;
+    }
 
     // zbraně
     if (!c.finished && this.phase === 'racing') {
@@ -485,6 +506,7 @@ export class Sim {
 
   /** Projelo auto cílem? (prev = index vzorku trati před posunem) */
   private lapCheck(c: Car, prev: number) {
+    if (this.track.def.open) return; // volná jízda: žádný cíl, žádná kola
     const n = this.track.n;
     const d = c.ti - prev;
     if (d < -n / 2) {
@@ -512,9 +534,8 @@ export class Sim {
     c.ti = locate(tr, c.x, c.z, c.ti);
     const i = c.ti;
     c.lat = lateral(tr, i, c.x, c.z);
-    // Otevřený plac nemá svodidla, jen měkkou pojistku daleko za obzorem, ať se nedá vyjet ze světa.
-    const open = !!tr.def.open;
-    const limit = open ? OPEN_LIMIT : tr.wallDist - 1.05;
+    if (tr.def.open) return; // volná jízda: žádná svodidla ani hranice, plac nikde nekončí
+    const limit = tr.wallDist - 1.05;
     if (Math.abs(c.lat) <= limit) return;
     const sgn = Math.sign(c.lat);
     const nx = tr.nx[i] * sgn, nz = tr.nz[i] * sgn; // směr ven
@@ -526,7 +547,7 @@ export class Sim {
       c.vx -= nx * vn * 1.25; c.vz -= nz * vn * 1.25;
       const fr = 1 - Math.min(0.35, vn * 0.012);
       c.vx *= fr; c.vz *= fr;
-      if (!wreck && !open) {
+      if (!wreck) {
         // Do svodidel se auto jen otře – žádné poškození, jen ztráta rychlosti a jiskry.
         if (vn > 2.5 && c.wallT <= 0) {
           c.wallT = 0.12;
@@ -534,7 +555,7 @@ export class Sim {
         }
       }
     }
-    if (!wreck && !open) {
+    if (!wreck) {
       // arkádová pomoc: srovnej auto podél zdi, ať se nezasekne čumákem ve svodidlech
       const fx = Math.sin(c.h), fz = Math.cos(c.h);
       const dir = fx * tr.tx[i] + fz * tr.tz[i] >= -0.2 ? 1 : -1;
@@ -850,6 +871,7 @@ export class Sim {
 
   respawn(c: Car) {
     const tr = this.track;
+    if (tr.def.open) return this.respawnFree(c);
     const ti = c.ti;
     // najdi volný pruh
     let off = 0;
@@ -866,6 +888,28 @@ export class Sim {
     c.invuln = 2.5;
     c.lastHitBy = -1;
     c.ai.stuckT = 0;
+    this.events.push({ t: 'respawn', car: c.id });
+  }
+
+  /** Volná jízda: auto se vrátí tam, kde skončilo – nikdo nelétá přes půlku placu. */
+  private respawnFree(c: Car) {
+    const a = this.rnd() * Math.PI * 2;
+    let x = c.x, z = c.z;
+    for (let k = 0; k < 6; k++) {
+      const d = 6 + k * 4;
+      x = c.x + Math.sin(a + k) * d; z = c.z + Math.cos(a + k) * d;
+      if (this.cars.every((o) => o === c || o.dead || (o.x - x) ** 2 + (o.z - z) ** 2 > 30)) break;
+    }
+    c.x = x; c.z = z;
+    c.h = a;
+    c.vx = Math.sin(a) * 10; c.vz = Math.cos(a) * 10;
+    c.speed = 10; c.steer = 0; c.yawRate = 0;
+    c.hp = c.stats.hp;
+    c.dead = false;
+    c.invuln = 2.5;
+    c.lastHitBy = -1;
+    c.ai.stuckT = 0;
+    c.ti = locate(this.track, c.x, c.z, c.ti, 40);
     this.events.push({ t: 'respawn', car: c.id });
   }
 

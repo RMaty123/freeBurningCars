@@ -28,19 +28,9 @@ function outlineSvg(tr: Track): string {
   </svg>`;
 }
 
-/** Náhled testovacího placu – místo fotky schéma na milimetrovém papíře. */
-function testPlanSvg(tr: Track): string {
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (let i = 0; i < tr.n; i++) {
-    minX = Math.min(minX, tr.x[i]); maxX = Math.max(maxX, tr.x[i]);
-    minZ = Math.min(minZ, tr.z[i]); maxZ = Math.max(maxZ, tr.z[i]);
-  }
+/** Náhled testovacího placu – místo fotky schéma na milimetrovém papíře (žádný okruh, jen plocha). */
+function testPlanSvg(): string {
   const W = 320, H = 190;
-  const sc = Math.min((W * 0.62) / (maxX - minX), (H * 0.52) / (maxZ - minZ));
-  const ox = W * 0.5 - ((minX + maxX) / 2) * sc, oz = H * 0.54 - ((minZ + maxZ) / 2) * sc;
-  const px = (x: number) => (ox + x * sc).toFixed(1), pz = (z: number) => (oz + z * sc).toFixed(1);
-  let d = '';
-  for (let i = 0; i < tr.n; i += 8) d += `${i ? 'L' : 'M'}${px(tr.x[i])} ${pz(tr.z[i])}`;
   let grid = '';
   for (let x = 0; x <= W; x += 10) grid += `<path d="M${x} 0V${H}"/>`;
   for (let y = 0; y <= H; y += 10) grid += `<path d="M0 ${y}H${W}"/>`;
@@ -50,23 +40,24 @@ function testPlanSvg(tr: Track): string {
   // pruhy vozovky přes celou plochu – asfalt nikde nekončí
   let lanes = '';
   for (let y = 7; y < H; y += 14) lanes += `<path d="M0 ${y}H${W}"/>`;
-  const band = (tr.wallDist * 2 * sc).toFixed(1);
   // značky "pokračuje dál" na všech čtyřech stranách
   const arrow = (x: number, y: number, r: number) => `<g transform="translate(${x} ${y}) rotate(${r})" fill="#ff9d3c" opacity=".75"><path d="M0 -4 L7 0 L0 4Z"/><path d="M-7 -4 L0 0 L-7 4Z" opacity=".45"/></g>`;
+  // pár aut na placu, ať je vidět, že se tu jezdí volně a po sobě střílí
+  const car = (x: number, y: number, r: number, c: string) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect x="-2.6" y="-4.6" width="5.2" height="9.2" rx="1.4" fill="${c}"/><path d="M0 -6 V-13" stroke="${c}" stroke-opacity=".55" stroke-width="1.2" stroke-dasharray="3 2"/></g>`;
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" style="font-family:var(--display);font-style:italic">
     <rect width="${W}" height="${H}" fill="#0f1118"/>
     <g stroke="#ff8a1e" stroke-opacity=".10" stroke-width=".5">${grid}</g>
     <g stroke="#ff8a1e" stroke-opacity=".22" stroke-width=".7">${fat}</g>
-    <g stroke="#fff" stroke-opacity=".10" stroke-width=".9" stroke-dasharray="9 8">${lanes}</g>
+    <g stroke="#fff" stroke-opacity=".12" stroke-width=".9" stroke-dasharray="9 8">${lanes}</g>
     <g stroke="#ffb357" stroke-opacity=".45" stroke-width=".6" stroke-dasharray="6 5"><path d="M${(W / 2).toFixed(0)} 0V${H}"/><path d="M0 ${(H / 2).toFixed(0)}H${W}"/></g>
-    <path d="${d}Z" fill="none" stroke="#ff8a1e" stroke-opacity=".22" stroke-width="${band}" stroke-linejoin="round"/>
-    <path d="${d}Z" fill="none" stroke="#ffbe6b" stroke-width="1" stroke-dasharray="7 5"/>
-    <circle cx="${px(tr.x[0])}" cy="${pz(tr.z[0])}" r="3" fill="#fff"/>
+    <circle cx="${W / 2}" cy="${H / 2}" r="34" fill="none" stroke="#ffb357" stroke-opacity=".35" stroke-width=".8"/>
+    <circle cx="${W / 2}" cy="${H / 2}" r="68" fill="none" stroke="#ffb357" stroke-opacity=".22" stroke-width=".8"/>
+    ${car(W / 2 - 46, H / 2 + 22, 28, '#ff8a1e')}${car(W / 2 + 34, H / 2 - 18, -142, '#f1f1f1')}${car(W / 2 + 76, H / 2 + 40, 196, '#6ff0ff')}
     ${arrow(14, H / 2, 180)}${arrow(W - 14, H / 2, 0)}${arrow(W / 2, 12, -90)}${arrow(W / 2, H - 12, 90)}
     <g paint-order="stroke" stroke="#0f1118" stroke-width="3.5" stroke-linejoin="round">
       <text x="12" y="22" fill="#fff" font-size="15" letter-spacing="2">TEST PAD</text>
-      <text x="12" y="36" fill="#ff9d3c" font-size="9" letter-spacing="3">SCHÉMA · PLOCHA BEZ HRANIC</text>
-      <text x="12" y="${H - 12}" fill="#9a9aae" font-size="8.5" letter-spacing="2.5">∞ × ∞ m · ∞ PRUHŮ · BEZ SVODIDEL</text>
+      <text x="12" y="36" fill="#ff9d3c" font-size="9" letter-spacing="3">VOLNÁ JÍZDA · PLOCHA BEZ HRANIC</text>
+      <text x="12" y="${H - 12}" fill="#9a9aae" font-size="8.5" letter-spacing="2.5">∞ × ∞ m · ∞ PRUHŮ · BEZ KOL A SVODIDEL</text>
     </g>
   </svg>`;
 }
@@ -109,12 +100,12 @@ export class TrackSelectScreen implements Screen {
       card.className = 'ts-card';
       card.innerHTML = `
         <header><small>TRAŤ ${i + 1}</small><h2>${esc(def.name)}</h2></header>
-        <div class="ts-img${open ? ' ts-plan' : ''}">${open ? testPlanSvg(tr) : ''}</div>
+        <div class="ts-img${open ? ' ts-plan' : ''}">${open ? testPlanSvg() : ''}</div>
         <div class="ts-side">
           <div class="ts-outline">${open ? testOutlineSvg() : outlineSvg(tr)}</div>
           <dl>
-            <div><dt>DÉLKA</dt><dd>${km(tr.length)}</dd></div>
-            <div><dt>PROSTŘEDÍ</dt><dd>${esc(THEME_LABEL[def.theme])}</dd></div>
+            <div><dt>${open ? 'REŽIM' : 'DÉLKA'}</dt><dd>${open ? 'Volná jízda' : km(tr.length)}</dd></div>
+            <div><dt>PROSTŘEDÍ</dt><dd>${open ? '∞ asfalt' : esc(THEME_LABEL[def.theme])}</dd></div>
           </dl>
           <p>${esc(def.tagline)}</p>
         </div>`;

@@ -65,7 +65,7 @@ export class Hud {
       el.style.setProperty('--pc', hexCss(c.tagColor));
       el.innerHTML = `
         <div class="v-pos"><b class="n">1</b><span class="of">/<span class="t">${sim.cars.length}</span></span></div>
-        <div class="v-top"><div class="v-name"></div><div class="v-lap">KOLO <b>1</b>/${sim.laps}</div></div>
+        <div class="v-top"><div class="v-name"></div><div class="v-lap">${sim.track.def.open ? 'ZNIČENO <b>0</b>' : `KOLO <b>1</b>/${sim.laps}`}</div></div>
         <div class="v-speed"><b>0</b><span>km/h</span></div>
         <div class="v-bars">
           <div class="bar hp"><i></i><em>ZDRAVÍ</em></div>
@@ -124,7 +124,7 @@ export class Hud {
       const c = sim.cars[p.carId];
       if (!c) continue;
       p.pos.textContent = String(c.rank);
-      p.lap.textContent = String(Math.min(sim.laps, Math.max(1, c.lap + 1)));
+      p.lap.textContent = sim.track.def.open ? String(c.kills) : String(Math.min(sim.laps, Math.max(1, c.lap + 1)));
       p.speed.textContent = String(Math.round(Math.abs(c.speed) * 3.6));
       const hk = Math.max(0, c.hp / c.stats.hp);
       p.hp.style.transform = `scaleX(${hk})`;
@@ -160,6 +160,7 @@ export class Hud {
   }
 
   private drawMini(sim: Sim) {
+    if (sim.track.def.open) return this.drawRadar(sim);
     const g = this.mctx, tr = sim.track, b = this.miniBounds, S = this.mini.width;
     const X = (x: number) => b.ox + (x - b.minX) * b.scale, Z = (z: number) => b.oz + (z - b.minZ) * b.scale;
     g.clearRect(0, 0, S, S);
@@ -174,6 +175,50 @@ export class Hud {
     g.fillRect(X(tr.x[0]) - 4, Z(tr.z[0]) - 4, 8, 8);
     const order = [...sim.cars].sort((a, c) => Number(a.human) - Number(c.human));
     for (const c of order) this.dot(g, c, X(c.x), Z(c.z));
+  }
+
+  /**
+   * Volná jízda: místo obrysu trati radar kolem hráče (nahoře je vždy směr jízdy).
+   * Auta za dosahem se přilepí na okraj, ať je vidět, odkud přijedou.
+   */
+  private drawRadar(sim: Sim) {
+    const g = this.mctx, S = this.mini.width, R = S / 2;
+    const me = sim.cars.find((c) => c.human) ?? sim.cars[0];
+    g.clearRect(0, 0, S, S);
+    if (!me) return;
+    const rim = R - 9, range = 420, k = rim / range; // poloměr radaru v metrech
+    g.save();
+    g.translate(R, R);
+    g.lineJoin = 'round';
+    // kruh dosahu + kříž
+    g.beginPath(); g.arc(0, 0, rim, 0, Math.PI * 2);
+    g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 11; g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 4; g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 2;
+    g.beginPath(); g.arc(0, 0, rim / 2, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    g.moveTo(-rim, 0); g.lineTo(rim, 0); g.moveTo(0, -rim); g.lineTo(0, rim);
+    g.stroke();
+    // ostatní auta, otočená tak, aby můj směr byl nahoru
+    const ch = Math.cos(me.h), sh = Math.sin(me.h);
+    for (const c of sim.cars) {
+      if (c === me || c.dead) continue;
+      const dx = c.x - me.x, dz = c.z - me.z;
+      let px = (dx * ch - dz * sh) * k, py = -(dx * sh + dz * ch) * k;
+      const d = Math.hypot(px, py);
+      const out = d > rim - 6;
+      if (out && d > 0) { px = (px / d) * (rim - 6); py = (py / d) * (rim - 6); }
+      g.globalAlpha = out ? 0.55 : 1;
+      this.dot(g, c, px, py);
+    }
+    g.globalAlpha = 1;
+    // já uprostřed
+    g.beginPath();
+    g.moveTo(0, -14); g.lineTo(10, 10); g.lineTo(0, 4.5); g.lineTo(-10, 10);
+    g.closePath();
+    g.fillStyle = hexCss(me.tagColor); g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = '#fff'; g.stroke();
+    g.restore();
   }
 
   private dot(g: CanvasRenderingContext2D, c: Car, x: number, y: number) {

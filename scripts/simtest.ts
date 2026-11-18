@@ -32,14 +32,27 @@ for (const def of TRACKS) {
     const sim = new Sim(track, entries, { laps: 3, seed: 1234 + def.id.length });
     const dt = 1 / 60;
     const count: Record<string, number> = {};
+    // na otevřeném placu se nejezdí na kola – jede se 120 s volné jízdy a kouká se, jestli se něco děje
+    const free = !!def.open;
+    const limit = free ? 60 * 120 : 60 * 400;
+    const start = sim.cars.map((c) => [c.x, c.z] as [number, number]);
+    const driven = sim.cars.map(() => 0);
+    const farFromStart = sim.cars.map(() => 0);
+    const prevPos = sim.cars.map((c) => [c.x, c.z] as [number, number]);
     let steps = 0, maxSpeed = 0;
-    while (sim.phase !== 'over' && steps < 60 * 400) {
+    while ((free || sim.phase !== 'over') && steps < limit) {
       // "člověka" v testu řídí taky AI – ověří se tím cesty kódu pro lidské hráče
       for (const c of sim.cars) if (c.human && !c.finished) aiThink(sim, c, dt);
       sim.step(dt);
       steps++;
       for (const e of sim.events) count[e.t] = (count[e.t] ?? 0) + 1;
       sim.events.length = 0;
+      if (free) sim.cars.forEach((c, i) => {
+        const d = Math.hypot(c.x - prevPos[i][0], c.z - prevPos[i][1]);
+        if (d < 30) driven[i] += d; // skok = respawn, ten se nepočítá
+        prevPos[i] = [c.x, c.z];
+        farFromStart[i] = Math.max(farFromStart[i], Math.hypot(c.x - start[i][0], c.z - start[i][1]));
+      });
       for (const c of sim.cars) {
         if (!Number.isFinite(c.x + c.z + c.h + c.vx + c.vz + c.hp)) { fail(`NaN ve stavu auta ${c.name}`); steps = 1e9; break; }
         if (!track.def.open && Math.abs(c.lat) > track.wallDist + 0.5) fail(`auto ${c.name} je mimo trať (lat ${c.lat.toFixed(1)})`);
@@ -52,11 +65,22 @@ for (const def of TRACKS) {
       console.log(`  ${c.place}. ${c.name.padEnd(4)} ${c.stats.name.padEnd(9)} kol ${Math.max(0, c.lap)}  nejlepší kolo ${c.bestLap.toFixed(1)} s  zničení ${c.kills}/${c.deaths}${c.human ? '  ← člověk' : ''}`);
     }
     console.log(`  události: ${Object.entries(count).map(([k, v]) => `${k}=${v}`).join(' ')}  max ${(maxSpeed * 3.6).toFixed(0)} km/h`);
-    if (sim.phase !== 'over') fail('závod neskončil do 400 s');
-    if (res[0].lap < 3) fail('vítěz neodjel 3 kola');
-    // několikrát zničené auto může být o kolo a kus zpět; méně než 1 kolo už znamená zaseknutí
-    const slow = res.filter((c) => c.lap < 1);
-    if (slow.length) fail(`auta, která nestihla ani 1 kolo: ${slow.map((c) => c.name).join(', ')}`);
+    if (free) {
+      // volná jízda: nikdo nesmí zůstat stát na místě a mělo by se střílet
+      sim.cars.forEach((c, i) => {
+        if (driven[i] < 600) fail(`auto ${c.name} se na placu skoro nehnulo (ujelo ${driven[i].toFixed(0)} m)`);
+      });
+      if (Math.max(...farFromStart) < 400) fail('auta se nerozjela po placu (nikdo se nevzdálil ani 400 m od startu)');
+      if ((count.shot ?? 0) < 20) fail('na placu se skoro nestřílelo');
+      if (count.lap) fail('na volné ploše se nemají počítat kola');
+      console.log(`  volná jízda: ujeto ${driven.map((d) => (d / 1000).toFixed(1)).join('/')} km · nejdál od startu ${Math.max(...farFromStart).toFixed(0)} m · nejdál od linky ${Math.max(...sim.cars.map((c) => Math.abs(c.lat))).toFixed(0)} m`);
+    } else {
+      if (sim.phase !== 'over') fail('závod neskončil do 400 s');
+      if (res[0].lap < 3) fail('vítěz neodjel 3 kola');
+      // několikrát zničené auto může být o kolo a kus zpět; méně než 1 kolo už znamená zaseknutí
+      const slow = res.filter((c) => c.lap < 1);
+      if (slow.length) fail(`auta, která nestihla ani 1 kolo: ${slow.map((c) => c.name).join(', ')}`);
+    }
   }
 }
 console.log(failed ? '\nTEST SELHAL' : '\nVše v pořádku ✓');
