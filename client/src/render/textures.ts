@@ -121,11 +121,11 @@ export function groundTexture(theme: ThemeId): THREE.CanvasTexture {
  * Testovací plac: asfalt s přerušovanými čarami po celé ploše (nekonečně pruhů).
  * Dlaždice je 80 m: pruh 8 m, čára 4 m + mezera 6 m – obojí dělí 80 beze zbytku, takže napojení není vidět.
  */
-export function padTexture(theme: ThemeId): THREE.CanvasTexture {
+export function padTexture(): THREE.CanvasTexture {
   const S = 1024, M = S / PAD_TILE; // pixelů na metr
   const [c, g] = canvas(S, S);
   const rnd = mulberry(33);
-  g.fillStyle = theme === 'city' ? '#23252c' : theme === 'desert' ? '#3a3531' : '#34363a';
+  g.fillStyle = '#34373e';
   g.fillRect(0, 0, S, S);
   speckle(g, S, S, 26000, rnd, 0.08, 0.2);
   // praskliny a flekaté záplaty, ať asfalt není jen plocha

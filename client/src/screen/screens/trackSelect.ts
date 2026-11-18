@@ -62,17 +62,18 @@ function testPlanSvg(): string {
   </svg>`;
 }
 
-/** Obrys testovacího placu – křížové osy a pás, co pokračuje do nekonečna. */
+/** Obrys testovacího placu – místo okruhu značka plochy, která pokračuje do všech stran. */
 function testOutlineSvg(): string {
-  let grid = '';
-  for (let k = 20; k <= 80; k += 20) grid += `<path d="M${k} 4V96"/><path d="M4 ${k}H96"/>`;
+  let lanes = '';
+  for (let y = 16; y <= 84; y += 11) lanes += `<path d="M2 ${y}H98"/>`;
+  const car = (x: number, y: number, r: number, o: number) =>
+    `<g transform="translate(${x} ${y}) rotate(${r})" opacity="${o}"><rect x="-3.4" y="-6" width="6.8" height="12" rx="2" fill="currentColor"/></g>`;
   return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-    <rect x="4" y="4" width="92" height="92" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="7 6" opacity=".55"/>
-    <g stroke="currentColor" stroke-width=".8" opacity=".25">${grid}</g>
-    <rect x="0" y="36" width="100" height="28" fill="currentColor" opacity=".18"/>
-    <path d="M0 50H100" stroke="currentColor" stroke-width="2" stroke-dasharray="10 7"/>
-    <circle cx="50" cy="50" r="5" fill="#fff"/>
-    <g fill="currentColor"><path d="M100 50L90 44v12z"/><path d="M0 50l10-6v12z"/></g>
+    <rect x="3" y="3" width="94" height="94" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="8 7" opacity=".5"/>
+    <g stroke="currentColor" stroke-width="1.1" stroke-dasharray="7 6" opacity=".3">${lanes}</g>
+    <circle cx="50" cy="50" r="22" fill="none" stroke="currentColor" stroke-width=".9" opacity=".35"/>
+    ${car(50, 50, 0, 1)}${car(31, 62, 34, 0.55)}${car(66, 38, -150, 0.55)}
+    <g fill="currentColor"><path d="M100 50L91 45v10z"/><path d="M0 50l9-5v10z"/><path d="M50 0l-5 9h10z"/><path d="M50 100l-5-9h10z"/></g>
   </svg>`;
 }
 
@@ -96,11 +97,13 @@ export class TrackSelectScreen implements Screen {
     TRACKS.forEach((def, i) => {
       const tr = this.app.track(i);
       const open = !!def.open;
+      const url = this.previews.get(def.id);
+      const plan = open && !url; // vyrenderovaný náhled má přednost, schéma je záloha
       const card = document.createElement('article');
       card.className = 'ts-card';
       card.innerHTML = `
         <header><small>TRAŤ ${i + 1}</small><h2>${esc(def.name)}</h2></header>
-        <div class="ts-img${open ? ' ts-plan' : ''}">${open ? testPlanSvg() : ''}</div>
+        <div class="ts-img${plan ? ' ts-plan' : ''}">${plan ? testPlanSvg() : ''}</div>
         <div class="ts-side">
           <div class="ts-outline">${open ? testOutlineSvg() : outlineSvg(tr)}</div>
           <dl>
@@ -109,7 +112,6 @@ export class TrackSelectScreen implements Screen {
           </dl>
           <p>${esc(def.tagline)}</p>
         </div>`;
-      const url = this.previews.get(def.id);
       if (url) (card.querySelector('.ts-img') as HTMLElement).style.backgroundImage = `url(${url})`;
       stage.appendChild(card);
       this.cards.push(card);

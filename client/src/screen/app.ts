@@ -164,7 +164,9 @@ export class App {
   /** Simulace pro ukázku / náhled: samá AI, nekonečný závod, kousek "předtočený". */
   attractSim(i: number, seed?: number): Sim {
     const sim = new Sim(this.track(i), this.aiEntries(TOTAL_CARS), { laps: 999, attract: true, aiSkill: 0.95, seed });
-    for (let k = 0; k < 240; k++) sim.step(1 / 30);
+    // na volné ploše nech auta nejdřív rozjet, ať náhled není jen hromada u startovní brány
+    const warm = TRACKS[i].open ? 900 : 240;
+    for (let k = 0; k < warm; k++) sim.step(1 / 30);
     sim.events.length = 0;
     return sim;
   }

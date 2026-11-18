@@ -47,6 +47,19 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
 };
 
+/**
+ * Testovací plac má vlastní „počasí“: čistý modrý den s daleko viditelným obzorem.
+ * Textury (asfalt, šachovnice, brána) se berou dál podle tématu trati.
+ */
+const PAD_THEME: Theme = {
+  night: false,
+  skyTop: 0x1361cf, skyHorizon: 0xa6cdf2, skyBottom: 0x86a9c4,
+  sunColor: 0xfff6e4, sunDir: new THREE.Vector3(0.42, 0.78, 0.46).normalize(), sunIntensity: 3.5, sunDisc: 0,
+  hemiSky: 0xcde5ff, hemiGround: 0x4c525b, hemiIntensity: 1.2,
+  fog: 0xbdd8ef, fogNear: 260, fogFar: 1600,
+  exposure: 1.0, env: 1.0, dust: 0x9aa0a8,
+};
+
 export interface World {
   group: THREE.Group;
   theme: Theme;
@@ -409,7 +422,7 @@ function addCity(group: THREE.Group, tr: Track, rnd: () => number) {
 export function buildWorld(tr: Track): World {
   const themeId = tr.def.theme;
   const open = !!tr.def.open; // otevřený plac: bez svodidel a scenérie, zem jde do nekonečna
-  const theme = THEMES[themeId];
+  const theme = open ? PAD_THEME : THEMES[themeId];
   const group = new THREE.Group();
   const rnd = mulberry(tr.def.id.length * 977 + tr.n);
 
@@ -430,7 +443,7 @@ export function buildWorld(tr: Track): World {
   // země
   // Na otevřeném placu není zem terén, ale rovnou vozovka – asfalt s čarami pokračuje do nekonečna.
   const GTILE = open ? PAD_TILE : 4400 / 110;
-  const gt = open ? padTexture(themeId) : groundTexture(themeId);
+  const gt = open ? padTexture() : groundTexture(themeId);
   gt.repeat.setScalar(4400 / GTILE);
   // Země je dělená na menší čtverce (obří trojúhelníky dělají na některých GPU nepřesnou hloubku)
   // a polygonOffset ji drží bezpečně pod vozovkou.
