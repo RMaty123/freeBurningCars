@@ -47,7 +47,7 @@ function show(id: ScreenId) {
   document.body.classList.toggle('playing', id === 's-pad' || id === 's-menu');
   if (id !== 's-pad') resetInput();
   // při vstupu do závodu si zapamatuj, jak hráč drží telefon (a zkus zapnout senzor, kdyby čekal na dotyk)
-  if (id === 's-pad') { void tiltEnable(false); tiltZeroNow(); }
+  if (id === 's-pad') { void tiltEnable(false); tiltZeroNow(); if (!engineOn) setEngine(true); }
 }
 
 function send(m: CtrlMsg) { socket.emit('ctrl:msg', m); }
@@ -208,6 +208,8 @@ socket.on('host:msg', (m: HostMsg) => {
     $('l-laps').textContent = String(m.laps);
     $('l-bots').textContent = m.bots ? String(m.bots) : 'žádní';
     setTiltMode(m.tilt);
+    $('b-engine').hidden = !m.open;
+    if (!m.open && !engineOn) setEngine(true); // mimo plac motor vždycky jede
     $('t-name').textContent = m.name;
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
     const wait = $('l-wait');
@@ -232,7 +234,10 @@ socket.on('host:msg', (m: HostMsg) => {
   } else if (m.type === 'hud') {
     $('p-pos').textContent = String(m.pos);
     $('p-total').textContent = '/' + m.total;
-    $('p-lap').textContent = `${m.lap}/${m.laps}`;
+    // na testovacím placu se nejezdí na kola – místo počitadla jsou zničená auta
+    const lapBox = $('p-lap').parentElement as HTMLElement;
+    if (m.kills === undefined) { lapBox.innerHTML = 'KOLO <b id="p-lap"></b>'; $('p-lap').textContent = `${m.lap}/${m.laps}`; }
+    else { lapBox.innerHTML = 'ZNIČENO <b id="p-lap"></b>'; $('p-lap').textContent = String(m.kills); }
     $('p-hp').style.transform = `scaleX(${m.hp})`;
     $('p-nitro').style.transform = `scaleX(${m.nitro})`;
     $('sec-ammo').textContent = 'raketa ×' + m.ammo;
@@ -272,6 +277,7 @@ tap('start', () => send({ type: 'select' }));
 tap('tilt-btn', () => send({ type: 'tilt' }));
 tap('tilt-allow', () => { tiltDenied = false; void tiltEnable(true); });
 tap('t-zero', () => { tiltZeroNow(); vibe(30); });
+tap('b-engine', () => setEngine(!engineOn));
 const setRange = (d: number) => {
   const next = clampRange(tiltFull + d);
   if (next === tiltFull) return;
@@ -514,6 +520,17 @@ function tiltZeroNow() {
   oeReady = false; // filtr začne od nové polohy, ať se nula nepřitahuje ze starého stavu
 }
 
+// ------------------------------------------------------------------ vypínač motoru (testovací plac)
+let engineOn = true;
+function setEngine(on: boolean) {
+  engineOn = on;
+  const el = $('b-engine');
+  el.classList.toggle('off', !on);
+  (el.querySelector('b') as HTMLElement).textContent = on ? 'STOP' : 'START';
+  send({ type: 'engine', on });
+  vibe(25);
+}
+
 function setTiltMode(on: boolean) {
   $('tilt-mode').textContent = on ? 'NÁKLON' : 'TLAČÍTKA';
   $('tilt-btn').hidden = !isMaster;
@@ -629,7 +646,7 @@ function resetInput() {
 
 pad.addEventListener('pointerdown', (e) => {
   // SROVNAT / ⇄ uprostřed jsou normální tlačítka, ne část volantu
-  if ((e.target as HTMLElement).closest('.tilt-ui')) return;
+  if ((e.target as HTMLElement).closest('.tilt-ui, .padbtn')) return;
   e.preventDefault();
   if (!pointers.size) measurePad(); // první prst v padu: přeměř, layout se mohl změnit
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });

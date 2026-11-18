@@ -76,7 +76,7 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .tbar.hp i { background: linear-gradient(90deg, #1fbf4a, #8dff5a); }
 .tbar.nitro i { background: linear-gradient(90deg, #1470ff, #38d6ff); }
 .pad {
-  touch-action: none;
+  position: relative; touch-action: none;
   flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1.25fr 1fr; grid-template-rows: 0.8fr 1fr; gap: 3.5vh 3vw;
   padding: 4vh max(3vw, env(safe-area-inset-right)) max(4vh, env(safe-area-inset-bottom)) max(3vw, env(safe-area-inset-left));
   background: radial-gradient(90% 120% at 50% 55%, #6e6e6e 0%, #3a3a3a 45%, #151515 100%);
@@ -149,6 +149,20 @@ button { font-family: var(--display); border: 0; color: #fff; cursor: pointer; t
 .tilt-ui:active { transform: translateY(0.4vh); box-shadow: none; }
 small.tilt-ui { background: none; box-shadow: none; color: #ff8a6a; font-weight: 700; letter-spacing: 0.02em; line-height: 1.2; padding: 0; }
 small.tilt-ui:empty { display: none; }
+/* vypínač motoru – plave uprostřed padu, do zatáčení ani brzdy nemluví */
+.padbtn {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2vh;
+  width: 12.5vh; height: 12.5vh; border-radius: 50%; background: linear-gradient(180deg, #4b4f5e, #23252e);
+  box-shadow: 0 0 0 1.1vh #15161a, 0 1.2vh 2vh rgba(0, 0, 0, 0.7); color: #fff;
+}
+/* v náklonovém rozložení je prostředek nahoře obsazený ukazatelem, tak se vypínač posune níž */
+.pad.tilt .padbtn { top: 74%; }
+.padbtn small { font-size: 2vh; letter-spacing: 0.16em; opacity: 0.7; font-family: var(--body); font-weight: 800; }
+.padbtn b { font-size: 3.4vh; font-weight: 900; font-family: var(--body); letter-spacing: 0.04em; color: #ff8a6a; }
+.padbtn.off b { color: #7de08a; }
+.padbtn:active { filter: brightness(1.4); }
+.padbtn[hidden] { display: none; }
 .overlay { position: absolute; inset: 13vh 0 0 0; display: none; align-items: center; justify-content: center; background: rgba(8, 8, 12, 0.78); font-family: var(--display); font-style: italic; font-size: 14vh; color: #ff5a3d; pointer-events: none; text-align: center; }
 .overlay.show { display: flex; }
 .overlay.fin { color: var(--fire2); }

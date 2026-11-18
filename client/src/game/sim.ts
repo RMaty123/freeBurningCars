@@ -36,6 +36,8 @@ export interface Car {
   pid: string | null;
   /** zatáčí plynule (náklon telefonu) */
   analog: boolean;
+  /** vypnutý motor (testovací plac): auto nepřidává, nejde couvat a nehučí */
+  engineOff: boolean;
   ai: AIState;
   input: CarInput;
 
@@ -249,7 +251,7 @@ export class Sim {
       const car: Car = {
         id: entries.indexOf(e),
         name: e.name, color: e.color, tagColor: e.tagColor, typeIdx: e.typeIdx, stats: e.stats,
-        human: e.human, pid: e.pid, analog: !!e.analog,
+        human: e.human, pid: e.pid, analog: !!e.analog, engineOff: false,
         ai: newAI(this.rnd, skill),
         input: { steer: 0, throttle: 0, brake: 0, fire: false, secondary: false, drift: false },
         x: track.x[ti] + track.nx[ti] * off,
@@ -455,7 +457,9 @@ export class Sim {
     }
     if (brake > 0) {
       if (vf > 0.5) a -= st.brake * brake * (c.drifting ? 0.3 : 1);
-      else if (throttle < 0.1) a -= 15 * brake * (1 + Math.max(-1, vf / 16)); // zpátečka do ~16 m/s
+      // s vypnutým motorem brzda jen brzdí – couvat se nedá
+      else if (throttle < 0.1 && !c.engineOff) a -= 15 * brake * (1 + Math.max(-1, vf / 16)); // zpátečka do ~16 m/s
+      else if (c.engineOff && vf < 0) a += st.brake * brake;
     }
     a -= vf * 0.1;
     if (throttle === 0 && brake === 0) a -= Math.sign(vf) * 2.2;

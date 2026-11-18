@@ -108,6 +108,13 @@ export class RaceScreen implements Screen {
   refresh() { /* během závodu není co překreslovat */ }
 
   command(p: Player, m: CtrlMsg) {
+    const sim = this.app.sim;
+    // vypínač motoru na testovacím placu – každý hráč si vypíná jen svoje auto
+    if (m.type === 'engine' && sim?.track.def.open) {
+      const car = sim.carByPid(p.pid);
+      if (car) car.engineOff = !m.on;
+      return;
+    }
     if (!this.app.session.isMaster(p)) return;
     if (this.app.phase === 'results' && (m.type === 'select' || m.type === 'back')) this.next();
   }
@@ -157,8 +164,8 @@ export class RaceScreen implements Screen {
       const i = p.input;
       car.input.steer = +i.s || 0;
       car.input.brake = +i.b || 0;
-      // plyn drží hra sama; pustí ho jen při brzdění (pak jde i couvat)
-      car.input.throttle = car.input.brake > 0 ? 0 : 1;
+      // plyn drží hra sama; pustí ho jen při brzdění (pak jde i couvat) a s vypnutým motorem vůbec
+      car.input.throttle = car.engineOff || car.input.brake > 0 ? 0 : 1;
       car.input.fire = !!i.f;
       car.input.secondary = !!i.r;
       car.input.drift = !!i.d;
@@ -179,7 +186,7 @@ export class RaceScreen implements Screen {
     app.hud.update(sim, dt);
     for (const p of app.session.players.values()) {
       const car = sim.carByPid(p.pid);
-      if (car) app.audio.updateEngine(car.id, car.speed, car.stats.top, car.input.throttle, car.nitroOn, car.dead);
+      if (car) app.audio.updateEngine(car.id, car.speed, car.stats.top, car.input.throttle, car.nitroOn, car.dead || car.engineOff);
     }
     // stav pro displej ovladače
     this.hudSendT -= dt;
@@ -190,6 +197,7 @@ export class RaceScreen implements Screen {
         if (!car) continue;
         app.session.sendHud(p, {
           type: 'hud', pos: car.rank, total: sim.cars.length, lap: Math.min(sim.laps, Math.max(1, car.lap + 1)), laps: sim.laps,
+          kills: sim.track.def.open ? car.kills : undefined,
           hp: Math.max(0, car.hp / car.stats.hp), nitro: car.nitro, sec: car.secType, ammo: car.secAmmo, dead: car.dead, finished: car.finished,
           charge: car.gun.chargeMax ? car.charge / car.gun.chargeMax : 0,
           beam: car.beamT > 0 ? car.beam / car.beamT : 0,

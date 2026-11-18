@@ -54,6 +54,8 @@ export interface SessionHooks {
   bots(): number;
   /** typ hry: zatáčí se náklonem telefonu? */
   tilt(): boolean;
+  /** jede se na testovacím placu (volná jízda)? */
+  open(): boolean;
   /** popisek pro menu na ovladači (jen ve fázích s menu) */
   menu(): MenuInfo | undefined;
   onRoom(info: RoomInfo): void;
@@ -207,6 +209,7 @@ export class Session {
       laps: this.hooks.laps(),
       bots: this.hooks.bots(),
       tilt: this.hooks.tilt(),
+      open: this.hooks.open(),
       menu: this.hooks.menu(),
     };
   }

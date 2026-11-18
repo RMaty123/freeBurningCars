@@ -100,6 +100,7 @@ export class App {
       laps: () => this.settings.laps,
       bots: () => this.settings.bots,
       tilt: () => this.settings.tilt,
+      open: () => !!TRACKS[this.settings.trackIdx]?.open,
       menu: () => this.current?.menu?.(),
       onRoom: (info) => { this.roomInfo = info; for (const s of Object.values(this.screens)) s.onRoom?.(info); },
       onJoin: (p, isNew) => { if (isNew) this.audio.ui(); this.current?.playerJoined?.(p, isNew); },

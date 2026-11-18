@@ -59,7 +59,9 @@ export type CtrlMsg =
   /** výběr auta / zbraně: potvrzení / zrušení potvrzení */
   | { type: 'ready'; on: boolean }
   /** měření odezvy: obrazovka hned vrátí stejné `t` zpátky (viz 'pong') */
-  | { type: 'ping'; t: number };
+  | { type: 'ping'; t: number }
+  /** vypnutí / nastartování motoru (jen na testovacím placu) */
+  | { type: 'engine'; on: boolean };
 
 /** lobby → track (trať) → cars (auta) → guns (zbraň FIRE 1) → countdown → race → results → track … */
 export type Phase = 'lobby' | 'track' | 'cars' | 'guns' | 'countdown' | 'race' | 'results';
@@ -99,6 +101,8 @@ export type HostMsg =
       bots: number;
       /** typ hry: true = zatáčí se náklonem telefonu, false = tlačítky LEFT/RIGHT */
       tilt: boolean;
+      /** testovací plac: volná jízda bez kol, na ovladači přibude vypínač motoru */
+      open: boolean;
       /** vyplněno ve fázích s menu (výběr tratě…) */
       menu?: MenuInfo;
     }
@@ -108,6 +112,8 @@ export type HostMsg =
       total: number;
       lap: number;
       laps: number;
+      /** na volné ploše místo kol: kolik aut hráč zničil (jinak chybí) */
+      kills?: number;
       hp: number;
       /** zbývající boost 0…1 */
       nitro: number;
