@@ -71,7 +71,7 @@ export function aiThink(sim: Sim, c: Car, dt: number) {
     ai.lane = (sim.rnd() * 2 - 1) * tr.halfWidth * 0.6;
   }
   let lane = ai.lane;
-  // vyhni se pomalejšímu autu / vraku / mině před sebou
+  // vyhni se pomalejšímu autu / vraku před sebou
   let block = Infinity;
   for (const o of sim.cars) {
     if (o === c) continue;
@@ -81,17 +81,6 @@ export function aiThink(sim: Sim, c: Car, dt: number) {
     if (Math.abs(o.lat - c.lat) < 2.8 && (o.dead || o.speed < c.speed - 1)) {
       block = ahead;
       lane = o.lat + (o.lat > 0 ? -4.6 : 4.6);
-    }
-  }
-  for (const m of sim.mines) {
-    const dx = m.x - c.x, dz = m.z - c.z;
-    const ahead = dx * fx + dz * fz;
-    if (ahead < 2 || ahead > 30 || ahead > block) continue;
-    const side = dz * fx - dx * fz; // kladné = mina je vlevo
-    if (Math.abs(side) < 2.6) {
-      block = ahead;
-      lane = c.lat + (side > 0 ? -4.2 : 4.2);
-      if (Math.abs(lane) > tr.halfWidth - 1.8) lane = c.lat + (side > 0 ? 4.2 : -4.2);
     }
   }
   lane = clamp(lane, -(tr.halfWidth - 1.8), tr.halfWidth - 1.8);
@@ -144,16 +133,8 @@ export function aiThink(sim: Sim, c: Car, dt: number) {
     }
     ai.secT -= dt;
     if (c.secAmmo > 0 && ai.secT <= 0) {
-      if (c.secType === 'rocket') {
-        const t = sim.findTarget(c, 0.22, 90);
-        if (t && Math.hypot(t.x - c.x, t.z - c.z) > 14) { sec = true; ai.secT = 3 + sim.rnd() * 5; }
-      } else {
-        for (const o of sim.cars) {
-          if (o === c || o.dead) continue;
-          const behind = -((o.x - c.x) * fx + (o.z - c.z) * fz);
-          if (behind > 5 && behind < 28 && Math.abs(o.lat - c.lat) < 4) { sec = true; ai.secT = 3 + sim.rnd() * 5; break; }
-        }
-      }
+      const t = sim.findTarget(c, 0.22, 90);
+      if (t && Math.hypot(t.x - c.x, t.z - c.z) > 14) { sec = true; ai.secT = 3 + sim.rnd() * 5; }
     }
   }
 
@@ -240,17 +221,8 @@ function aiRoam(sim: Sim, c: Car, dt: number, fx: number, fz: number) {
     }
     ai.secT -= dt;
     if (c.secAmmo > 0 && ai.secT <= 0) {
-      if (c.secType === 'rocket') {
-        const t = sim.findTarget(c, 0.24, 110);
-        if (t && Math.hypot(t.x - c.x, t.z - c.z) > 14) { sec = true; ai.secT = 3 + sim.rnd() * 5; }
-      } else {
-        for (const o of sim.cars) {
-          if (o === c || o.dead) continue;
-          const behind = -((o.x - c.x) * fx + (o.z - c.z) * fz);
-          const side = (o.z - c.z) * fx - (o.x - c.x) * fz;
-          if (behind > 5 && behind < 28 && Math.abs(side) < 4) { sec = true; ai.secT = 3 + sim.rnd() * 5; break; }
-        }
-      }
+      const t = sim.findTarget(c, 0.24, 110);
+      if (t && Math.hypot(t.x - c.x, t.z - c.z) > 14) { sec = true; ai.secT = 3 + sim.rnd() * 5; }
     }
   }
 

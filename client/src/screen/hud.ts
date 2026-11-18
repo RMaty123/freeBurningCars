@@ -16,7 +16,7 @@ interface Panel {
   msgT: number; lastSec: string; lastHp: number;
 }
 
-const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f', mine: '#ff9d1a' };
+const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f' };
 
 export class Hud {
   private root: HTMLElement;

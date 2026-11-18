@@ -19,8 +19,8 @@ export interface CarInput {
   drift: boolean;
 }
 
-export type SecType = 'rocket' | 'mine';
-export type PickupKind = 'repair' | 'rocket' | 'mine' | 'nitro';
+export type SecType = 'rocket';
+export type PickupKind = 'repair' | 'rocket' | 'nitro';
 
 export interface Car {
   id: number;
@@ -99,7 +99,6 @@ export interface Car {
 
 export interface Bullet { x: number; z: number; vx: number; vz: number; life: number; owner: number; ti: number; gun: GunStats; }
 export interface Rocket { x: number; z: number; h: number; speed: number; life: number; owner: number; target: number; ti: number; id: number; }
-export interface Mine { x: number; z: number; owner: number; age: number; id: number; }
 export interface Pickup { x: number; z: number; kind: PickupKind; cooldown: number; id: number; }
 
 export type SimEvent =
@@ -168,7 +167,6 @@ export function mulberry(seed: number) {
 
 export const COUNTDOWN_TIME = 3.6;
 const ROCKET_DMG = 58;
-const MINE_DMG = 52;
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
 const CAR_OFF = 1.0;
 
@@ -211,7 +209,6 @@ export class Sim {
   cars: Car[] = [];
   bullets: Bullet[] = [];
   rockets: Rocket[] = [];
-  mines: Mine[] = [];
   pickups: Pickup[] = [];
   events: SimEvent[] = [];
 
@@ -271,7 +268,7 @@ export class Sim {
   private placePickups() {
     const tr = this.track;
     if (tr.def.open) {
-      const kinds: PickupKind[] = ['rocket', 'repair', 'nitro', 'mine'];
+      const kinds: PickupKind[] = ['rocket', 'repair', 'nitro'];
       const [cx, cz] = [tr.x[0], tr.z[0]];
       let k = 0;
       for (let gx = -4; gx <= 4; gx++) {
@@ -283,7 +280,7 @@ export class Sim {
       return;
     }
     const rows = Math.max(6, Math.round(tr.length / 150));
-    const kinds: PickupKind[] = ['rocket', 'repair', 'nitro', 'mine'];
+    const kinds: PickupKind[] = ['rocket', 'repair', 'nitro'];
     let k = 0;
     for (let r = 0; r < rows; r++) {
       const ti = wrapIdx(tr, Math.round(((r + 0.45) / rows) * tr.n));
@@ -734,18 +731,12 @@ export class Sim {
   private fireSecondary(c: Car) {
     c.secAmmo--;
     const fx = Math.sin(c.h), fz = Math.cos(c.h);
-    if (c.secType === 'rocket') {
-      c.secCd = 0.7;
-      const tgt = this.findTarget(c, 0.5, 130);
-      this.rockets.push({
-        x: c.x + fx * 2, z: c.z + fz * 2, h: c.h, speed: Math.max(35, c.speed + 25),
-        life: 3.2, owner: c.id, target: tgt ? tgt.id : -1, ti: c.ti, id: this.nextId++,
-      });
-    } else {
-      c.secCd = 0.5;
-      this.mines.push({ x: c.x - fx * 3.2, z: c.z - fz * 3.2, owner: c.id, age: 0, id: this.nextId++ });
-      if (this.mines.length > 24) this.mines.shift();
-    }
+    c.secCd = 0.7;
+    const tgt = this.findTarget(c, 0.5, 130);
+    this.rockets.push({
+      x: c.x + fx * 2, z: c.z + fz * 2, h: c.h, speed: Math.max(35, c.speed + 25),
+      life: 3.2, owner: c.id, target: tgt ? tgt.id : -1, ti: c.ti, id: this.nextId++,
+    });
     this.events.push({ t: 'launch', car: c.id, kind: c.secType });
   }
 
@@ -807,22 +798,6 @@ export class Sim {
       if (boom) {
         this.explode(r.x, r.z, 8.5, ROCKET_DMG, r.owner);
         this.rockets.splice(i, 1);
-      }
-    }
-    // --- miny
-    for (let i = this.mines.length - 1; i >= 0; i--) {
-      const m = this.mines[i];
-      m.age += dt;
-      let boom = m.age > 45;
-      if (m.age > 0.5) {
-        for (const c of this.cars) {
-          if (c.dead || (c.id === m.owner && m.age < 2)) continue;
-          if ((c.x - m.x) ** 2 + (c.z - m.z) ** 2 < 6.2) { boom = true; break; }
-        }
-      }
-      if (boom) {
-        this.explode(m.x, m.z, 6.5, MINE_DMG, m.owner);
-        this.mines.splice(i, 1);
       }
     }
   }
@@ -926,8 +901,7 @@ export class Sim {
         } else if (p.kind === 'nitro') {
           c.boost = BOOST_TIME;
         } else {
-          if (c.secType === p.kind) c.secAmmo = Math.min(6, c.secAmmo + 3);
-          else { c.secType = p.kind; c.secAmmo = 3; }
+          c.secAmmo = Math.min(6, c.secAmmo + 3);
         }
         p.cooldown = 7;
         this.events.push({ t: 'pickup', car: c.id, kind: p.kind, x: p.x, z: p.z });

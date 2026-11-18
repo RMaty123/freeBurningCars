@@ -11,7 +11,7 @@ export interface InputState {
   b: number;
   /** FIRE 1 – kulomet */
   f: boolean;
-  /** FIRE 2 – rakety / miny */
+  /** FIRE 2 – rakety */
   r: boolean;
   /** drift */
   d: boolean;
@@ -84,7 +84,7 @@ export type HostMsg =
       hp: number;
       /** zbývající boost 0…1 */
       nitro: number;
-      sec: 'rocket' | 'mine';
+      sec: 'rocket';
       ammo: number;
       dead: boolean;
       finished: boolean;

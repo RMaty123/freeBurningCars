@@ -61,8 +61,6 @@ export class GameView {
   private tmpColor = new THREE.Color();
   private tmpVec = new THREE.Vector3();
   private rockets: THREE.InstancedMesh;
-  private mines: THREE.InstancedMesh;
-  private mineMat: THREE.MeshStandardMaterial;
   private pickupGroup = new THREE.Group();
   private pickupMeshes = new Map<number, THREE.Group>();
   private pickupMats = new Map<PickupKind, THREE.MeshStandardMaterial>();
@@ -98,13 +96,7 @@ export class GameView {
       new THREE.BoxGeometry(0.04, 0.5, 0.3).translate(0, 0, -0.45),
     ])!;
     this.rockets = new THREE.InstancedMesh(rocketGeo, new THREE.MeshStandardMaterial({ color: 0xe8e8e8, metalness: 0.6, roughness: 0.35, emissive: 0x551100 }), 24);
-    const mineGeo = mergeGeometries([
-      new THREE.CylinderGeometry(0.6, 0.72, 0.22, 12).translate(0, 0.11, 0),
-      new THREE.SphereGeometry(0.2, 8, 6).translate(0, 0.28, 0),
-    ])!;
-    this.mineMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, metalness: 0.7, roughness: 0.4, emissive: 0xff2200, emissiveIntensity: 1 });
-    this.mines = new THREE.InstancedMesh(mineGeo, this.mineMat, 32);
-    for (const m of [this.bullets, this.rockets, this.mines]) {
+    for (const m of [this.bullets, this.rockets]) {
       m.count = 0;
       m.frustumCulled = false;
       this.scene.add(m);
@@ -440,21 +432,6 @@ export class GameView {
     }
     this.rockets.count = n;
     this.rockets.instanceMatrix.needsUpdate = true;
-
-    n = 0;
-    for (const m of sim.mines) {
-      if (n >= 32) break;
-      d.position.set(m.x, 0, m.z);
-      d.rotation.set(0, 0, 0);
-      const s = Math.min(1, m.age * 3);
-      d.scale.set(s, s, s);
-      d.updateMatrix();
-      this.mines.setMatrixAt(n++, d.matrix);
-    }
-    d.scale.set(1, 1, 1);
-    this.mines.count = n;
-    this.mines.instanceMatrix.needsUpdate = true;
-    this.mineMat.emissiveIntensity = Math.sin(t * 9) > 0 ? 2.6 : 0.2;
 
     // bedny
     for (const p of sim.pickups) {

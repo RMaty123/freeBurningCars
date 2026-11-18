@@ -227,7 +227,7 @@ export class RaceScreen implements Screen {
         case 'wall': if (e.force > 5) session.buzz(this.playerOf(s, e.car), 50); break;
         case 'pickup':
           if (s.cars[e.car].pid) {
-            const label = { repair: '+ OPRAVA', rocket: '+ RAKETY', mine: '+ MINY', nitro: 'BOOST ×1,7' }[e.kind];
+            const label = { repair: '+ OPRAVA', rocket: '+ RAKETY', nitro: 'BOOST ×1,7' }[e.kind];
             hud.message(e.car, label, e.kind === 'nitro' ? 'gold small' : 'good small', 1.1);
           }
           break;

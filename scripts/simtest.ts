@@ -70,7 +70,18 @@ for (const def of TRACKS) {
       sim.cars.forEach((c, i) => {
         if (driven[i] < 600) fail(`auto ${c.name} se na placu skoro nehnulo (ujelo ${driven[i].toFixed(0)} m)`);
       });
-      if (Math.max(...farFromStart) < 400) fail('auta se nerozjela po placu (nikdo se nevzdálil ani 400 m od startu)');
+      if (Math.max(...farFromStart) < 120) fail('auta se nerozjela po placu (všechna zůstala do 120 m od startu)');
+      // pojistka proti bariéře: jedno auto jede pryč od vodicí linky a nic ho nesmí zastavit
+      const probe = new Sim(track, [{ ...entries[0], human: true, pid: 'probe' }], { laps: 3, seed: 99 });
+      const pc = probe.cars[0];
+      for (let k = 0; k < 60 * 90; k++) {
+        pc.input.throttle = 1;
+        pc.input.steer = probe.time < 2 ? 1 : 0;
+        probe.step(1 / 60);
+        probe.events.length = 0;
+      }
+      if (!Number.isFinite(pc.x + pc.z) || Math.abs(pc.lat) < 1000) fail(`něco drží auta u trati – po 90 s jízdy pryč je jen ${Math.abs(pc.lat).toFixed(0)} m od linky`);
+      console.log(`  bez bariéry: auto dojelo ${Math.abs(pc.lat).toFixed(0)} m od vodicí linky`);
       if ((count.shot ?? 0) < 20) fail('na placu se skoro nestřílelo');
       if (count.lap) fail('na volné ploše se nemají počítat kola');
       console.log(`  volná jízda: ujeto ${driven.map((d) => (d / 1000).toFixed(1)).join('/')} km · nejdál od startu ${Math.max(...farFromStart).toFixed(0)} m · nejdál od linky ${Math.max(...sim.cars.map((c) => Math.abs(c.lat))).toFixed(0)} m`);

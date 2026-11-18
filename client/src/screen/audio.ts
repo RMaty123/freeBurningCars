@@ -129,7 +129,6 @@ export class GameAudio {
   }
   crash(vol: number) { this.burst(vol * 0.55, 0.22, 'lowpass', 900, 120, 1); this.tone(vol * 0.3, 0.12, 'triangle', 140, 50); }
   launch(vol: number) { this.burst(vol * 0.4, 0.5, 'bandpass', 500, 2600, 1.4); }
-  mineDrop(vol: number) { this.tone(vol * 0.25, 0.12, 'square', 520, 300); }
   pickup(vol: number) { this.tone(vol * 0.25, 0.09, 'triangle', 660, 680); this.tone(vol * 0.25, 0.14, 'triangle', 990, 1010, 0.08); }
   beep(high: boolean) { this.tone(0.3, high ? 0.6 : 0.18, 'square', high ? 880 : 440, high ? 880 : 440); }
   lap() { this.tone(0.2, 0.1, 'triangle', 784, 784); this.tone(0.2, 0.16, 'triangle', 1175, 1175, 0.1); }

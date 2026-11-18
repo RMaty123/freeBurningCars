@@ -215,7 +215,7 @@ export class App {
         case 'pickup': a.pickup(this.volAt(e.x, e.z)); break;
         case 'launch': {
           const c = s.cars[e.car];
-          if (e.kind === 'rocket') a.launch(this.volAt(c.x, c.z)); else a.mineDrop(this.volAt(c.x, c.z));
+          a.launch(this.volAt(c.x, c.z));
           break;
         }
         case 'respawn': { const c = s.cars[e.car]; a.respawn(this.volAt(c.x, c.z)); break; }

@@ -229,10 +229,10 @@ export function bannerTexture(title: string, sub: string): THREE.CanvasTexture {
   return tex(c, false);
 }
 
-const PICKUP_COLORS: Record<PickupKind, string> = { repair: '#27d45a', rocket: '#ff3b2f', mine: '#ff9d1a', nitro: '#22b8ff' };
-export const PICKUP_HEX: Record<PickupKind, number> = { repair: 0x27d45a, rocket: 0xff3b2f, mine: 0xff9d1a, nitro: 0x22b8ff };
+const PICKUP_COLORS: Record<PickupKind, string> = { repair: '#27d45a', rocket: '#ff3b2f', nitro: '#22b8ff' };
+export const PICKUP_HEX: Record<PickupKind, number> = { repair: 0x27d45a, rocket: 0xff3b2f, nitro: 0x22b8ff };
 
-/** Ikona na bedně (klíč / raketa / mina / blesk). */
+/** Ikona na bedně (klíč / raketa / blesk). */
 export function pickupTexture(kind: PickupKind): THREE.CanvasTexture {
   const S = 128;
   const [c, g] = canvas(S, S);
@@ -258,22 +258,14 @@ export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind, cx
     g.moveTo(r * 0.25, -r * 1.1); g.lineTo(-r * 0.6, r * 0.15); g.lineTo(-r * 0.05, r * 0.15);
     g.lineTo(-r * 0.3, r * 1.1); g.lineTo(r * 0.6, -r * 0.25); g.lineTo(r * 0.05, -r * 0.25);
     g.closePath(); g.fill();
-  } else if (kind === 'rocket') {
+  } else {
+    // raketa
     g.rotate(-Math.PI / 4);
     g.beginPath();
     g.moveTo(r * 1.15, 0); g.lineTo(r * 0.5, -r * 0.34); g.lineTo(-r * 0.7, -r * 0.34);
     g.lineTo(-r * 1.1, -r * 0.7); g.lineTo(-r * 0.9, 0); g.lineTo(-r * 1.1, r * 0.7);
     g.lineTo(-r * 0.7, r * 0.34); g.lineTo(r * 0.5, r * 0.34);
     g.closePath(); g.fill();
-  } else {
-    g.beginPath(); g.arc(0, 0, r * 0.62, 0, Math.PI * 2); g.fill();
-    g.lineWidth = r * 0.22;
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4;
-      g.beginPath(); g.moveTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6); g.lineTo(Math.cos(a) * r * 1.05, Math.sin(a) * r * 1.05); g.stroke();
-    }
-    g.fillStyle = '#12141b';
-    g.beginPath(); g.arc(0, 0, r * 0.22, 0, Math.PI * 2); g.fill();
   }
   g.restore();
 }

@@ -5,7 +5,7 @@ Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
-- **3 primární zbraně na výběr** (kulomet, těžký kulomet, dvojice laserů na dveřích), k tomu rakety, miny, opravy a zrychlení z beden
+- **3 primární zbraně na výběr** (kulomet, těžký kulomet, dvojice laserů na dveřích), k tomu rakety, opravy a zrychlení z beden
 - **4 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory) a Test Strip (osmipruhový testovací ovál)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
 - dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
@@ -63,7 +63,7 @@ Na počítači to jede přes `http://localhost:3000`. Kdyby prohlížeč Wake Lo
 
 **Plyn drží hra sama** – jen zatáčíš, brzdíš a střílíš.
 
-**Telefon (na šířku):** nahoře FIRE 1 (vybraná zbraň), DRIFT, FIRE 2 (raketa / mina); dole LEFT, BRAKE (podržením couvá), RIGHT.
+**Telefon (na šířku):** nahoře FIRE 1 (vybraná zbraň), DRIFT, FIRE 2 (raketa); dole LEFT, BRAKE (podržením couvá), RIGHT.
 
 **Klávesnice:**
 
@@ -73,7 +73,7 @@ Na počítači to jede přes `http://localhost:3000`. Kdyby prohlížeč Wake Lo
 | S / šipka dolů | brzda, zpátečka |
 | Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš, puštěním vystřelíš) |
 | W (nebo SHIFT) | drift |
-| E (nebo F) | raketa / mina |
+| E (nebo F) | raketa |
 | ESC | ukončit závod |
 
 Levá ruka tak drží celé ovládání na **Q W A S D** – palec má volný mezerník jako druhou možnost pro střelbu.
@@ -108,7 +108,7 @@ Zásah je **jednorázová rána za 110 hp, ne ubírání po kapkách** – stač
 
 **Doměřování u kulometů:** zbraň si najde cíl v kuželu před autem (`cone`) a natočí hlaveň na místo, kam auto doletí – ale jen částí opravy (`aim`) a nejvýš o `aimMax`. Střely samotné pak letí rovně. Všechno jsou to čísla v `game/content/guns.ts`, takže se dá doměřování komukoli přitvrdit i vypnout (`aim: 0`).
 
-Bedny: zelená opravuje, červená dává rakety, oranžová miny a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
+Bedny: zelená opravuje, červená dává rakety a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
 
 ### Auta a jízda
 

@@ -1,6 +1,6 @@
 /**
  * Free Burning Cars – ovladač (telefon).
- * V závodě: plyn drží hra sama, tlačítka FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa/mina), LEFT, BRAKE, RIGHT.
+ * V závodě: plyn drží hra sama, tlačítka FIRE 1 (kulomet), DRIFT, FIRE 2 (raketa), LEFT, BRAKE, RIGHT.
  * V menu (výběr tratě…): LEFT / SELECT / RIGHT / zpět – co se vybírá, říká obrazovka (HostMsg.menu).
  * Výběr auta i zbraně (FIRE 1): stejná obrazovka – lišta (zpět | jméno | potvrzení) a mřížka;
  * nabídku s náhledy posílá obrazovka. Ťuknutím vybereš, tlačítkem POTVRDIT potvrdíš.
@@ -233,7 +233,7 @@ socket.on('host:msg', (m: HostMsg) => {
     $('p-lap').textContent = `${m.lap}/${m.laps}`;
     $('p-hp').style.transform = `scaleX(${m.hp})`;
     $('p-nitro').style.transform = `scaleX(${m.nitro})`;
-    $('sec-ammo').textContent = (m.sec === 'rocket' ? 'raketa' : 'mina') + ' ×' + m.ammo;
+    $('sec-ammo').textContent = 'raketa ×' + m.ammo;
     $('b-sec').classList.toggle('empty', m.ammo === 0);
     const chg = $('fire-chg');
     const lvl = m.beam > 0 ? m.beam : m.charge;
