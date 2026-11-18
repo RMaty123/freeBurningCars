@@ -69,10 +69,12 @@ export class LobbyScreen implements Screen {
     toggle.onclick = () => { this.netOpen = !this.netOpen; this.showNet(); };
     list.hidden = !this.netOpen || this.nets.length < 2;
     if (list.hidden) return;
-    list.innerHTML = this.nets.map((n, i) => `
+    list.innerHTML = '<p class="net-head">SÍŤ PRO QR KÓD</p>' + this.nets.map((n, i) => `
       <button class="net-opt${i === this.netIdx ? ' on' : ''}" data-i="${i}">
-        <b>${esc(n.iface)}</b><small>${esc(n.ip)}</small>
-      </button>`).join('') + '<p class="net">přepínat jde i klávesou <kbd>N</kbd></p>';
+        <span class="net-dot"></span>
+        <b>${esc(n.iface)}</b>
+        <small>${esc(n.ip)}</small>
+      </button>`).join('') + '<p class="net-foot">přepínat jde i klávesou <kbd>N</kbd></p>';
     for (const el of list.querySelectorAll<HTMLElement>('.net-opt')) {
       el.onclick = () => this.pickNet(Number(el.dataset.i));
     }
