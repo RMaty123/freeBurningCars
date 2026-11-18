@@ -8,7 +8,9 @@
  * Vyvážení (poškození za sekundu, když všechno sedí):
  *   VULCAN   1.7 / 0.034 s ≈ 34 dps – rotační minigun: 20 ran za sekundu, drobné rány, kratší dostřel
  *   BREAKER  13  / 0.40 s  ≈ 32 dps – málo ran, každá bolí, delší dostřel, slabší doměřování
- *   PRISM    110 dmg za zásah – dvě děla na dveřích, nabíjí se držením.
+ *   PRISM    110 dmg za zásah – dvě děla na dveřích, nabíjí se držením. Dosah 58 m:
+ *            měřením vyšlo, že dál než 75 m paprsek stejně nikdy netrefí (90 % zásahů do 56 m),
+ *            takže delší dosah byl jen nápis – teď musí zbraň blíž, aby na něco dosáhla.
  *            Stačí po někom paprskem řeznout a je po něm; těžká auta (120+ hp)
  *            to přežijí a padnou druhou ranou. Zato se musí nejdřív nabít.
  */
@@ -47,7 +49,7 @@ export const GUNS: GunStats[] = [
     tagline: 'Dvě děla na dveřích. Koho paprsek škrtne, ten většinou končí.',
     kind: 'beam', mount: 'side', twin: true,
     color: 0x6ff0ff,
-    cd: 0.8, dmg: 110, speed: 0, range: 90, spread: 0, tracer: 1,
+    cd: 0.8, dmg: 110, speed: 0, range: 58, spread: 0, tracer: 1,
     cone: 0, aim: 0, aimMax: 0,
     chargeMax: 5, beamPer: 1, beamR: 0.55, rehit: 0.7,
     shape: {
