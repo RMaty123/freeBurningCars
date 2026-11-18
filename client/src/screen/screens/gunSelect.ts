@@ -9,18 +9,12 @@
  */
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
 import { GUNS } from '../../game/content/guns';
-import type { GunStats } from '../../game/guns';
 import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, Screen } from '../app';
 import { KBD, Player } from '../session';
 
 /** jak dlouho po potvrzení posledního hráče se čeká, než začne závod (s) */
 const START_DELAY = 1.3;
-
-/** řádky ukazatelů pod jmenovkou */
-const STAT_ROWS: [keyof GunStats['ratings'], string][] = [
-  ['power', 'SÍLA'], ['rate', 'RYCHLOST PALBY'], ['range', 'DOSTŘEL'],
-];
 
 interface Panel {
   pid: string;
@@ -52,7 +46,6 @@ export class GunSelectScreen implements Screen {
         <div class="cs-plate">
           <div class="cs-car"></div>
           <div class="cs-name"></div>
-          <div class="cs-stats">${STAT_ROWS.map(([k, label]) => `<span>${label}</span><div class="cs-pips" data-k="${k}">${'<i></i>'.repeat(10)}</div>`).join('')}</div>
           <div class="cs-status"></div>
         </div>`;
       (el.querySelector('.cs-name') as HTMLElement).textContent = p.name;
@@ -74,10 +67,6 @@ export class GunSelectScreen implements Screen {
       panel.shown = key;
       const q = (s: string) => panel.el.querySelector(s) as HTMLElement;
       q('.cs-car').textContent = gun.name;
-      panel.el.querySelectorAll<HTMLElement>('.cs-pips').forEach((row) => {
-        const n = gun.ratings[row.dataset.k as keyof GunStats['ratings']];
-        Array.from(row.children).forEach((pip, k) => pip.classList.toggle('on', k < n));
-      });
       panel.el.classList.toggle('ready', p.ready);
       q('.cs-status').textContent = p.ready ? '✔ POTVRZENO' : p.pid === KBD ? '←/→ vyber · ENTER potvrď' : 'vybírá na telefonu…';
     });
@@ -101,7 +90,7 @@ export class GunSelectScreen implements Screen {
       this.app.session.send(p, {
         type: 'catalog', kind: 'gun', idx, total: GUNS.length, name: gun.name, tagline: gun.tagline,
         img: this.app.showroom.gunThumbnail(gun),
-        ratings: STAT_ROWS.map(([k, l]) => ({ l, v: gun.ratings[k] })),
+        ratings: [],
       });
     });
   }

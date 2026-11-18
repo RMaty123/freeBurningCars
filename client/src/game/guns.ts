@@ -80,8 +80,6 @@ export interface GunStats {
   /** jen `beam`: za jak dlouho může paprsek zasáhnout to samé auto znovu (s) */
   rehit?: number;
 
-  /** ukazatele 1–10 do nabídky */
-  ratings: { power: number; rate: number; range: number };
   shape: GunShape;
 }
 

@@ -23,7 +23,6 @@ export const GUNS: GunStats[] = [
     color: 0xffe6a0,
     cd: 0.085, dmg: 2.7, speed: 150, range: 95, spread: 0.012, tracer: 1,
     cone: 0.16, aim: 1, aimMax: 0.17,
-    ratings: { power: 3, rate: 10, range: 7 },
     shape: {
       metal: 0xb9bcc2, accent: 0x6b5a2e, body: [0.52, 0.2, 0.17],
       barrel: 1.05, bore: 0.052, jacket: true, ammoBox: true, belt: true,
@@ -37,7 +36,6 @@ export const GUNS: GunStats[] = [
     color: 0xffa23c,
     cd: 0.4, dmg: 13, speed: 125, range: 110, spread: 0.018, tracer: 1.7,
     cone: 0.12, aim: 0.8, aimMax: 0.1,
-    ratings: { power: 8, rate: 4, range: 8 },
     shape: {
       metal: 0x9aa0a8, accent: 0x2a2d33, body: [0.66, 0.26, 0.24],
       barrel: 1.0, bore: 0.085, brake: true, ammoBox: true, belt: true,
@@ -52,7 +50,6 @@ export const GUNS: GunStats[] = [
     cd: 0.8, dmg: 110, speed: 0, range: 90, spread: 0, tracer: 1,
     cone: 0, aim: 0, aimMax: 0,
     chargeMax: 5, beamPer: 1, beamR: 0.55, rehit: 0.7,
-    ratings: { power: 10, rate: 2, range: 7 },
     shape: {
       // přesně ta dvě děla, co auto nosí na dveřích
       metal: 0xb6bcc4, accent: 0x23262c, body: [0.62, 0.22, 0.22],
