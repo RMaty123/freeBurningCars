@@ -33,6 +33,8 @@ export interface CarVisual {
   laser: THREE.MeshBasicMaterial;
   /** ústí zbraní v souřadnicích karoserie (zleva doprava) */
   muzzles: THREE.Vector3[];
+  /** svazky hlavní rotačního kulometu – při střelbě se točí kolem své osy */
+  gunSpins: THREE.Group[];
   color: number;
   shape: CarShape;
   /** výška ramen karoserie (kam se dává kulomet, kouř…) */
@@ -458,6 +460,8 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
   const laserGeo: THREE.BufferGeometry[] = [];
   /** kde zbraň ústí (v souřadnicích karoserie) – odtud se kreslí paprsky a záblesky */
   const muzzles: THREE.Vector3[] = [];
+  /** točící se svazky hlavní (minigun) – přidají se do karoserie až se staví meshe */
+  const gunSpins: THREE.Group[] = [];
   if (gun?.mount === 'side') {
     // laserové dělo přišroubované zvenku na dveře – končí kousek za předním kolem, míří dopředu
     const zF = axF - wr - 0.28;
@@ -484,6 +488,32 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
       gunGeo.push(cyl(0.062 * ps, 0.16 * ps, x, py, zF - 0.07, 'z', 12, 0.095 * ps));            // ústí se zužuje dopředu
       laserGeo.push(cyl(0.052 * ps, 0.11 * ps, x, py, zF + 0.015, 'z', 12));                     // zářící čočka
       muzzles.push(new THREE.Vector3(x, py, zF + 0.06));
+    }
+  } else if ((gun?.shape.barrels ?? 1) > 1) {
+    // rotační minigun na kapotě – stejný kus, jaký je vidět v nabídce zbraní
+    const nb = gun!.shape.barrels!;
+    const r = 0.018, rr = r * 2.4, cage = r * 3.6, len = 0.52;
+    for (const sx of [-1, 1]) {
+      const gx = sx * bodyW * 0.27, gy = sh + 0.055, z0 = gz - 0.1;
+      const zF = z0 + 0.16; // čelo skříně, odtud rostou hlavně
+      gunGeo.push(box(cage * 2.3, cage * 2.2, 0.32, gx, gy, z0));                    // skříň s převodovkou
+      gunGeo.push(box(cage * 1.15, 0.025, 0.22, gx, gy + cage * 1.3, z0));           // madlo navrchu
+      darkGeo.push(box(0.1, 0.12, 0.14, gx, gy - cage * 1.55, z0 - 0.02));           // držák do kapoty
+      darkGeo.push(cyl(cage * 0.55, 0.08, gx, gy, z0 - 0.19, 'z', 8));               // motorek vzadu
+      chromeGeo.push(cyl(cage * 0.95, 0.13, gx, gy, zF - 0.05, 'z', 12));            // kryt rotoru
+      for (const t of [0.12, 0.52, 0.92]) gunGeo.push(cyl(cage, 0.035, gx, gy, zF + len * t, 'z', 12)); // objímky svazku
+      // svazek hlavní je samostatná skupina, aby se dal při střelbě roztočit
+      const spin = new THREE.Group();
+      spin.position.set(gx, gy, zF);
+      const bars: THREE.BufferGeometry[] = [];
+      for (let i = 0; i < nb; i++) {
+        const a = (i / nb) * Math.PI * 2;
+        bars.push(cyl(r, len, Math.cos(a) * rr, Math.sin(a) * rr, len / 2, 'z', 6));
+      }
+      const bundle = merged(bars, chromeMat, false);
+      if (bundle) spin.add(bundle);
+      gunSpins.push(spin);
+      muzzles.push(new THREE.Vector3(gx, gy, zF + len + 0.04));
     }
   } else {
     for (const sx of [-1, 1]) {
@@ -561,6 +591,7 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
     const m = merged(list, mat, shadow);
     if (m) body.add(m);
   }
+  for (const sp of gunSpins) body.add(sp);
 
   // ---- kola s paprsky
   const spokes = shape.rimSpokes ?? 5;
@@ -596,7 +627,7 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
 
   return {
     root, body, wheels, spins, paint, accent, caliper, stripe, rim, rearLights, frontLights,
-    laser: laserMat, muzzles, color, shape, shoulder: sh, roofY,
+    laser: laserMat, muzzles, gunSpins, color, shape, shoulder: sh, roofY,
   };
 }
 

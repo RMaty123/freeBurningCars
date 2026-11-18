@@ -6,8 +6,8 @@
  * a model do nabídky se poskládá podle `shape` (render/gunModel.ts).
  *
  * Vyvážení (poškození za sekundu, když všechno sedí):
- *   VULCAN   2.7 / 0.085 s ≈ 32 dps – hodně ran, dobře doměřuje, malé rány
- *   BREAKER  13  / 0.40 s  ≈ 32 dps – málo ran, každá bolí, slabší doměřování
+ *   VULCAN   1.7 / 0.034 s ≈ 34 dps – rotační minigun: 20 ran za sekundu, drobné rány, kratší dostřel
+ *   BREAKER  13  / 0.40 s  ≈ 32 dps – málo ran, každá bolí, delší dostřel, slabší doměřování
  *   PRISM    110 dmg za zásah – dvě děla na dveřích, nabíjí se držením.
  *            Stačí po někom paprskem řeznout a je po něm; těžká auta (120+ hp)
  *            to přežijí a padnou druhou ranou. Zato se musí nejdřív nabít.
@@ -18,14 +18,14 @@ export const GUNS: GunStats[] = [
   {
     id: 'vulcan',
     name: 'VULCAN',
-    tagline: 'Rychlopalný kulomet. Spousta ran, slabší rány.',
+    tagline: 'Rotační minigun. Roztočí hlavně a zasype cíl olovem.',
     kind: 'bullet', mount: 'hood',
     color: 0xffe6a0,
-    cd: 0.085, dmg: 2.7, speed: 150, range: 95, spread: 0.012, tracer: 1,
+    cd: 0.034, dmg: 1.7, speed: 165, range: 95, spread: 0.015, tracer: 1,
     cone: 0.16, aim: 1, aimMax: 0.17,
     shape: {
-      metal: 0xb9bcc2, accent: 0x6b5a2e, body: [0.52, 0.2, 0.17],
-      barrel: 1.05, bore: 0.052, jacket: true, ammoBox: true, belt: true,
+      metal: 0xd2d7df, accent: 0xc9a85a, body: [0.56, 0.22, 0.2],
+      barrel: 1.02, bore: 0.038, barrels: 6, ammoBox: true, belt: true,
     },
   },
   {

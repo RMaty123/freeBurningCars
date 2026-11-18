@@ -20,7 +20,8 @@ export interface GunShape {
   /** hlaveň: délka a poloměr */
   barrel: number;
   bore: number;
-  /** víc hlavní = rotační kulomet */
+  /** víc hlavní = rotační kulomet (minigun): skříň s převodovkou, svazek hlavní v objímkách,
+   *  madlo, podavač a opěrná noha – a na autě se svazek při střelbě točí */
   barrels?: number;
   /** děrovaný chladicí plášť kolem hlavně */
   jacket?: boolean;

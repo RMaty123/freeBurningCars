@@ -75,7 +75,12 @@ export function buildGun(shape: GunShape): GunVisual {
 
   const [bl, bh, bw] = shape.body;
   const y = 0.34;            // osa zbraně nad podstavcem
-  const zBody = -bl * 0.1;   // tělo kousek za středem, hlaveň vyváží délku
+  const nb = shape.barrels ?? 1;
+  const mini = nb > 1;                            // rotační kulomet: vlastní skříň, svazek hlavní, madlo a noha
+  const cage = shape.bore * 3.5;                  // poloměr objímek kolem svazku
+  const hw = mini ? Math.max(bw, cage * 2.1) : bw; // šířka skříně
+  // tělo kousek za středem, hlaveň vyváží délku (minigun je delší, posune se víc dozadu)
+  const zBody = mini ? -shape.barrel * 0.33 : -bl * 0.1;
 
   // ---- stojánek: sloupek a čtyři vzpěry do X
   metalGeo.push(cyl(0.075, y - 0.14, 0, (y - 0.14) / 2 + 0.06, 0, 'y', 10));
@@ -85,13 +90,65 @@ export function buildGun(shape: GunShape): GunVisual {
     metalGeo.push(box(0.1, 0.035, 0.1, sx * 0.26, 0.04, sz * 0.26));
   }
   // kloub, na kterém zbraň sedí
-  darkGeo.push(cyl(0.055, bw + 0.08, 0, y - 0.03, zBody, 'x', 10));
+  darkGeo.push(cyl(0.055, hw + 0.08, 0, y - 0.03, zBody, 'x', 10));
 
   // ---- tělo
-  metalGeo.push(box(bw, bh, bl, 0, y, zBody));
-  metalGeo.push(box(bw * 0.72, bh * 0.42, bl * 0.5, 0, y + bh * 0.6, zBody - bl * 0.1)); // nástavec navrchu
-  darkGeo.push(box(bw + 0.03, bh * 0.3, bl * 0.22, 0, y - bh * 0.1, zBody - bl * 0.42)); // zadní kryt
-  accentGeo.push(box(bw * 0.4, bh * 0.5, bl * 0.3, 0, y - bh * 0.5, zBody - bl * 0.2));  // rukojeť / spoušť
+  if (mini) {
+    // rotační kulomet: skříň s převodovkou, svazek hlavní v objímkách, madlo, podavač a opěrná noha
+    const hl = bl * 1.15;              // délka skříně
+    const hh = bh * 1.5;               // výška skříně
+    const zF = zBody + hl / 2;         // čelo skříně – odtud rostou hlavně
+    const zM = zF + shape.barrel;      // ústí
+    const rr = shape.bore * 2.35;      // na jakém poloměru hlavně sedí
+
+    metalGeo.push(box(hw, hh, hl, 0, y, zBody));                                            // skříň
+    metalGeo.push(cyl(cage * 0.97, hl * 0.46, 0, y, zF - hl * 0.2, 'z', 16));               // kryt rotoru
+    darkGeo.push(box(hw * 1.03, hh * 0.3, hl * 0.42, 0, y + hh * 0.52, zBody - hl * 0.1));  // žebra navrchu
+    darkGeo.push(cyl(cage * 0.62, 0.14, 0, y, zBody - hl / 2 - 0.05, 'z', 12));             // motorek vzadu
+    metalGeo.push(cyl(cage * 0.3, 0.1, 0, y, zBody - hl / 2 - 0.15, 'z', 10));              // hřídel
+    accentGeo.push(box(hw * 0.42, bh * 0.8, hl * 0.2, 0, y - hh * 0.72, zBody - hl * 0.24)); // rukojeť se spouští
+    darkGeo.push(box(hw * 0.52, bh * 0.28, hl * 0.17, 0, y - hh * 0.5, zBody - hl * 0.12));  // lučík
+
+    // madlo navrchu
+    metalGeo.push(box(hw * 0.3, 0.05, hl * 0.8, 0, y + hh * 0.95, zBody));
+    for (const t of [-0.34, 0.34]) metalGeo.push(box(hw * 0.26, hh * 0.4, 0.06, 0, y + hh * 0.75, zBody + hl * t));
+
+    // svazek hlavní s mosaznými ústími
+    for (let i = 0; i < nb; i++) {
+      const a = (i / nb) * Math.PI * 2 + Math.PI / nb;
+      const bx = Math.cos(a) * rr, by = y + Math.sin(a) * rr;
+      metalGeo.push(cyl(shape.bore, shape.barrel, bx, by, zF + shape.barrel / 2, 'z', 10));
+      accentGeo.push(cyl(shape.bore * 1.08, 0.08, bx, by, zM - 0.04, 'z', 10));
+      darkGeo.push(cyl(shape.bore * 0.55, 0.05, bx, by, zM + 0.012, 'z', 8));
+    }
+    for (const t of [0.1, 0.45, 0.8]) darkGeo.push(cyl(cage, 0.07, 0, y, zF + shape.barrel * t, 'z', 16)); // objímky
+    metalGeo.push(cyl(cage * 1.05, 0.055, 0, y, zF + shape.barrel * 0.96, 'z', 16));                       // přední prstenec
+
+    // opěrná noha pod svazkem
+    const legZ = zF + shape.barrel * 0.45;
+    metalGeo.push(box(0.07, 0.17, 0.07, 0, y - cage - 0.085, legZ));
+    metalGeo.push(box(0.27, 0.045, 0.21, 0, y - cage - 0.18, legZ));
+    for (const sx of [-1, 1]) darkGeo.push(box(0.06, 0.05, 0.07, sx * 0.1, y - cage - 0.2, legZ + 0.065));
+
+    // podavač: skříňka s náboji vlevo a pás, který vede do hrdla
+    if (shape.ammoBox) {
+      const ax = -(hw * 0.5 + 0.065);
+      metalGeo.push(box(0.13, hh * 0.8, hl * 0.6, ax, y + hh * 0.08, zBody - hl * 0.04)); // kryt podavače
+      darkGeo.push(box(0.135, 0.03, hl * 0.62, ax, y + hh * 0.49, zBody - hl * 0.04));
+      metalGeo.push(box(0.1, hh * 0.3, 0.09, ax + 0.07, y + hh * 0.05, zBody + hl * 0.18));  // hrdlo do skříně
+    }
+    if (shape.belt) {
+      for (let i = 0; i < 5; i++) {
+        const t = i / 4;
+        accentGeo.push(box(0.042, 0.06, 0.04, -(hw * 0.5 + 0.055 + t * 0.07), y - hh * (0.3 + t * 0.42), zBody - hl * 0.04, 0, 0.18));
+      }
+    }
+  } else {
+    metalGeo.push(box(bw, bh, bl, 0, y, zBody));
+    metalGeo.push(box(bw * 0.72, bh * 0.42, bl * 0.5, 0, y + bh * 0.6, zBody - bl * 0.1)); // nástavec navrchu
+    darkGeo.push(box(bw + 0.03, bh * 0.3, bl * 0.22, 0, y - bh * 0.1, zBody - bl * 0.42)); // zadní kryt
+    accentGeo.push(box(bw * 0.4, bh * 0.5, bl * 0.3, 0, y - bh * 0.5, zBody - bl * 0.2));  // rukojeť / spoušť
+  }
 
   // ---- dvojice děl z dveří auta (vlastní model laserové zbraně)
   if (shape.pods) {
@@ -122,24 +179,14 @@ export function buildGun(shape: GunShape): GunVisual {
     return { root: root0, materials: materials0 };
   }
 
-  // ---- hlaveň
+  // ---- hlaveň (rotační kulomet si ji postavil sám výš)
   const zMuzzle = zBody + bl / 2 + shape.barrel;
-  const n = shape.barrels ?? 1;
-  if (n > 1) {
-    // rotační kulomet: hlavně kolem osy, vpředu a vzadu je spojuje prstenec
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2, rr = shape.bore * 2.1;
-      metalGeo.push(cyl(shape.bore, shape.barrel, Math.cos(a) * rr, y + Math.sin(a) * rr, zBody + bl / 2 + shape.barrel / 2, 'z', 8));
-    }
-    for (const t of [0.12, 0.55, 0.95]) {
-      darkGeo.push(cyl(shape.bore * 3.1, 0.06, 0, y, zBody + bl / 2 + shape.barrel * t, 'z', 14));
-    }
-  } else {
+  if (!mini) {
     metalGeo.push(cyl(shape.bore, shape.barrel, 0, y, zBody + bl / 2 + shape.barrel / 2, 'z', 12));
   }
 
   // chladicí plášť s otvory
-  if (shape.jacket) {
+  if (shape.jacket && !mini) {
     const jr = shape.bore * 2.6, jl = shape.barrel * 0.78;
     const jz = zBody + bl / 2 + jl / 2 + 0.02;
     metalGeo.push(cyl(jr, jl, 0, y, jz, 'z', 16));
@@ -152,18 +199,18 @@ export function buildGun(shape: GunShape): GunVisual {
   }
 
   // úsťová brzda
-  if (shape.brake) {
+  if (shape.brake && !mini) {
     metalGeo.push(cyl(shape.bore * 1.7, 0.2, 0, y, zMuzzle - 0.06, 'z', 12));
     for (let i = 0; i < 3; i++) darkGeo.push(box(shape.bore * 4, 0.035, 0.03, 0, y, zMuzzle - 0.14 + i * 0.06));
   }
-  darkGeo.push(cyl(shape.bore * 0.62, 0.05, 0, y, zMuzzle + 0.01, 'z', 10)); // ústí
+  if (!mini) darkGeo.push(cyl(shape.bore * 0.62, 0.05, 0, y, zMuzzle + 0.01, 'z', 10)); // ústí
 
-  // ---- bedna s municí a pás
-  if (shape.ammoBox) {
+  // ---- bedna s municí a pás (minigun má vlastní podavač)
+  if (shape.ammoBox && !mini) {
     accentGeo.push(box(bw * 1.05, bh * 1.15, bl * 0.8, -(bw * 0.95), y - bh * 0.25, zBody - bl * 0.1));
     darkGeo.push(box(bw * 1.1, 0.04, bl * 0.84, -(bw * 0.95), y + bh * 0.35, zBody - bl * 0.1));
   }
-  if (shape.belt) {
+  if (shape.belt && !mini) {
     for (let i = 0; i < 6; i++) {
       const t = i / 5;
       accentGeo.push(box(0.055, 0.075, 0.05, -bw * (0.2 + t * 0.75), y + bh * (0.36 - t * 0.12), zBody + bl * 0.08, 0, 0.25));

@@ -101,7 +101,7 @@ Po výběru auta přijde **výběr zbraně** – na telefonu mřížka s náhled
 
 | Zbraň | Jak střílí | Čísla |
 | --- | --- | --- |
-| **VULCAN** | rychlopalný kulomet, dobře si doměřuje cíl | 2,7 dmg / ránu, 12 ran za sekundu (≈ 32 dmg/s) |
+| **VULCAN** | rotační minigun, při střelbě se mu točí hlavně, dobře si doměřuje cíl | 1,7 dmg / ránu, 20 ran za sekundu (≈ 34 dmg/s) |
 | **BREAKER** | pomalý těžký kulomet, slabší doměřování, velké rány | 13 dmg / ránu, 2,5 rány za sekundu (≈ 32 dmg/s) |
 | **PRISM** | **dva lasery na dveřích**, nabíjí se držením FIRE 1 | 110 dmg za zásah, nabíjení až 5 s |
 

@@ -22,6 +22,8 @@ interface CarView {
   wrecked: boolean;
   roll: number; pitch: number;
   smokeAcc: number; tireAcc: number; fireAcc: number;
+  /** otáčky svazku hlavní minigunu (rad/s) – roztáčí se při střelbě a pak dobíhá */
+  gunSpin: number;
 }
 
 interface Rig {
@@ -204,7 +206,7 @@ export class GameView {
       blob.visible = this.quality === 'low';
       v.root.add(blob);
       this.carGroup.add(v.root);
-      this.cars.push({ v, tag, headlight, blob, wrecked: false, roll: 0, pitch: 0, smokeAcc: 0, tireAcc: 0, fireAcc: 0 });
+      this.cars.push({ v, tag, headlight, blob, wrecked: false, roll: 0, pitch: 0, smokeAcc: 0, tireAcc: 0, fireAcc: 0, gunSpin: 0 });
     }
     // bedny
     this.pickupGroup.clear();
@@ -365,6 +367,13 @@ export class GameView {
       const spin = (c.speed * dt) / c.stats.shape.wheelR;
       for (let w = 0; w < 4; w++) v.spins[w].rotation.x += spin;
       v.wheels[0].rotation.y = v.wheels[1].rotation.y = -c.steer * 0.42;
+
+      // minigun: při střelbě se svazek hlavní roztočí, po puštění spouště dobíhá
+      if (v.gunSpins.length) {
+        const want = c.fireCd > 0 ? 34 : 0;
+        cv.gunSpin += (want - cv.gunSpin) * Math.min(1, dt * (want ? 9 : 2.4));
+        if (cv.gunSpin > 0.02) for (const g of v.gunSpins) g.rotation.z += cv.gunSpin * dt;
+      }
 
       // světla + záblesk při zásahu
       v.rearLights.emissiveIntensity = c.input.brake > 0.1 ? 4.5 : 1.4;
