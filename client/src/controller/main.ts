@@ -272,6 +272,13 @@ tap('start', () => send({ type: 'select' }));
 tap('tilt-btn', () => send({ type: 'tilt' }));
 tap('tilt-allow', () => { tiltDenied = false; void tiltEnable(true); });
 tap('t-zero', () => { tiltZeroNow(); vibe(30); });
+tap('t-range', () => {
+  tiltFull = TILT_RANGES[(TILT_RANGES.indexOf(tiltFull) + 1) % TILT_RANGES.length];
+  store('fbc-tilt-full', String(tiltFull));
+  showRange();
+  tiltZeroNow();
+  vibe(30);
+});
 tap('t-flip', () => {
   tiltFlip = -tiltFlip;
   store('fbc-tilt-flip', tiltFlip < 0 ? '1' : '0');
@@ -363,8 +370,10 @@ tap('cs-back', () => send({ type: 'back' }));
  *               z nich vybereme úhel, o který je telefon natočený kolem osy pohledu (jako volant).
  *  2) nula    – při zapnutí (a tlačítkem SROVNAT nebo na startu závodu) si zapamatujeme, jak hráč drží
  *               telefon; počítá se jen odchylka od téhle nuly, takže je jedno, jestli leží nebo stojí.
- *  3) křivka  – do TILT_DEAD° se nezatáčí vůbec (klid v rukou), TILT_FULL° je plný rejd a mezi tím
- *               mocnina TILT_CURVE, aby byl střed jemný a kraje svižné.
+ *  3) křivka  – do mrtvé zóny se nezatáčí vůbec (klid v rukou), `tiltFull`° je plný rejd a mezi tím
+ *               mocnina TILT_CURVE, aby byl střed jemný a kraje svižné. Rozsah si hráč přepíná
+ *               tlačítkem ROZSAH (18 / 26 / 34 / 45°): čím větší úhel, tím víc se musí naklonit,
+ *               ale tím jemněji se dá korigovat. Mrtvá zóna roste s rozsahem (11 %, nejmíň 2°).
  *  4) hlazení – adaptivní filtr (á la "1€"): když telefon leží v klidu, hladí silně (klid v ruce),
  *               jakmile s ním hneš, se otevře a skoro nezpožďuje. Pevný filtr by buď šuměl, nebo zpožďoval.
  *  5) odesílání – počítá se rovnou v obsluze senzoru (žádné čekání na časovač), hodnota se zaokrouhlí
@@ -372,8 +381,7 @@ tap('cs-back', () => send({ type: 'back' }));
  *  6) pojistka – když do 1,8 s nepřijde ze senzoru nic (nepovolený přístup, chybí HTTPS, starý telefon),
  *               ovladač se sám vrátí k tlačítkům a napíše proč.
  */
-const TILT_DEAD = 3;        // ° kolem nuly, kde se ještě nezatáčí
-const TILT_FULL = 26;       // ° = plný rejd
+const TILT_RANGES = [18, 26, 34, 45]; // na výběr: ostré … klidné
 const TILT_CURVE = 1.35;    // > 1 = jemnější střed
 const TILT_STEP = 1 / 50;   // na kolik se zaokrouhluje posílaná hodnota
 const TILT_CUT = 2.5;       // Hz – mez filtru v klidu (silnější hlazení)
@@ -390,6 +398,8 @@ let tiltSeen = 0;           // čas posledního vzorku
 let oeAng = 0, oeVel = 0, oeT = 0, oeReady = false; // stav adaptivního filtru
 let tiltFlip = store('fbc-tilt-flip') === '1' ? -1 : 1;
 let tiltDenied = false;      // povolení senzoru zamítnuto – nezkoušíme to pak při každém ťuknutí
+let tiltFull = TILT_RANGES.includes(Number(store('fbc-tilt-full'))) ? Number(store('fbc-tilt-full')) : 26;
+const tiltDead = () => Math.max(2, tiltFull * 0.11);
 
 type OrientEvt = DeviceOrientationEvent;
 type PermDOE = typeof DeviceOrientationEvent & { requestPermission?: () => Promise<'granted' | 'denied'> };
@@ -426,7 +436,8 @@ function onOrient(e: OrientEvt) {
   if (!tiltLive) { tiltLive = true; applyPad(); tiltNote('náklon zapnutý ✓', 'ok'); }
   // hodnota se počítá i posílá hned tady – žádný časovač mezi senzorem a sítí
   const d = (tiltFilter(ang, dt) - tiltZero) * tiltFlip;
-  const mag = Math.min(1, Math.max(0, Math.abs(d) - TILT_DEAD) / (TILT_FULL - TILT_DEAD));
+  const dead = tiltDead();
+  const mag = Math.min(1, Math.max(0, Math.abs(d) - dead) / (tiltFull - dead));
   tiltVal = Math.sign(d) * Math.pow(mag, TILT_CURVE);
   const q = Math.round(tiltVal / TILT_STEP) * TILT_STEP;
   if (q !== input.s) {
@@ -476,6 +487,12 @@ async function tiltEnable(fromTap: boolean) {
 }
 
 /** Zapamatuje si, jak hráč zrovna drží telefon – od téhle polohy se počítá zatáčení. */
+/** Popisek na tlačítku rozsahu: o kolik stupňů se musí telefon naklonit na plný rejd. */
+function showRange() {
+  $('t-range').textContent = `ROZSAH ${tiltFull}°`;
+}
+showRange();
+
 function tiltZeroNow() {
   if (!tiltLive) return;
   tiltZero = tiltRaw;
