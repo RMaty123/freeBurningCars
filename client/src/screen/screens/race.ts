@@ -3,7 +3,7 @@
  * enter() postaví závod z aktuálního nastavení (trať, kola, hráči a jejich auta) a po výsledcích se vrací na výběr tratě.
  */
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
-import { CAR_TYPES, colorPicker } from '../../game/content/cars';
+import { CAR_TYPES, carColor } from '../../game/content/cars';
 import { gunAt } from '../../game/content/guns';
 import { TRACKS } from '../../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../../game/sim';
@@ -30,15 +30,14 @@ export class RaceScreen implements Screen {
 
     const idx = app.settings.trackIdx;
     app.loadWorld(idx);
-    // každé auto jezdí ve své barvě; hráč se pozná podle jmenovky a HUD ve své slotové barvě
-    const pick = colorPicker();
+    // každé auto jezdí ve své barvě (i dvě stejná auta); hráč se pozná podle jmenovky a HUD ve své slotové barvě
     const entries: CarEntry[] = humans.map((p) => ({
-      name: p.name, color: pick(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
+      name: p.name, color: carColor(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
       typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), human: true, pid: p.pid,
     }));
     // AI soupeři: kolik si hráči nastavili v lobby (0 = jedou jen lidi), ať se vejdou na start
     const bots = Math.max(0, Math.min(app.settings.bots, MAX_CARS - humans.length));
-    entries.push(...app.aiEntries(bots, Math.floor(Math.random() * 6), pick));
+    entries.push(...app.aiEntries(bots, Math.floor(Math.random() * 6)));
     const sim = new Sim(app.track(idx), entries, { laps: app.settings.laps, aiSkill: DIFFS[app.settings.diff].skill });
     app.sim = sim;
     app.attractIdx = -1;

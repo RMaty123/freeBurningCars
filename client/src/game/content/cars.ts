@@ -20,7 +20,7 @@
  *   bed korba, roofless otevřený kokpit, openWheels kola mimo karoserii,
  *   lights slim/round/quad/strip, livery center/twin/flash/none, rimSpokes a rimColor kola
  */
-import { CAR_COLORS, PAINT, RIM, type CarStats } from '../cars';
+import { PAINT, RIM, type CarStats } from '../cars';
 
 export const CAR_TYPES: CarStats[] = [
   {
@@ -185,20 +185,11 @@ export const CAR_TYPES: CarStats[] = [
 ];
 
 /**
- * Rozdávač barev pro jeden závod. Každé auto jezdí ve své barvě; když si dva vyberou
- * stejný vůz, ten druhý dostane první volnou barvu z palety, ať jdou od sebe rozeznat.
+ * Barva auta je napevno daná typem vozu – i když si dva hráči vyberou stejné auto,
+ * obě jedou ve své barvě. Hráči se od sebe poznají podle jmenovky a barvy HUD.
  */
-export function colorPicker(): (typeIdx: number) => number {
-  const used = new Set<number>();
-  const signature = new Set(CAR_TYPES.map((c) => c.color));
-  // náhradní barvy: nejdřív ty, které nepatří žádnému autu, ať si je nevezmeme pod nosem
-  const spare = [...CAR_COLORS.filter((c) => !signature.has(c.hex)), ...CAR_COLORS].map((c) => c.hex);
-  return (typeIdx) => {
-    const own = CAR_TYPES[typeIdx].color;
-    const hex = used.has(own) ? (spare.find((h) => !used.has(h)) ?? own) : own;
-    used.add(hex);
-    return hex;
-  };
+export function carColor(typeIdx: number): number {
+  return CAR_TYPES[typeIdx].color;
 }
 
 /** Hodnocení auta 1–10 pro ukazatele ve výběru aut. */

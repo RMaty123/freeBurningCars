@@ -10,7 +10,7 @@
  * App mezi nimi přepíná a stará se o to, co mají společné (simulace na pozadí, zvuky, toast).
  */
 import { AI_NAMES } from '../game/cars';
-import { CAR_TYPES, colorPicker } from '../game/content/cars';
+import { CAR_TYPES, carColor } from '../game/content/cars';
 import { GUNS } from '../game/content/guns';
 import { TRACKS } from '../game/content/tracks';
 import { CarEntry, Sim, SimEvent } from '../game/sim';
@@ -148,12 +148,12 @@ export class App {
     this.worldIdx = i;
   }
 
-  aiEntries(n: number, startAt = 0, pick = colorPicker()): CarEntry[] {
+  aiEntries(n: number, startAt = 0): CarEntry[] {
     const out: CarEntry[] = [];
     for (let i = 0; i < n; i++) {
       const k = (i + startAt) % AI_NAMES.length;
       const typeIdx = (i + startAt + 1) % CAR_TYPES.length;
-      const color = pick(typeIdx);
+      const color = carColor(typeIdx);
       // boti mají zbraně na střídačku, ať je v závodě vidět všechno
       const gun = GUNS[(i + startAt) % GUNS.length];
       out.push({ name: AI_NAMES[k], color, tagColor: color, typeIdx, stats: CAR_TYPES[typeIdx], gun, human: false, pid: null });

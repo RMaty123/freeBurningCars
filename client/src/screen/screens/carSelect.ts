@@ -8,7 +8,7 @@
  * Nabídka se staví z game/content/cars.ts (peníze ani zamykání aut tu zatím nejsou).
  */
 import { PLAYER_COLORS, hexCss } from '../../game/cars';
-import { CAR_TYPES, carRatings, colorPicker } from '../../game/content/cars';
+import { CAR_TYPES, carRatings, carColor } from '../../game/content/cars';
 import type { CtrlMsg } from '../../shared/protocol';
 import { $, App, Screen } from '../app';
 import { KBD, Player } from '../session';
@@ -73,12 +73,11 @@ export class CarSelectScreen implements Screen {
   private sync() {
     this.build();
     const players = this.app.session.active();
-    // auto v garáži stojí v barvě, ve které se pojede (dva stejné vozy dostanou různé odstíny)
-    const pick = colorPicker();
+    // auto v garáži stojí v barvě, ve které se pojede – barva patří vozu, ne hráči
     players.forEach((p, i) => {
       const panel = this.panels[i];
       const car = CAR_TYPES[p.carIdx];
-      const color = pick(p.carIdx);
+      const color = carColor(p.carIdx);
       this.room.setCar(i, car, color);
       const key = `${p.carIdx}|${p.ready}|${color}`;
       if (panel.shown === key) return;

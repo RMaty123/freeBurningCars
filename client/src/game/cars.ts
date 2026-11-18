@@ -110,8 +110,7 @@ export interface CarStats {
 export const PLAYER_COLORS = [0xff2d2d, 0x1f8bff, 0xffc61a, 0x2fd35a];
 
 /**
- * Paleta, ze které si hráč může přebarvit auto (a ze které se berou náhradní barvy,
- * když by dvě auta v závodě vyšla stejně). Pořadí je rozházené schválně,
+ * Paleta laků pro případné přebarvení auta. Pořadí je rozházené schválně,
  * aby vedle sebe nestály podobné odstíny.
  */
 export const CAR_COLORS: { name: string; hex: number }[] = [
