@@ -93,6 +93,8 @@ export interface GunStats {
   jamStep?: number;
   /** jen `emp`: za jak dlouho se vlna roztáhne na plný dosah (s) */
   waveTime?: number;
+  /** jen `emp`: šance 0–1, že zasažené auto rovnou vybouchne (místo obyčejné rány) */
+  kill?: number;
 
   shape: GunShape;
 }

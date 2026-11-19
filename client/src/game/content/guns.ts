@@ -13,8 +13,8 @@
  *            takže delší dosah byl jen nápis – teď musí zbraň blíž, aby na něco dosáhla.
  *            Stačí po někom paprskem řeznout a je po něm; těžká auta (120+ hp)
  *            to přežijí a padnou druhou ranou. Zato se musí nejdřív nabít.
- *   PULSE    22 dmg v kruhu 42 m – nabíjí se 10 s a zasaženým autům na 1,5 s zblázní volant.
- *            Nejde o to poškození, jde o chaos, co po vlně nastane.
+ *   PULSE    22 dmg v kruhu 42 m – nabíjí se 5 s a zasaženým autům na 1,5 s zblázní volant.
+ *            Navíc má každé zasažené auto 40% šanci, že to rovnou roztrhá.
  */
 import type { GunStats } from '../guns';
 
@@ -63,13 +63,13 @@ export const GUNS: GunStats[] = [
   {
     id: 'pulse',
     name: 'PULSE',
-    tagline: 'EMP vlna do všech stran. Komu projede, tomu se zblázní volant.',
+    tagline: 'EMP vlna do všech stran. Zblázní volant – a každé druhé auto rovnou roztrhá.',
     kind: 'emp', mount: 'hood',
     color: 0x4fc3ff,
     // `range` je tady poloměr vlny, ne dostřel hlavně; `cd` je jen krátká pauza po výstřelu
     cd: 0.6, dmg: 22, speed: 0, range: 42, spread: 0, tracer: 1,
     cone: 0, aim: 0, aimMax: 0,
-    chargeMax: 10, jam: 3, jamStep: 0.5, waveTime: 0.55,
+    chargeMax: 5, jam: 3, jamStep: 0.5, waveTime: 0.55, kill: 0.4,
     shape: {
       metal: 0xc9d2dc, accent: 0x2a2f36, body: [0.5, 0.26, 0.26],
       barrel: 0.72, bore: 0.15, dish: true, glow: 0x4fc3ff,

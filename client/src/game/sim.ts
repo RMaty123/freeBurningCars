@@ -683,7 +683,9 @@ export class Sim {
         if (c.id === w.owner || c.dead || c.finished || w.hit.includes(c.id)) continue;
         if ((c.x - w.x) ** 2 + (c.z - w.z) ** 2 > w.r * w.r) continue;
         w.hit.push(c.id);
-        this.damage(c, g.dmg, w.owner);
+        // každé zasažené auto má šanci, že ho vlna rovnou roztrhá; jinak jen schytá ránu
+        if (g.kill && this.rnd() < g.kill) this.damage(c, 1e4, w.owner);
+        else this.damage(c, g.dmg, w.owner);
         if (c.dead) continue;
         c.jamEvery = g.jamStep ?? 0.5;
         c.jam = (g.jam ?? 3) * c.jamEvery;
