@@ -51,8 +51,11 @@ function arc(r: number, tube: number, len: number, rotZ: number, x: number, y: n
 /** Šestiúhelníkový talíř (plochý válec o šesti stěnách) – základ miny. */
 const hex = (r: number, h: number, y: number, r2 = r) => cyl(r, h, 0, y, 0, 'y', 6, r2);
 
-/** Barvy miny – stejné v nabídce i v závodě. */
-export const MINE_COLORS = { metal: 0xd9dde5, dark: 0x16181d, stripe: 0xc0392b, glow: 0xff3a16 };
+/** Barvy dílů v nabídce (raketa, vysypávač míčků) – světlý kov, tmavé doplňky, červený pruh. */
+const PART_COLORS = { metal: 0xd9dde5, dark: 0x16181d, stripe: 0xc0392b };
+
+/** Mina je černá se šedým víkem a červeným světýlkem – nic oranžového. */
+export const MINE_COLORS = { metal: 0x515760, dark: 0x0e1013, stripe: 0x191c22, glow: 0xff1410 };
 
 /** Poloměr miny (m) – podle něj se staví model i kreslí stín. */
 export const MINE_R = 0.6;
@@ -77,15 +80,15 @@ export function ballParts(): { shell: THREE.BufferGeometry[]; band: THREE.Buffer
 }
 
 /**
- * Mina v herním měřítku: tmavá podstava, červený pruh, světlý šestiúhelníkový talíř
- * a uprostřed vyvýšený terčík se svítící čočkou. Střed je v ose, spodek v y = 0.
+ * Mina v herním měřítku: černá podstava s černým pruhem, šedé šestiúhelníkové víko
+ * a uprostřed vyvýšený terčík s červeným světýlkem. Střed je v ose, spodek v y = 0.
  */
 export function mineParts(): SecParts {
   const p: SecParts = { metal: [], dark: [], stripe: [], glow: [] };
   const R = MINE_R;
   p.dark.push(hex(R * 0.97, 0.07, 0.035));                       // podstava
-  p.stripe.push(hex(R, 0.06, 0.095));                            // výstražný pruh
-  p.metal.push(hex(R * 0.96, 0.13, 0.19, R * 0.86));             // horní talíř (nahoře se zužuje)
+  p.stripe.push(hex(R, 0.06, 0.095));                            // černý pruh po obvodu
+  p.metal.push(hex(R * 0.96, 0.13, 0.19, R * 0.86));             // šedé víko (nahoře se zužuje)
   p.dark.push(hex(R * 0.55, 0.03, 0.262));                       // osazení pod terčíkem
   p.metal.push(hex(R * 0.46, 0.09, 0.31, R * 0.4));              // terčík
   p.dark.push(cyl(R * 0.32, 0.035, 0, 0.357, 0, 'y', 14));       // rámeček čočky
@@ -179,9 +182,11 @@ function ballPreviewParts(): SecParts {
 /** Postaví model sekundární zbraně do nabídky. Střed modelu je na podlaze, zbraň míří do +Z. */
 export function buildSec(sec: SecStats): SecVisual {
   const p = sec.id === 'mine' ? minePreviewParts() : sec.id === 'ball' ? ballPreviewParts() : rocketParts();
-  const metal = new THREE.MeshStandardMaterial({ color: MINE_COLORS.metal, metalness: 0.85, roughness: 0.3 });
-  const dark = new THREE.MeshStandardMaterial({ color: MINE_COLORS.dark, metalness: 0.5, roughness: 0.6 });
-  const stripe = new THREE.MeshStandardMaterial({ color: MINE_COLORS.stripe, metalness: 0.3, roughness: 0.5 });
+  // mina má vlastní (černou) paletu, zbytek nabídky jede na společné
+  const pal = sec.id === 'mine' ? MINE_COLORS : PART_COLORS;
+  const metal = new THREE.MeshStandardMaterial({ color: pal.metal, metalness: 0.85, roughness: 0.3 });
+  const dark = new THREE.MeshStandardMaterial({ color: pal.dark, metalness: 0.5, roughness: 0.6 });
+  const stripe = new THREE.MeshStandardMaterial({ color: pal.stripe, metalness: 0.3, roughness: 0.5 });
   const glow = new THREE.MeshBasicMaterial({ color: sec.color, toneMapped: false });
 
   const root = new THREE.Group();

@@ -24,7 +24,7 @@ export const SECONDARIES: SecStats[] = [
     id: 'mine',
     name: 'MINY',
     tagline: 'Pustí minu za auto. Kdo na ni najede, ten schytá ránu.',
-    color: 0xff5a3c,
+    color: 0xff2018,
     ammo: 20, maxAmmo: 20, pickup: 6, cd: 0.22,
     dmg: 46, radius: 6.5,
     arm: 0.8, life: 30, trigger: 2.2,
