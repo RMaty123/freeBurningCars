@@ -71,6 +71,12 @@ export interface Car {
   gun: GunStats;
   /** nabití laseru (s) – u ostatních zbraní 0 */
   charge: number;
+  /** EMP se po ťuknutí nabíjí samo, i když hráč pustí tlačítko */
+  charging: boolean;
+  /** FIRE 1 v minulém snímku – kvůli rozpoznání nového stisku */
+  firePrev: boolean;
+  /** rušení po zásahu EMP: zbývající čas celkem, čas do přehození šipky, délka jedné šipky a směr */
+  jam: number; jamT: number; jamEvery: number; jamDir: number;
   /** jak dlouho ještě svítí paprsek (s) */
   beam: number;
   /** jak dlouho svítit měl (pro ukazatel) */
@@ -115,6 +121,22 @@ export interface Rocket { x: number; z: number; h: number; speed: number; life: 
  * a lano táhne střelce k zaháknutému autu. Když se netrefí nebo čas vyprší, navíjí se zpátky (`back`).
  * Každé auto může mít ve vzduchu jen jeden.
  */
+/**
+ * EMP vlna. Roztahuje se z auta do kruhu a každému, koho poprvé přejde, dá ránu
+ * a zblázní volant. `hit` si pamatuje, komu už se to stalo, ať to nesebere dvakrát.
+ */
+export interface Wave {
+  owner: number;
+  x: number; z: number;
+  /** jak dlouho už se roztahuje (s) */
+  t: number;
+  /** aktuální poloměr (m) */
+  r: number;
+  gun: GunStats;
+  hit: number[];
+  id: number;
+}
+
 export interface Hook {
   owner: number;
   /** id zaháknutého auta, nebo -1 když hák ještě letí / nic nechytil */
@@ -151,6 +173,9 @@ export type SimEvent =
   | { t: 'boom'; x: number; z: number; size: number }
   | { t: 'launch'; car: number; kind: SecKind }
   | { t: 'hooked'; car: number; x: number; z: number }
+  | { t: 'wave'; car: number; x: number; z: number }
+  | { t: 'charge'; car: number }
+  | { t: 'jammed'; car: number }
   /** laser vystřelil – `len` je, jak dlouho bude svítit (s) */
   | { t: 'beam'; car: number; len: number }
   | { t: 'destroyed'; car: number; by: number }
@@ -295,6 +320,8 @@ export class Sim {
   drops: Drop[] = [];
   /** lanové háky ve vzduchu nebo zaháknuté */
   hooks: Hook[] = [];
+  /** rozpínající se EMP vlny */
+  waves: Wave[] = [];
   pickups: Pickup[] = [];
   events: SimEvent[] = [];
   /** pracovní pole na řazení pořadí – ať se každý snímek nealokuje nové */
@@ -338,7 +365,8 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, charge: 0, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
+        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, charge: 0, charging: false, firePrev: false,
+        jam: 0, jamT: 0, jamEvery: 0.5, jamDir: 1, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
         fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
         finished: false, finishTime: 0, place: 0, kills: 0, deaths: 0, bestLap: 0, lapStart: 0,
@@ -507,7 +535,14 @@ export class Sim {
     }
 
     const inp = c.input;
-    const steerIn = clamp(inp.steer, -1, 1);
+    let steerIn = clamp(inp.steer, -1, 1);
+    // EMP: auto chvíli neposlouchá hráče, ale náhodné šipky (každá drží `jamEvery` sekund)
+    if (c.jam > 0) {
+      c.jam -= dt;
+      c.jamT -= dt;
+      if (c.jamT <= 0) { c.jamT = c.jamEvery; c.jamDir = this.rnd() < 0.5 ? -1 : 1; }
+      steerIn = c.jamDir;
+    }
     // Volant: u tlačítek se do zatáčky otáčí pomaleji a zpět rychleji (tlačítko dává jen -1/0/1,
     // rampa tedy dělá plynulost za hráče). Náklon telefonu je plynulý sám, tak se jen mírně
     // tlumí skoky po ztraceném paketu – jinak by rampa přidala až dvě desetiny vteřiny zpoždění.
@@ -590,10 +625,72 @@ export class Sim {
     // zbraně
     if (!c.finished && this.phase === 'racing') {
       if (c.gun.kind === 'beam') this.stepCharge(c, inp.fire, dt);
+      else if (c.gun.kind === 'emp') this.stepEmp(c, inp.fire && !c.firePrev, dt);
       else if (inp.fire && c.fireCd <= 0) this.fireGun(c);
       if (inp.secondary && c.secCd <= 0 && c.secAmmo > 0) this.fireSecondary(c);
-    } else if (c.gun.kind === 'beam') {
+    } else if (c.gun.kind !== 'bullet') {
       c.charge = 0;
+      c.charging = false;
+    }
+    c.firePrev = inp.fire;
+  }
+
+  /**
+   * EMP: první ťuknutí na FIRE 1 spustí nabíjení (běží dál, i když hráč pustí tlačítko),
+   * druhé ťuknutí po plném nabití vystřelí vlnu. Nedonabitý náboj se nedá vystřelit.
+   */
+  private stepEmp(c: Car, pressed: boolean, dt: number) {
+    const g = c.gun;
+    const full = g.chargeMax ?? 10;
+    if (c.fireCd > 0) return;
+    if (c.charge >= full) {
+      // nabito – čeká se na odpálení; bot pálí, až má koho zasáhnout
+      if (pressed || (!c.human && this.someoneNear(c, g.range * 0.75))) this.fireWave(c);
+      return;
+    }
+    if (c.charging) c.charge = Math.min(full, c.charge + dt);
+    else if (pressed || !c.human) { c.charging = true; if (c.human) this.events.push({ t: 'charge', car: c.id }); }
+  }
+
+  /** Je někdo v dosahu? (bot si podle toho načasuje EMP) */
+  private someoneNear(c: Car, r: number): boolean {
+    const r2 = r * r;
+    for (const o of this.cars) {
+      if (o === c || o.dead || o.finished) continue;
+      if ((o.x - c.x) ** 2 + (o.z - c.z) ** 2 < r2) return true;
+    }
+    return false;
+  }
+
+  private fireWave(c: Car) {
+    const g = c.gun;
+    c.charge = 0;
+    c.charging = false;
+    c.fireCd = g.cd;
+    this.waves.push({ owner: c.id, x: c.x, z: c.z, t: 0, r: 0, gun: g, hit: [], id: this.nextId++ });
+    this.events.push({ t: 'wave', car: c.id, x: c.x, z: c.z });
+  }
+
+  /** Vlny: roztahují se z místa výstřelu a koho poprvé přejdou, tomu dají ránu a zblázní volant. */
+  private stepWaves(dt: number) {
+    for (let i = this.waves.length - 1; i >= 0; i--) {
+      const w = this.waves[i];
+      const g = w.gun;
+      const span = g.waveTime ?? 0.55;
+      w.t += dt;
+      w.r = Math.min(g.range, (w.t / span) * g.range);
+      for (const c of this.cars) {
+        if (c.id === w.owner || c.dead || c.finished || w.hit.includes(c.id)) continue;
+        if ((c.x - w.x) ** 2 + (c.z - w.z) ** 2 > w.r * w.r) continue;
+        w.hit.push(c.id);
+        this.damage(c, g.dmg, w.owner);
+        if (c.dead) continue;
+        c.jamEvery = g.jamStep ?? 0.5;
+        c.jam = (g.jam ?? 3) * c.jamEvery;
+        c.jamT = 0;                       // první šipka se vylosuje hned
+        this.events.push({ t: 'jammed', car: c.id });
+      }
+      if (w.t >= span) this.waves.splice(i, 1);
     }
   }
 
@@ -939,6 +1036,7 @@ export class Sim {
     }
     this.stepDrops(dt);
     this.stepHooks(dt);
+    this.stepWaves(dt);
   }
 
   /**

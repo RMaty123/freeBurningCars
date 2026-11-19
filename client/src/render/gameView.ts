@@ -83,6 +83,11 @@ export class GameView {
   private mineLight: THREE.InstancedMesh | null = null;
   /** míčky: skořápka a červené pruhy */
   private balls: THREE.InstancedMesh[] = [];
+  /** rozpínající se EMP vlny: prstenec ve výšce aut a druhý po zemi (jedna dvojice na vlnu) */
+  private waves: THREE.Mesh[] = [];
+  private waveRings: THREE.Mesh[] = [];
+  private waveGeo: THREE.BufferGeometry | null = null;
+  private waveRingGeo: THREE.BufferGeometry | null = null;
   /** hlavice háků ve vzduchu a lana k nim (jedno na auto) */
   private hookHeads: THREE.InstancedMesh;
   private ropes: THREE.Mesh[] = [];
@@ -312,6 +317,28 @@ export class GameView {
     return m;
   }
 
+  /**
+   * EMP vlna `i`: dva tenké prstence (jeden po zemi, druhý ve výšce aut), které se rozjíždějí ven.
+   * Schválně to není koule ani průhledná stěna – kamera bývá vlně v cestě a plocha přes půl
+   * obrazovky by s aditivním mícháním obraz vybílila. Dva prstence jsou levné a čitelné.
+   */
+  private wave(i: number): [THREE.Mesh, THREE.Mesh] {
+    if (this.waves[i]) return [this.waves[i], this.waveRings[i]];
+    // mezikruží: při zvětšení zůstane poměrně tenké, ať je vlna jakkoli velká
+    this.waveGeo ??= new THREE.RingGeometry(0.93, 1, 48).rotateX(-Math.PI / 2);
+    this.waveRingGeo ??= new THREE.RingGeometry(0.965, 1, 48).rotateX(-Math.PI / 2);
+    const mat = () => new THREE.MeshBasicMaterial({
+      color: 0x4fc3ff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending,
+      depthWrite: false, toneMapped: false, fog: false, side: THREE.DoubleSide,
+    });
+    const high = new THREE.Mesh(this.waveGeo, mat());
+    const ground = new THREE.Mesh(this.waveRingGeo, mat());
+    for (const m of [high, ground]) { m.frustumCulled = false; this.scene.add(m); }
+    this.waves[i] = high;
+    this.waveRings[i] = ground;
+    return [high, ground];
+  }
+
   /** Mesh lana pro hák `i` (stejný válec jako paprsek, jen tmavý a tenký). */
   private rope(i: number): THREE.Mesh {
     let m = this.ropes[i];
@@ -485,9 +512,11 @@ export class GameView {
       const cv = this.cars[i];
       if (!cv) return;
       // čočky zbraně svítí podle nabití, ať je na autě vidět, že se chystá pálit
-      if (c.gun.kind === 'beam') {
+      if (c.gun.kind !== 'bullet') {
         const k = c.beam > 0 ? 1 : c.charge / (c.gun.chargeMax ?? 1);
-        cv.v.laser.color.setHex(c.gun.color).multiplyScalar(0.3 + 0.7 * k);
+        // u EMP plně nabité jádro ještě pulzuje, ať je poznat, že se dá vystřelit
+        const pulse = c.gun.kind === 'emp' && k >= 1 ? 1.15 + Math.sin(t * 9) * 0.35 : 0.3 + 0.7 * k;
+        cv.v.laser.color.setHex(c.gun.color).multiplyScalar(c.gun.kind === 'emp' ? pulse : 0.3 + 0.7 * k);
       }
       if (c.beam <= 0 || c.dead) return;
       const fade = Math.min(1, c.beam * 3);                     // na konci dohasne
@@ -592,6 +621,26 @@ export class GameView {
     }
     const hadHooks = this.hookHeads.count;
     if (nh || hadHooks) { this.hookHeads.count = nh; this.hookHeads.instanceMatrix.needsUpdate = true; }
+
+    // EMP vlny: stěna, která se rozjíždí od auta ven a cestou bledne
+    this.waves.forEach((m) => (m.visible = false));
+    this.waveRings.forEach((m) => (m.visible = false));
+    sim.waves.forEach((w, i) => {
+      if (i >= 8) return;
+      const [high, ground] = this.wave(i);
+      const k = Math.min(1, w.t / (w.gun.waveTime ?? 0.55));
+      const fade = (1 - k) ** 0.7;
+      high.visible = ground.visible = true;
+      high.position.set(w.x, 1.4, w.z);
+      high.scale.set(w.r * 0.93, 1, w.r * 0.93);     // horní prstenec kousek pozadu, jako čelo vlny
+      ground.position.set(w.x, 0.06, w.z);
+      ground.scale.set(w.r, 1, w.r);
+      for (const [m, o] of [[high, 0.8], [ground, 1]] as const) {
+        const mat = m.material as THREE.MeshBasicMaterial;
+        mat.color.setHex(w.gun.color);
+        mat.opacity = o * fade;
+      }
+    });
 
     // bedny
     for (const p of sim.pickups) {

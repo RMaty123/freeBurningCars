@@ -220,6 +220,20 @@ export class App {
         case 'crash': a.crash(this.volAt(e.x, e.z) * Math.min(1, e.force / 14)); break;
         case 'wall': a.crash(this.volAt(e.x, e.z) * Math.min(1, e.force / 16)); break;
         case 'pickup': a.pickup(this.volAt(e.x, e.z)); break;
+        case 'wave': {
+          a.wave(this.volAt(e.x, e.z));
+          this.view.effects.flash(e.x, 1.0, e.z, 1.6, 2.2, 4.4, 7, 0.22);
+          break;
+        }
+        case 'charge': {
+          a.charge(0.6);
+          break;
+        }
+        case 'jammed': {
+          const c = s.cars[e.car];
+          this.view.effects.sparks(c.x, 1.0, c.z, 10, 14, 2.6, 4.2, 5);
+          break;
+        }
         case 'hooked': {
           a.hook(this.volAt(e.x, e.z));
           this.view.effects.sparks(e.x, 0.8, e.z, 6, 10, 2.2, 3.4, 4.2);

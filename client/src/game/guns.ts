@@ -4,8 +4,12 @@
  * aby šly zbraně přidávat bez sahání do simulace a do menu.
  */
 
-/** `bullet` = střílí projektily, `beam` = nabíjí se držením a pak drží paprsek. */
-export type GunKind = 'bullet' | 'beam';
+/**
+ * `bullet` = střílí projektily,
+ * `beam`   = nabíjí se držením a pak drží paprsek,
+ * `emp`    = po ťuknutí se dlouho nabíjí a plným nábojem pustí kruhovou vlnu.
+ */
+export type GunKind = 'bullet' | 'beam' | 'emp';
 
 /** Kam je zbraň na autě přidělaná – odtud taky střílí. */
 export type GunMount = 'hood' | 'side';
@@ -37,6 +41,8 @@ export interface GunShape {
   pods?: number;
   /** zářící jádro / hlaveň v téhle barvě */
   glow?: number;
+  /** nálevka s prstencovou klecí a svítícím jádrem (EMP) */
+  dish?: boolean;
 }
 
 export interface GunStats {
@@ -80,6 +86,13 @@ export interface GunStats {
   beamR?: number;
   /** jen `beam`: za jak dlouho může paprsek zasáhnout to samé auto znovu (s) */
   rehit?: number;
+
+  /** jen `emp`: kolik náhodných šipek dostane zasažené auto */
+  jam?: number;
+  /** jen `emp`: jak dlouho drží jedna náhodná šipka (s) */
+  jamStep?: number;
+  /** jen `emp`: za jak dlouho se vlna roztáhne na plný dosah (s) */
+  waveTime?: number;
 
   shape: GunShape;
 }

@@ -155,10 +155,10 @@ export class Hud {
       const nk = Math.round(c.nitro * 100) / 100;
       if (nk !== sh.nitro) { sh.nitro = nk; p.nitro.style.transform = `scaleX(${nk})`; }
       p.nitro.className = c.nitroOn ? 'on' : '';
-      // laser: dokud se nabíjí, ukazuje nabití; když pálí, ubývající paprsek
-      const beamGun = c.gun.kind === 'beam';
-      p.laserBar.classList.toggle('hide', !beamGun);
-      if (beamGun) {
+      // nabíjení: u laseru dokud se nabíjí a pak ubývající paprsek, u EMP postup k plnému náboji
+      const charged = c.gun.kind !== 'bullet';
+      p.laserBar.classList.toggle('hide', !charged);
+      if (charged) {
         const full = c.gun.chargeMax ?? 1;
         const k = c.beam > 0 ? (c.beamT ? c.beam / c.beamT : 0) : c.charge / full;
         p.laser.style.transform = `scaleX(${k})`;

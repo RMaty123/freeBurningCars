@@ -93,7 +93,44 @@ export function buildGun(shape: GunShape): GunVisual {
   darkGeo.push(cyl(0.055, hw + 0.08, 0, y - 0.03, zBody, 'x', 10));
 
   // ---- tělo
-  if (mini) {
+  if (shape.dish) {
+    // EMP vysílač: nálevka se svítícím jádrem, prstencová klec vzadu a ohnuté rámy po stranách
+    const R = shape.bore * 2.4;                  // poloměr klece
+    const zB = zBody - bl * 0.1;                 // zadní konec nálevky
+    const zF = zB + shape.barrel;                // přední hrana (ústí)
+
+    glowGeo.push(cyl(shape.bore * 0.72, shape.barrel * 1.12, 0, y, zB + shape.barrel * 0.5, 'z', 14)); // jádro
+    metalGeo.push(cyl(R * 0.52, shape.barrel * 0.62, 0, y, zF - shape.barrel * 0.3, 'z', 16, R * 0.95)); // nálevka
+    darkGeo.push(cyl(R * 0.56, 0.06, 0, y, zF - shape.barrel * 0.6, 'z', 16));                           // obruč nálevky
+    metalGeo.push(cyl(R * 0.5, 0.1, 0, y, zF + 0.03, 'z', 16, R * 0.56));                                // ústí
+    glowGeo.push(cyl(R * 0.36, 0.05, 0, y, zF + 0.07, 'z', 14));                                         // zářící čelo
+
+    // klec: prstenec s loukotěmi, jako na obrázku
+    metalGeo.push(ring(R, 0.045, 0).translate(0, y, zB - 0.05));
+    darkGeo.push(ring(R * 0.99, 0.02, 0, 10).translate(0, y, zB - 0.05));
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const g2 = new THREE.BoxGeometry(0.035, R * 0.86, 0.05);
+      g2.translate(0, R * 0.52, 0);
+      g2.rotateZ(a);
+      g2.translate(0, y, zB - 0.05);
+      metalGeo.push(prep(g2));
+    }
+    metalGeo.push(cyl(shape.bore * 1.1, 0.16, 0, y, zB - 0.12, 'z', 12));   // náboj klece
+    darkGeo.push(cyl(shape.bore * 1.35, 0.07, 0, y, zB - 0.22, 'z', 12));   // zadní víko
+
+    // prstenec kolem ústí a čtyři žebra po plášti – nic nevisí ve vzduchu
+    metalGeo.push(ring(R * 0.62, 0.035, 0).translate(0, y, zF - 0.02));
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const sx = Math.cos(a), sy = Math.sin(a);
+      const g3 = new THREE.BoxGeometry(0.045, 0.045, shape.barrel * 0.9);
+      g3.rotateX(sy >= 0 ? -0.2 : 0.2);
+      g3.rotateZ(a + Math.PI / 2);
+      g3.translate(sx * R * 0.74, y + sy * R * 0.74, zB + shape.barrel * 0.46);
+      metalGeo.push(prep(g3));
+    }
+  } else if (mini) {
     // rotační kulomet: skříň s převodovkou, svazek hlavní v objímkách, madlo, podavač a opěrná noha
     const hl = bl * 1.15;              // délka skříně
     const hh = bh * 1.5;               // výška skříně
@@ -181,7 +218,7 @@ export function buildGun(shape: GunShape): GunVisual {
 
   // ---- hlaveň (rotační kulomet si ji postavil sám výš)
   const zMuzzle = zBody + bl / 2 + shape.barrel;
-  if (!mini) {
+  if (!mini && !shape.dish) {
     metalGeo.push(cyl(shape.bore, shape.barrel, 0, y, zBody + bl / 2 + shape.barrel / 2, 'z', 12));
   }
 
@@ -203,7 +240,7 @@ export function buildGun(shape: GunShape): GunVisual {
     metalGeo.push(cyl(shape.bore * 1.7, 0.2, 0, y, zMuzzle - 0.06, 'z', 12));
     for (let i = 0; i < 3; i++) darkGeo.push(box(shape.bore * 4, 0.035, 0.03, 0, y, zMuzzle - 0.14 + i * 0.06));
   }
-  if (!mini) darkGeo.push(cyl(shape.bore * 0.62, 0.05, 0, y, zMuzzle + 0.01, 'z', 10)); // ústí
+  if (!mini && !shape.dish) darkGeo.push(cyl(shape.bore * 0.62, 0.05, 0, y, zMuzzle + 0.01, 'z', 10)); // ústí
 
   // ---- bedna s municí a pás (minigun má vlastní podavač)
   if (shape.ammoBox && !mini) {

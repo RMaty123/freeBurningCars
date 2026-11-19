@@ -5,7 +5,7 @@ Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
-- **3 primární zbraně na výběr** (minigun, těžký kulomet, dvojice laserů na dveřích) a **4 sekundární** (naváděné rakety, miny, míčky sypané po osmi, lanový hák), k tomu opravy a zrychlení z beden
+- **4 primární zbraně na výběr** (minigun, těžký kulomet, dvojice laserů na dveřích, EMP vysílač) a **4 sekundární** (naváděné rakety, miny, míčky sypané po osmi, lanový hák), k tomu opravy a zrychlení z beden
 - **4 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory) a Test Strip (osmipruhový testovací ovál)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
 - dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
@@ -75,7 +75,7 @@ Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný re
 | --- | --- |
 | A D / šipky vlevo, vpravo | zatáčení |
 | S / šipka dolů | brzda, zpátečka |
-| Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš, puštěním vystřelíš) |
+| Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš a puštěním vystřelíš, u PULSE ťuknutím spustíš nabíjení a druhým ťuknutím vystřelíš) |
 | W (nebo SHIFT) | drift |
 | E (nebo F) | sekundární zbraň (raketa / mina / míčky / hák) |
 | X | vypnout/nastartovat motor (jen testovací plac) |
@@ -104,6 +104,7 @@ Po výběru auta přijde **výběr zbraně** – na telefonu mřížka s náhled
 | **VULCAN** | rotační minigun, při střelbě se mu točí hlavně, dobře si doměřuje cíl | 1,7 dmg / ránu, 20 ran za sekundu (≈ 34 dmg/s) |
 | **BREAKER** | pomalý těžký kulomet, slabší doměřování, velké rány | 13 dmg / ránu, 2,5 rány za sekundu (≈ 32 dmg/s) |
 | **PRISM** | **dva lasery na dveřích**, nabíjí se držením FIRE 1 | 110 dmg za zásah, dosah 58 m, nabíjení až 5 s |
+| **PULSE** | **EMP vysílač na kapotě**, pustí kruhovou vlnu kolem sebe | 22 dmg v okruhu 42 m + 1,5 s zbláznilého volantu, nabíjení 10 s |
 
 PRISM je **boční zbraň**: dvě laserová děla přišroubovaná zvenku na dveřích, vidět přímo na autě (`mount: 'side'`, `twin: true`). **Držením FIRE 1 se nabíjí, puštěním vystřelí** a paprsky pak svítí **stejně dlouho, jak dlouho se nabíjelo** – nejvýš 5 sekund (`BEAM_MAX` v `game/guns.ts`). Pálí obě děla naráz, každé rovně dopředu ze svého ústí; paprsek se zastaví o první auto v cestě a ubírá mu život po celou dobu, co na něm drží, takže se jím dá po soupeři "přejíždět".
 
@@ -118,6 +119,17 @@ Dosah paprsku je **58 m** – kratší než u kulometů (95 a 110 m). Není to l
 **Doměřování u kulometů:** zbraň si najde cíl v kuželu před autem (`cone`) a natočí hlaveň na místo, kam auto doletí – ale jen částí opravy (`aim`) a nejvýš o `aimMax`. Střely samotné pak letí rovně. Všechno jsou to čísla v `game/content/guns.ts`, takže se dá doměřování komukoli přitvrdit i vypnout (`aim: 0`).
 
 Bedny: zelená opravuje, červená doplňuje munici do FIRE 2 (rakety i miny – podle toho, s čím hráč jede) a **modrá na 5 sekund zrychlí auto 1,7×** (konstanty `BOOST_TIME` a `BOOST_SPEED` v `sim.ts`). Nitro na tlačítko ve hře není.
+
+### PULSE – EMP vlna
+
+PULSE je jediná primární zbraň, která nemíří. Funguje na dvě ťuknutí:
+
+1. **První ťuknutí na FIRE 1** spustí nabíjení. Běží dál, i když tlačítko pustíš – jádro vysílače na kapotě přitom postupně svítí a v HUD se plní pruh.
+2. Po **10 sekundách** je plno (jádro začne pulzovat) a **druhé ťuknutí** pustí vlnu.
+
+Vlna se rozjede z auta do kruhu a za 0,55 s se roztáhne na **42 metrů**. Komu projede, ten schytá 22 dmg – ale o poškození tu nejde. Zasaženému autu se na **1,5 sekundy zblázní volant**: dostane **tři náhodné šipky po půl sekundě**, takže to může být doleva-doprava-doprava, doprava-doprava-doprava nebo jakákoli jiná kombinace. Po dobu rušení auto neposlouchá hráče ani bota a jede si, kam ho šipky zrovna pošlou. Vlna každého zasáhne jen jednou a svého střelce mine.
+
+Animace je schválně laciná: dva tenké prstence (jeden po zemi, druhý ve výšce aut), které se rozjíždějí ven a cestou blednou. Koule ani průhledná stěna by při aditivním míchání vybílily půl obrazovky, protože kamera bývá vlně přímo v cestě – dva prstence stojí dvě vykreslení a jsou čitelnější.
 
 ### Sekundární zbraně (FIRE 2)
 

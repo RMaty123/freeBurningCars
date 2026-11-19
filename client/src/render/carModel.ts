@@ -494,6 +494,22 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats, sec?: S
       laserGeo.push(cyl(0.052 * ps, 0.11 * ps, x, py, zF + 0.015, 'z', 12));                     // zářící čočka
       muzzles.push(new THREE.Vector3(x, py, zF + 0.06));
     }
+  } else if (gun?.kind === 'emp') {
+    // EMP vysílač: jeden kus doprostřed kapoty, nálevka se svítícím jádrem a klec vzadu
+    const R = 0.17, gy = sh + 0.085, z0 = gz - 0.22;
+    gunGeo.push(box(0.26, 0.12, 0.2, 0, gy - 0.07, z0 - 0.04));                 // patka do kapoty
+    darkGeo.push(cyl(R * 0.95, 0.07, 0, gy, z0 - 0.02, 'z', 14));               // zadní víko
+    gunGeo.push(cyl(R * 0.55, 0.42, 0, gy, z0 + 0.3, 'z', 14, R));              // nálevka
+    darkGeo.push(cyl(R * 1.02, 0.05, 0, gy, z0 + 0.12, 'z', 14));               // obruč
+    laserGeo.push(cyl(R * 0.4, 0.5, 0, gy, z0 + 0.3, 'z', 12));                 // jádro (svítí s nabitím)
+    laserGeo.push(cyl(R * 0.62, 0.04, 0, gy, z0 + 0.53, 'z', 14));              // zářící čelo
+    chromeGeo.push(cyl(R * 0.72, 0.07, 0, gy, z0 + 0.5, 'z', 14, R * 0.8));     // ústí
+    // klec vzadu naznačená šesti uzly po obvodu
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      gunGeo.push(box(0.05, 0.05, 0.07, Math.sin(a) * R, gy + Math.cos(a) * R, z0 - 0.02));
+    }
+    muzzles.push(new THREE.Vector3(0, gy, z0 + 0.56));
   } else if ((gun?.shape.barrels ?? 1) > 1) {
     // rotační minigun na kapotě – stejný kus, jaký je vidět v nabídce zbraní
     const nb = gun!.shape.barrels!;

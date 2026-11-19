@@ -129,6 +129,13 @@ export class GameAudio {
   }
   crash(vol: number) { this.burst(vol * 0.55, 0.22, 'lowpass', 900, 120, 1); this.tone(vol * 0.3, 0.12, 'triangle', 140, 50); }
   launch(vol: number) { this.burst(vol * 0.4, 0.5, 'bandpass', 500, 2600, 1.4); }
+  /** EMP vlna: hluboké bouchnutí a rozjíždějící se elektrické zavytí. */
+  wave(vol: number) {
+    this.burst(vol * 0.5, 0.35, 'lowpass', 900, 160, 1.0);
+    this.tone(vol * 0.3, 0.5, 'sawtooth', 90, 900, 0.03);
+  }
+  /** EMP se začal nabíjet: krátké cvaknutí relé. */
+  charge(vol: number) { this.tone(vol * 0.18, 0.1, 'square', 330, 660, 0.01); }
   /** Hák se zakousl do cizího auta: kovové cvaknutí a zadrnčení napnutého lana. */
   hook(vol: number) { this.burst(vol * 0.3, 0.07, 'bandpass', 900, 2400, 1.1); this.tone(vol * 0.22, 0.26, 'sawtooth', 240, 120, 0.02); }
   /** Položená mina: cvaknutí zámku a krátké pípnutí, že se natahuje. */
