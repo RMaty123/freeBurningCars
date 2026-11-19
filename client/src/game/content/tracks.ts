@@ -2,11 +2,13 @@
  * Seznam tratí. Novou trať přidáš dalším záznamem do pole TRACKS – ve výběru tratě se objeví sama
  * (karta, náhled i obrys se generují z těchhle dat).
  *
- *   points  řídicí body [x, z] v metrech; křivka se sama uzavře
- *   theme   prostředí: 'desert' | 'city' | 'forest' (vzhled je v render/world.ts)
- *   lanes   na kolik pruhů se vozovka rozdělí čarami (nepovinné, výchozí 2)
+ *   points     řídicí body [x, z] v metrech; křivka se sama uzavře
+ *   elevation  výška bodů v metrech (stejný počet jako points); vynech = rovná trať
+ *   theme      prostředí: 'desert' | 'city' | 'forest' | 'airport' (vzhled je v render/world.ts)
+ *   lanes      na kolik pruhů se vozovka rozdělí čarami (nepovinné, výchozí 2)
  *
  * Zatáčky drž s poloměrem aspoň ~25 m a jednotlivé úseky aspoň ~40 m od sebe.
+ * Výškové rozdíly drž do ~10 %, ať auta nejezdí po schodech.
  */
 import type { ThemeId, TrackDef } from '../track';
 
@@ -14,6 +16,7 @@ export const THEME_LABEL: Record<ThemeId, string> = {
   desert: 'Poušť',
   city: 'Noční město',
   forest: 'Hory a les',
+  airport: 'Opuštěné letiště',
 };
 
 /**
@@ -72,6 +75,33 @@ export const TRACKS: TrackDef[] = [
     points: [
       [0, 0], [115, 8], [205, 60], [262, 150], [242, 252], [150, 292], [70, 244], [18, 172],
       [-62, 160], [-124, 222], [-212, 242], [-292, 182], [-302, 80], [-242, 10], [-150, 18], [-88, -28],
+    ],
+  },
+  {
+    /*
+     * Opuštěné letiště v noci. Trať objíždí celý areál:
+     *   start na vyvýšené příjezdové cestě k terminálu (10 m)
+     *   → rampa nahoru do vícepatrové garáže (18 m)
+     *   → sjezd dolů na apron kolem terminálu
+     *   → dlouhá runway na jihu
+     *   → pozvolný výjezd zpátky do terminálu.
+     * Výšky jsou v metrech a musí jich být přesně tolik co bodů.
+     */
+    id: 'airport',
+    name: 'GHOST RUNWAY',
+    tagline: 'Noční opuštěné letiště. Garážové rampy nahoru, sjezd dolů a dlouhá runway.',
+    theme: 'airport',
+    width: 22,
+    lanes: 3,
+    points: [
+      [-80, 0], [40, 0], [150, -4], [240, -40], [275, -115], [240, -180], [170, -195],
+      [125, -170], [110, -105], [110, -40], [110, 30], [110, 120], [105, 220], [95, 320],
+      [50, 390], [-60, 410], [-180, 410], [-280, 390], [-330, 320], [-320, 230], [-290, 150],
+      [-240, 80], [-180, 30],
+    ],
+    elevation: [
+      10, 10, 11, 15, 18, 18, 18,
+      15, 10, 5, 2, 0.5, 0, 0, 0, 0, 0, 0, 0, 2.5, 6, 8.5, 10,
     ],
   },
   {

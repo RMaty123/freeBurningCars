@@ -6,7 +6,7 @@
  * Auta si pamatují index nejbližšího vzorku, z toho se počítá pořadí, kola i náraz do svodidel.
  */
 
-export type ThemeId = 'desert' | 'city' | 'forest';
+export type ThemeId = 'desert' | 'city' | 'forest' | 'airport';
 
 export interface TrackDef {
   id: string;
@@ -25,6 +25,13 @@ export interface TrackDef {
   open?: boolean;
   /** řídicí body [x, z] v metrech; křivka se uzavírá sama */
   points: [number, number][];
+  /**
+   * Výška řídicích bodů v metrech (stejný počet jako `points`). Když chybí, je trať rovná.
+   * Mezi body se výška vyhladí stejnou Catmull-Rom křivkou jako půdorys, takže rampy
+   * nemají zlomy. Záporné hodnoty jdou použít taky, ale zem pod tratí je v nule – pro
+   * podjezdy se hodí spíš kladná výška (nadjezd, patro garáže).
+   */
+  elevation?: number[];
 }
 
 export interface Track {
@@ -36,6 +43,10 @@ export interface Track {
   length: number;
   x: Float32Array;
   z: Float32Array;
+  /** výška vozovky v každém vzorku (m) – 0 = rovná trať */
+  y: Float32Array;
+  /** podélný sklon (m/m); kladný = do kopce ve směru jízdy */
+  grade: Float32Array;
   /** tečna (směr jízdy) */
   tx: Float32Array;
   tz: Float32Array;
@@ -59,14 +70,19 @@ function catmull(p0: number, p1: number, p2: number, p3: number, t: number): num
 export function buildTrack(def: TrackDef): Track {
   const P = def.points;
   const m = P.length;
-  // 1) hustá polyline
+  // 1) hustá polyline (půdorys i výška)
   const fine: [number, number][] = [];
+  const fineY: number[] = [];
+  const E = def.elevation;
   const SUB = 60;
   for (let i = 0; i < m; i++) {
     const p0 = P[(i + m - 1) % m], p1 = P[i], p2 = P[(i + 1) % m], p3 = P[(i + 2) % m];
+    const e0 = E ? E[(i + m - 1) % m] : 0, e1 = E ? E[i] : 0;
+    const e2 = E ? E[(i + 1) % m] : 0, e3 = E ? E[(i + 2) % m] : 0;
     for (let k = 0; k < SUB; k++) {
       const t = k / SUB;
       fine.push([catmull(p0[0], p1[0], p2[0], p3[0], t), catmull(p0[1], p1[1], p2[1], p3[1], t)]);
+      fineY.push(E ? catmull(e0, e1, e2, e3, t) : 0);
     }
   }
   // 2) délka a rovnoměrné převzorkování
@@ -78,7 +94,7 @@ export function buildTrack(def: TrackDef): Track {
   const length = cum[fine.length];
   const n = Math.round(length / STEP);
   const step = length / n;
-  const x = new Float32Array(n), z = new Float32Array(n);
+  const x = new Float32Array(n), z = new Float32Array(n), y = new Float32Array(n);
   let j = 0;
   for (let i = 0; i < n; i++) {
     const d = i * step;
@@ -87,6 +103,8 @@ export function buildTrack(def: TrackDef): Track {
     const t = (d - cum[j]) / Math.max(1e-6, cum[j + 1] - cum[j]);
     x[i] = a[0] + (b[0] - a[0]) * t;
     z[i] = a[1] + (b[1] - a[1]) * t;
+    const ya = fineY[j], yb = fineY[(j + 1) % fineY.length];
+    y[i] = ya + (yb - ya) * t;
   }
   // 3) tečny, normály, křivost
   const tx = new Float32Array(n), tz = new Float32Array(n), nx = new Float32Array(n), nz = new Float32Array(n);
@@ -114,8 +132,34 @@ export function buildTrack(def: TrackDef): Track {
     for (let k = -3; k <= 3; k++) s += raw[(i + k + n) % n];
     curv[i] = s / 7;
   }
+  // 4) sklon – derivace výšky podle ujeté dráhy, vyhlazená, ať auto na hrbolcích neposkakuje
+  const rawGrade = new Float32Array(n);
+  for (let i = 0; i < n; i++) rawGrade[i] = (y[(i + 1) % n] - y[(i + n - 1) % n]) / (2 * step);
+  const grade = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let s = 0;
+    for (let k = -2; k <= 2; k++) s += rawGrade[(i + k + n) % n];
+    grade[i] = s / 5;
+  }
   const halfWidth = def.width / 2;
-  return { def, n, step, length, x, z, tx, tz, nx, nz, curv, halfWidth, wallDist: halfWidth + 1.6 };
+  return { def, n, step, length, x, z, y, grade, tx, tz, nx, nz, curv, halfWidth, wallDist: halfWidth + 1.6 };
+}
+
+/**
+ * Výška vozovky v místě (x, z), když známe nejbližší vzorek `i`.
+ * Mezi vzorky se lineárně doplní podle polohy podél tečny – bez toho by auto
+ * po dvoumetrových schodech poskakovalo.
+ */
+export function heightAt(tr: Track, i: number, px: number, pz: number): number {
+  const n = tr.n;
+  const dx = px - tr.x[i], dz = pz - tr.z[i];
+  const s = (dx * tr.tx[i] + dz * tr.tz[i]) / tr.step; // -1…1 mezi sousedy
+  if (s >= 0) {
+    const j = (i + 1) % n;
+    return tr.y[i] + (tr.y[j] - tr.y[i]) * Math.min(1, s);
+  }
+  const j = (i + n - 1) % n;
+  return tr.y[i] + (tr.y[j] - tr.y[i]) * Math.min(1, -s);
 }
 
 /** Najde nejbližší vzorek v okně kolem "hint" (auta se mezi kroky pohnou jen o kousek). */

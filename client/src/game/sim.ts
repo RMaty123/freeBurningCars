@@ -7,7 +7,7 @@
 import { CarStats } from './cars';
 import { BEAM_MIN_CHARGE, beamTime, type GunStats } from './guns';
 import type { SecKind, SecStats } from './secondary';
-import { Track, lateral, locate, wrapIdx } from './track';
+import { Track, heightAt, lateral, locate, wrapIdx } from './track';
 import { aiThink, AIState, newAI } from './ai';
 
 export interface CarInput {
@@ -42,6 +42,10 @@ export interface Car {
   input: CarInput;
 
   x: number; z: number; h: number;
+  /** výška vozovky pod autem (m) */
+  y: number;
+  /** podélný sklon pod autem (m/m); kladný = do kopce */
+  grade: number;
   vx: number; vz: number;
   /** rychlost dopředu a do boku (m/s) */
   speed: number;
@@ -112,8 +116,8 @@ export interface Car {
   speedScale: number;
 }
 
-export interface Bullet { x: number; z: number; vx: number; vz: number; life: number; owner: number; ti: number; gun: GunStats; }
-export interface Rocket { x: number; z: number; h: number; speed: number; life: number; owner: number; target: number; ti: number; id: number; }
+export interface Bullet { x: number; y: number; z: number; vx: number; vz: number; life: number; owner: number; ti: number; gun: GunStats; }
+export interface Rocket { x: number; y: number; z: number; h: number; speed: number; life: number; owner: number; target: number; ti: number; id: number; }
 /**
  * Něco, co auto pustilo na trať – mina nebo míček. Jede to stejným kódem, liší se jen čísly
  * v `def` a tím, že míček po vyhození ještě chvíli letí a kutálí se (mina má rychlosti nulové).
@@ -132,6 +136,8 @@ export interface Rocket { x: number; z: number; h: number; speed: number; life: 
 export interface Wave {
   owner: number;
   x: number; z: number;
+  /** výška místa výstřelu (m) – vlna se drží ve své rovině */
+  y: number;
   /** jak dlouho už se roztahuje (s) */
   t: number;
   /** aktuální poloměr (m) */
@@ -145,7 +151,9 @@ export interface Hook {
   owner: number;
   /** id zaháknutého auta, nebo -1 když hák ještě letí / nic nechytil */
   target: number;
-  x: number; z: number; vx: number; vz: number;
+  x: number; z: number;
+  /** výška hlavice (m) */
+  y: number; vx: number; vz: number;
   state: 'fly' | 'hold' | 'back';
   /** kolik dráhy hák uletěl (m) – podle toho se pozná, že je na konci lana */
   flown: number;
@@ -159,32 +167,34 @@ export interface Drop {
   x: number; z: number;
   /** výška nad zemí – míček poskakuje, mina leží na nule */
   y: number;
+  /** výška vozovky v místě položení (m); `y` se počítá nad ní */
+  gy: number;
   vx: number; vz: number; vy: number;
   /** jen pro kreslení: o kolik se míček odkutálel a kterým směrem */
   roll: number; yaw: number;
   owner: number; arm: number; life: number; fuse: number; def: SecStats; id: number;
 }
-export interface Pickup { x: number; z: number; kind: PickupKind; cooldown: number; id: number; }
+export interface Pickup { x: number; y: number; z: number; kind: PickupKind; cooldown: number; id: number; }
 
 export type SimEvent =
   | { t: 'count'; n: number }
   | { t: 'go' }
-  | { t: 'shot'; car: number; x: number; z: number }
-  | { t: 'hit'; car: number; x: number; z: number }
-  | { t: 'spark'; x: number; z: number }
-  | { t: 'wall'; car: number; x: number; z: number; force: number }
-  | { t: 'crash'; a: number; b: number; x: number; z: number; force: number }
-  | { t: 'boom'; x: number; z: number; size: number }
+  | { t: 'shot'; car: number; x: number; z: number; y?: number }
+  | { t: 'hit'; car: number; x: number; z: number; y?: number }
+  | { t: 'spark'; x: number; z: number; y?: number }
+  | { t: 'wall'; car: number; x: number; z: number; force: number; y?: number }
+  | { t: 'crash'; a: number; b: number; x: number; z: number; force: number; y?: number }
+  | { t: 'boom'; x: number; z: number; size: number; y?: number }
   | { t: 'launch'; car: number; kind: SecKind }
-  | { t: 'hooked'; car: number; x: number; z: number }
-  | { t: 'wave'; car: number; x: number; z: number }
+  | { t: 'hooked'; car: number; x: number; z: number; y?: number }
+  | { t: 'wave'; car: number; x: number; z: number; y?: number }
   | { t: 'charge'; car: number }
   | { t: 'jammed'; car: number }
   /** laser vystřelil – `len` je, jak dlouho bude svítit (s) */
   | { t: 'beam'; car: number; len: number }
   | { t: 'destroyed'; car: number; by: number }
   | { t: 'respawn'; car: number }
-  | { t: 'pickup'; car: number; kind: PickupKind; x: number; z: number }
+  | { t: 'pickup'; car: number; kind: PickupKind; x: number; z: number; y?: number }
   | { t: 'lap'; car: number; lap: number; time: number }
   | { t: 'finish'; car: number; place: number };
 
@@ -367,6 +377,8 @@ export class Sim {
         input: { steer: 0, throttle: 0, brake: 0, fire: false, secondary: false, drift: false },
         x: track.x[ti] + track.nx[ti] * off,
         z: track.z[ti] + track.nz[ti] * off,
+        y: track.y[ti],
+        grade: track.grade[ti],
         h: Math.atan2(track.tx[ti], track.tz[ti]),
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
@@ -395,7 +407,7 @@ export class Sim {
       let k = 0;
       for (let gx = -4; gx <= 4; gx++) {
         for (let gz = -4; gz <= 4; gz++) {
-          this.pickups.push({ x: cx + gx * 90, z: cz + gz * 90, kind: kinds[k++ % kinds.length], cooldown: 0, id: this.nextId++ });
+          this.pickups.push({ x: cx + gx * 90, y: 0, z: cz + gz * 90, kind: kinds[k++ % kinds.length], cooldown: 0, id: this.nextId++ });
         }
         k++;
       }
@@ -410,6 +422,7 @@ export class Sim {
         const off = lane * tr.halfWidth * 0.55;
         this.pickups.push({
           x: tr.x[ti] + tr.nx[ti] * off,
+          y: tr.y[ti],
           z: tr.z[ti] + tr.nz[ti] * off,
           kind: kinds[k++ % kinds.length],
           cooldown: 0,
@@ -534,6 +547,8 @@ export class Sim {
       c.speed = 0; c.accel = 0; c.nitroOn = false; c.drifting = false;
       const prevDead = c.ti;
       this.keepInside(c, dt, true);
+      c.y = heightAt(tr, c.ti, c.x, c.z);
+      c.grade = tr.grade[c.ti];
       this.lapCheck(c, prevDead); // i vrak, který se dosune přes cíl, má kolo započítané
       c.deadT -= dt;
       if (c.deadT <= 0) this.respawn(c);
@@ -588,6 +603,8 @@ export class Sim {
     }
     a -= vf * 0.1;
     if (throttle === 0 && brake === 0) a -= Math.sign(vf) * 2.2;
+    // gravitace podle sklonu: do kopce auto ztrácí, z kopce se rozjíždí
+    if (Math.abs(vf) > 1 || throttle > 0.05 || brake > 0.05) a -= 9.81 * c.grade;
     c.accel = a;
 
     // ---- zatáčení (viz yawAt: ve stoje nic, ve vysoké rychlosti nedotáčivost podle steerRef)
@@ -626,6 +643,8 @@ export class Sim {
 
     const prev = c.ti;
     this.keepInside(c, dt, false);
+    c.y = heightAt(tr, c.ti, c.x, c.z);
+    c.grade = tr.grade[c.ti];
 
     if (!tr.def.open) {
       this.lapCheck(c, prev);
@@ -755,6 +774,7 @@ export class Sim {
     const r2 = r * r;
     for (const o of this.cars) {
       if (o === c || o.dead || o.finished) continue;
+      if (Math.abs(o.y - c.y) > 6) continue;
       if ((o.x - c.x) ** 2 + (o.z - c.z) ** 2 < r2) return true;
     }
     return false;
@@ -764,8 +784,8 @@ export class Sim {
     const g = c.gun;
     c.charge = 0;
     c.fireCd = g.cd;
-    this.waves.push({ owner: c.id, x: c.x, z: c.z, t: 0, r: 0, gun: g, hit: [], id: this.nextId++ });
-    this.events.push({ t: 'wave', car: c.id, x: c.x, z: c.z });
+    this.waves.push({ owner: c.id, x: c.x, z: c.z, y: c.y, t: 0, r: 0, gun: g, hit: [], id: this.nextId++ });
+    this.events.push({ t: 'wave', car: c.id, x: c.x, z: c.z, y: c.y });
   }
 
   /** Vlny: roztahují se z místa výstřelu a koho poprvé přejdou, tomu dají ránu a zblázní volant. */
@@ -778,6 +798,8 @@ export class Sim {
       w.r = Math.min(g.range, (w.t / span) * g.range);
       for (const c of this.cars) {
         if (c.id === w.owner || c.dead || c.finished || w.hit.includes(c.id)) continue;
+        // vlna se šíří jen ve své výškové hladině – garáž nad podjezdem není totéž místo
+        if (Math.abs(c.y - w.y) > 6) continue;
         if ((c.x - w.x) ** 2 + (c.z - w.z) ** 2 > w.r * w.r) continue;
         w.hit.push(c.id);
         // každé zasažené auto má šanci, že ho vlna rovnou roztrhá; jinak jen schytá ránu
@@ -840,7 +862,7 @@ export class Sim {
         // Do svodidel se auto jen otře – žádné poškození, jen ztráta rychlosti a jiskry.
         if (vn > 2.5 && c.wallT <= 0) {
           c.wallT = 0.12;
-          this.events.push({ t: 'wall', car: c.id, x: c.x + nx * 1.0, z: c.z + nz * 1.0, force: vn });
+          this.events.push({ t: 'wall', car: c.id, x: c.x + nx * 1.0, z: c.z + nz * 1.0, y: c.y, force: vn });
         }
       }
     }
@@ -858,6 +880,7 @@ export class Sim {
     for (let i = 0; i < cs.length; i++) {
       for (let j = i + 1; j < cs.length; j++) {
         const a = cs[i], b = cs[j];
+        if (Math.abs(a.y - b.y) > 4) continue;
         const dx0 = b.x - a.x, dz0 = b.z - a.z;
         if (dx0 * dx0 + dz0 * dz0 > 36) continue;
         // dva kruhy na auto (příď/záď)
@@ -887,7 +910,7 @@ export class Sim {
               this.damage(a, (force - RAM_MIN) * RAM_DAMAGE * (mb / tot), b.id);
               this.damage(b, (force - RAM_MIN) * RAM_DAMAGE * (ma / tot), a.id);
             }
-            this.events.push({ t: 'crash', a: a.id, b: b.id, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, force });
+            this.events.push({ t: 'crash', a: a.id, b: b.id, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, y: (a.y + b.y) / 2, force });
           }
         }
       }
@@ -900,6 +923,8 @@ export class Sim {
     let best: Car | null = null, bs = Infinity;
     for (const o of this.cars) {
       if (o === c || o.dead || o.finished) continue;
+      // nepříměří na auto o patro výš / níž
+      if (Math.abs(o.y - c.y) > 7) continue;
       const dx = o.x - c.x, dz = o.z - c.z;
       const d = Math.hypot(dx, dz);
       if (d > range || d < 2) continue;
@@ -937,10 +962,10 @@ export class Sim {
     for (const sgn of sides) {
       const sx = mx - fz * lat * sgn, sz = mz + fx * lat * sgn;
       this.bullets.push({
-        x: sx, z: sz, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
+        x: sx, y: c.y + 0.85, z: sz, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
         life: g.range / sp, owner: c.id, ti: c.ti, gun: g,
       });
-      this.events.push({ t: 'shot', car: c.id, x: sx, z: sz });
+      this.events.push({ t: 'shot', car: c.id, x: sx, z: sz, y: c.y });
     }
   }
 
@@ -1015,7 +1040,7 @@ export class Sim {
         c.beamHitAt[hit.id] = this.time;
         // AI pálí do lidí slabším paprskem, ať to není frustrující
         this.damage(hit, g.dmg * (!c.human && hit.human ? 0.55 : 1), c.id);
-        this.events.push({ t: 'hit', car: hit.id, x: ox + fx * hitT, z: oz + fz * hitT });
+        this.events.push({ t: 'hit', car: hit.id, x: ox + fx * hitT, z: oz + fz * hitT, y: hit.y + 0.9 });
       });
     }
   }
@@ -1040,7 +1065,7 @@ export class Sim {
         if (lead !== null) dir = c.h + clamp(angDiff(lead, c.h), -max, max);
       }
       this.hooks.push({
-        owner: c.id, target: -1, x: o.x, z: o.z, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
+        owner: c.id, target: -1, x: o.x, z: o.z, y: c.y + 0.9, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
         state: 'fly', flown: 0, t: g.hold ?? 2.4, def: g, id: this.nextId++,
       });
     } else if (g.id === 'mine' || g.id === 'ball') {
@@ -1054,7 +1079,7 @@ export class Sim {
         const a = spread ? c.h + Math.PI + (i / n - 0.5) * 2.2 + (this.rnd() - 0.5) * 0.5 : 0;
         const sp = spread ? spread * (0.55 + this.rnd() * 0.75) : 0;
         this.drops.push({
-          x: c.x - fx * back, z: c.z - fz * back, y: spread ? 0.45 : 0,
+          x: c.x - fx * back, z: c.z - fz * back, y: spread ? 0.45 : 0, gy: c.y,
           vx: spread ? Math.sin(a) * sp + c.vx * 0.3 : 0,
           vz: spread ? Math.cos(a) * sp + c.vz * 0.3 : 0,
           vy: spread ? 1.4 + this.rnd() * 2.2 : 0,
@@ -1065,7 +1090,7 @@ export class Sim {
     } else {
       const tgt = this.findTarget(c, 0.5, 130);
       this.rockets.push({
-        x: c.x + fx * 2, z: c.z + fz * 2, h: c.h, speed: Math.max(35, c.speed + 25),
+        x: c.x + fx * 2, y: c.y + 0.95, z: c.z + fz * 2, h: c.h, speed: Math.max(35, c.speed + 25),
         life: 3.2, owner: c.id, target: tgt ? tgt.id : -1, ti: c.ti, id: this.nextId++,
       });
     }
@@ -1092,7 +1117,7 @@ export class Sim {
             // AI střílí do lidí o něco slabším kalibrem, ať to není frustrující
             const dmg = b.gun.dmg * (owner && !owner.human && c.human ? 0.55 : 1);
             this.damage(c, dmg, b.owner);
-            this.events.push({ t: 'hit', car: c.id, x: b.x, z: b.z });
+            this.events.push({ t: 'hit', car: c.id, x: b.x, z: b.z, y: b.y });
             gone = true;
             break;
           }
@@ -1100,9 +1125,10 @@ export class Sim {
       }
       if (!gone && !tr.def.open) {
         b.ti = locate(tr, b.x, b.z, b.ti, 5);
+        b.y = heightAt(tr, b.ti, b.x, b.z) + 0.85;
         if (Math.abs(lateral(tr, b.ti, b.x, b.z)) > tr.wallDist) {
           gone = true;
-          this.events.push({ t: 'spark', x: b.x, z: b.z });
+          this.events.push({ t: 'spark', x: b.x, z: b.z, y: b.y });
         }
       }
       if (gone) { this.bullets[i] = this.bullets[this.bullets.length - 1]; this.bullets.pop(); }
@@ -1125,11 +1151,12 @@ export class Sim {
       }
       if (!boom && !tr.def.open) {
         r.ti = locate(tr, r.x, r.z, r.ti, 5);
+        r.y = heightAt(tr, r.ti, r.x, r.z) + 0.95;
         if (Math.abs(lateral(tr, r.ti, r.x, r.z)) > tr.wallDist - 0.2) boom = true;
       }
       if (boom) {
         const g = this.cars[r.owner]?.sec;
-        this.explode(r.x, r.z, g?.radius ?? 8.5, g?.dmg ?? 58, r.owner);
+        this.explode(r.x, r.y, r.z, g?.radius ?? 8.5, g?.dmg ?? 58, r.owner);
         this.rockets.splice(i, 1);
       }
     }
@@ -1157,17 +1184,18 @@ export class Sim {
         const grab = (g.grab ?? 3.4) ** 2;
         for (const c of this.cars) {
           if (c.id === h.owner || c.dead || c.finished) continue;
+          if (Math.abs(c.y - h.y) > 5) continue;
           if ((c.x - h.x) ** 2 + (c.z - h.z) ** 2 > grab) continue;
           h.state = 'hold';
           h.target = c.id;
-          this.events.push({ t: 'hooked', car: h.owner, x: h.x, z: h.z });
+          this.events.push({ t: 'hooked', car: h.owner, x: h.x, z: h.z, y: h.y });
           break;
         }
         if (h.state === 'fly' && h.flown > (g.hookRange ?? 95)) h.state = 'back';
       } else if (h.state === 'hold') {
         const tgt = this.cars[h.target];
         if (!tgt || tgt.dead || tgt.finished) { h.state = 'back'; continue; }
-        h.x = tgt.x; h.z = tgt.z;
+        h.x = tgt.x; h.z = tgt.z; h.y = tgt.y + 0.9;
         const dx = tgt.x - me.x, dz = tgt.z - me.z;
         const d = Math.hypot(dx, dz) || 1;
         h.t -= dt;
@@ -1188,6 +1216,7 @@ export class Sim {
         if (d < 2.5) { this.hooks.splice(i, 1); continue; }
         const sp = (g.hookSpeed ?? 120) * 1.3;
         h.x += (dx / d) * sp * dt; h.z += (dz / d) * sp * dt;
+        h.y += ((me.y + 0.9) - h.y) * Math.min(1, 10 * dt);
       }
     }
   }
@@ -1210,6 +1239,7 @@ export class Sim {
         const r2 = (m.def.trigger ?? 2.2) ** 2;
         for (const c of this.cars) {
           if (c.dead || c.id === m.owner || c.finished) continue;
+          if (Math.abs(c.y - m.gy) > 4) continue;
           if ((c.x - m.x) ** 2 + (c.z - m.z) ** 2 < r2) { boom = true; break; }
         }
       }
@@ -1217,7 +1247,7 @@ export class Sim {
       // nejdřív ven ze seznamu, ať to vlastní výbuch nezapálil znovu
       this.drops[i] = this.drops[this.drops.length - 1];
       this.drops.pop();
-      if (boom) this.explode(m.x, m.z, m.def.radius, m.def.dmg, m.owner);
+      if (boom) this.explode(m.x, m.gy, m.z, m.def.radius, m.def.dmg, m.owner);
     }
   }
 
@@ -1239,14 +1269,16 @@ export class Sim {
     else { m.roll += (sp * dt) / BALL_R; m.yaw = Math.atan2(m.vx, m.vz); }
   }
 
-  explode(x: number, z: number, radius: number, dmg: number, owner: number) {
-    this.events.push({ t: 'boom', x, z, size: radius / 8 });
+  explode(x: number, y: number, z: number, radius: number, dmg: number, owner: number) {
+    this.events.push({ t: 'boom', x, z, y, size: radius / 8 });
     // miny a míčky v dosahu to zapálí taky – bouchnou s malým zpožděním za sebou
     for (const m of this.drops) {
+      if (Math.abs(m.gy - y) > 5) continue;
       if (m.fuse < 0 && (m.x - x) ** 2 + (m.z - z) ** 2 < radius * radius) m.fuse = 0.06 + this.rnd() * 0.1;
     }
     for (const c of this.cars) {
       if (c.dead) continue;
+      if (Math.abs(c.y - y) > 5) continue;
       const dx = c.x - x, dz = c.z - z;
       const d = Math.hypot(dx, dz);
       if (d > radius) continue;
@@ -1281,7 +1313,7 @@ export class Sim {
       const k = this.cars[by];
       if (k) k.kills++;
     }
-    this.events.push({ t: 'boom', x: c.x, z: c.z, size: 1.5 });
+    this.events.push({ t: 'boom', x: c.x, z: c.z, y: c.y, size: 1.5 });
     this.events.push({ t: 'destroyed', car: c.id, by });
   }
 
@@ -1296,6 +1328,8 @@ export class Sim {
       if (this.cars.every((o) => o === c || o.dead || (o.x - px) ** 2 + (o.z - pz) ** 2 > 16)) { off = cand; break; }
     }
     c.x = tr.x[ti] + tr.nx[ti] * off; c.z = tr.z[ti] + tr.nz[ti] * off;
+    c.y = tr.y[ti];
+    c.grade = tr.grade[ti];
     c.h = Math.atan2(tr.tx[ti], tr.tz[ti]);
     c.vx = tr.tx[ti] * 14; c.vz = tr.tz[ti] * 14;
     c.speed = 14; c.steer = 0; c.yawRate = 0;
@@ -1328,6 +1362,8 @@ export class Sim {
     c.lastHitBy = -1;
     c.ai.stuckT = 0;
     c.ti = locate(this.track, c.x, c.z, c.ti, 40);
+    c.y = heightAt(this.track, c.ti, c.x, c.z);
+    c.grade = this.track.grade[c.ti];
     this.events.push({ t: 'respawn', car: c.id });
   }
 
@@ -1348,7 +1384,7 @@ export class Sim {
           c.secAmmo = Math.min(c.sec.maxAmmo, c.secAmmo + c.sec.pickup);
         }
         p.cooldown = 7;
-        this.events.push({ t: 'pickup', car: c.id, kind: p.kind, x: p.x, z: p.z });
+        this.events.push({ t: 'pickup', car: c.id, kind: p.kind, x: p.x, z: p.z, y: p.y });
         break;
       }
     }

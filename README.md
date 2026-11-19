@@ -6,7 +6,7 @@ Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
 - **4 primární zbraně na výběr** (minigun, těžký kulomet, dvojice laserů na dveřích, EMP vysílač) a **4 sekundární** (naváděné rakety, miny, míčky sypané po osmi, lanový hák), k tomu opravy a zrychlení z beden
-- **4 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory) a Test Strip (osmipruhový testovací ovál)
+- **5 tratí**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory), Ghost Runway (opuštěné letiště v noci) a Test Strip (osmipruhový testovací ovál)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
 - dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
 - zničení soupeřů, respawn, pořadí, kola, body za umístění i za zničení
@@ -128,6 +128,12 @@ Počet AI soupeřů jde nastavit od 0 (pak jedou jen připojení hráči) až po
 Poslední trať v nabídce je **testovací plac**: ovál se dvěma kilometrovými rovinkami, 64 m širokou vozovkou a osmi pruhy (3,8 km na kolo). Je tam schválně skoro pořád rovně, takže auta jedou plným plynem vedle sebe a hlavně se střílí – hodí se na zkoušení aut, zbraní a přestřelek bez zatáček. V testovací simulaci na ní padne čtyřikrát víc ran a aut než na normální trati.
 
 Šířka a pruhy jsou obyčejná data (`width`, `lanes` v `game/content/tracks.ts`), takže stejným způsobem jde přidat jakkoli široká trať – čáry mezi pruhy se dokreslí samy.
+
+### Ghost Runway a převýšení
+
+**Ghost Runway** je noční opuštěné letiště. Start leží na vyvýšené příjezdové cestě k terminálu (10 m), trať vystoupá do vícepatrové garáže (18 m), sjezdem spadne na apron a do dlouhé runway na jihu a po západní straně se zase pozvolna vyšplhá zpět k terminálu. Kromě jiného prostředí je to první trať, která má **skutečné převýšení** – auta do kopce ztrácejí rychlost, z kopce se rozjíždějí a karoserie i světlomety se naklápějí podle sklonu.
+
+Převýšení je čistě data: v definici trati přibylo pole `elevation` se stejně dlouhým seznamem výšek, jako má `points`. Když chybí, je trať rovná jako dřív. Výška se mezi body vyhladí stejnou Catmull-Rom křivkou jako půdorys, takže rampy nemají zlomy; vozovka, svodidla, pilíře mostních konstrukcí, kamery, střely, miny i efekty si výšku berou z trati. Doporučený sklon je do ~10 %, aby auta nejezdila po schodech.
 
 ### Primární zbraně (FIRE 1)
 
@@ -288,7 +294,7 @@ Ovladač → server → obrazovka → simulace. Na každém kroku se škrtalo, c
 
 ### Jak se to rozšiřuje
 
-- **Nová trať:** další záznam v `game/content/tracks.ts`. Karta ve výběru, náhled i obrys vzniknou samy.
+- **Nová trať:** další záznam v `game/content/tracks.ts`. Karta ve výběru, náhled i obrys vzniknou samy. Nepovinné `elevation` přidá převýšení (stejný počet čísel jako `points`), `theme` vybere prostředí.
 - **Nové auto:** další záznam v `game/content/cars.ts`. Ve výběru aut se objeví samo – 3D model, dlaždice na telefonu i ukazatele se spočítají z dat. Vzhled skládá `shape` z dílů, žádný soubor s modelem není potřeba:
 
   | přepínač | co udělá |
@@ -331,7 +337,7 @@ Ověřeno: test simulace (AI dojede všechny tratě), kontrola typů, hra v Chro
 **Neověřeno:** skutečný telefon, výkon na konkrétním PC a `npm run build` / `npm run prod`.
 Jízdní vlastnosti a obtížnost jsou vyladěné jen podle simulace – čísla jsou v `game/content/cars.ts` a nahoře v `sim.ts`.
 
-Nápady na další rozšíření: kariéra a odemykání aut, další zbraně, převýšení trati, hudba, vlastní lak nad barvu typu.
+Nápady na další rozšíření: kariéra a odemykání aut, další zbraně, střídání dne a noci, hudba, vlastní lak nad barvu typu.
 
 ## Licence
 

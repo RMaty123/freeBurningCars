@@ -213,7 +213,10 @@ export class GameView {
     const sky = this.world.sky.clone();
     envScene.add(sky);
     if (th.night) {
-      const cards: [number, number, number, number][] = [[0xff2bd0, 300, 120, 0], [0x22e0ff, -300, 100, 80], [0xffb060, 0, 160, -320], [0x8060ff, 80, 90, 320]];
+      // barvy "neonů" v odrazech laku: letiště má sodíkovou oranžovou a studenou runway modř
+      const cards: [number, number, number, number][] = this.track.def.theme === 'airport'
+        ? [[0xffa23c, 300, 120, 0], [0x6fa8ff, -300, 100, 80], [0xff7a2a, 0, 160, -320], [0xe8f2ff, 80, 90, 320]]
+        : [[0xff2bd0, 300, 120, 0], [0x22e0ff, -300, 100, 80], [0xffb060, 0, 160, -320], [0x8060ff, 80, 90, 320]];
       for (const [c, x, y, z] of cards) {
         const m = new THREE.Mesh(new THREE.PlaneGeometry(260, 110), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(2.2), side: THREE.DoubleSide }));
         m.position.set(x, y, z);
@@ -276,7 +279,7 @@ export class GameView {
       const ring = new THREE.Mesh(this.ringGeo, new THREE.MeshBasicMaterial({ color: PICKUP_HEX[p.kind], transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
       ring.position.y = 0.07;
       g.add(boxM, ring);
-      g.position.set(p.x, 0, p.z);
+      g.position.set(p.x, p.y, p.z);
       this.pickupGroup.add(g);
       this.pickupMeshes.set(p.id, g);
     }
@@ -358,14 +361,14 @@ export class GameView {
       switch (e.t) {
         case 'shot': {
           const c = sim.cars[e.car];
-          fx.muzzle(e.x, this.cars[e.car].v.shoulder + 0.08, e.z, Math.sin(c.h), Math.cos(c.h));
+          fx.muzzle(e.x, (e.y ?? 0) + this.cars[e.car].v.shoulder + 0.08, e.z, Math.sin(c.h), Math.cos(c.h));
           break;
         }
         case 'hit':
-          fx.sparks(e.x, 0.9, e.z, 5, 8);
+          fx.sparks(e.x, (e.y ?? 0) + 0.9, e.z, 5, 8);
           this.shakeCar(e.car, 0.12);
           break;
-        case 'spark': fx.sparks(e.x, 0.7, e.z, 4, 7); break;
+        case 'spark': fx.sparks(e.x, (e.y ?? 0) + 0.7, e.z, 4, 7); break;
         case 'beam': {
           const cv = this.cars[e.car];
           cv.v.body.updateWorldMatrix(true, false);
@@ -376,16 +379,16 @@ export class GameView {
           break;
         }
         case 'wall':
-          fx.sparks(e.x, 0.6, e.z, Math.min(16, 4 + e.force), 6 + e.force * 0.4);
+          fx.sparks(e.x, (e.y ?? 0) + 0.6, e.z, Math.min(16, 4 + e.force), 6 + e.force * 0.4);
           this.shakeCar(e.car, Math.min(0.7, e.force * 0.04));
           break;
         case 'crash':
-          fx.sparks(e.x, 0.8, e.z, Math.min(20, 5 + e.force), 8 + e.force * 0.4);
+          fx.sparks(e.x, (e.y ?? 0) + 0.8, e.z, Math.min(20, 5 + e.force), 8 + e.force * 0.4);
           this.shakeCar(e.a, Math.min(0.8, e.force * 0.05));
           this.shakeCar(e.b, Math.min(0.8, e.force * 0.05));
           break;
         case 'boom':
-          fx.explosion(e.x, e.z, e.size);
+          fx.explosion(e.x, e.z, e.size, e.y ?? 0);
           for (const r of this.rigs) {
             if (r.carId < 0) continue;
             const c = sim.cars[r.carId];
@@ -394,11 +397,11 @@ export class GameView {
           }
           break;
         case 'pickup':
-          fx.pickupBurst(e.x, e.z, new THREE.Color(PICKUP_HEX[e.kind]));
+          fx.pickupBurst(e.x, e.z, new THREE.Color(PICKUP_HEX[e.kind]), e.y ?? 0);
           break;
         case 'respawn': {
           const c = sim.cars[e.car];
-          fx.flash(c.x, 1, c.z, 9, 0.8, 1.6, 3.0, 0.3);
+          fx.flash(c.x, c.y + 1, c.z, 9, 0.8, 1.6, 3.0, 0.3);
           break;
         }
       }
@@ -420,7 +423,7 @@ export class GameView {
       if (!cv) return;
       const v = cv.v;
       const fxd = Math.sin(c.h), fzd = Math.cos(c.h);
-      v.root.position.set(c.x, 0, c.z);
+      v.root.position.set(c.x, c.y, c.z);
       v.root.rotation.y = c.h;
 
       if (c.dead !== cv.wrecked) { cv.wrecked = c.dead; setWrecked(v, c.dead); }
@@ -430,7 +433,7 @@ export class GameView {
       if (c.dead) {
         // vrak nadskočí a hoří
         const k = 2.6 - c.deadT;
-        v.root.position.y = Math.max(0, 7 * k - 9.5 * k * k);
+        v.root.position.y = c.y + Math.max(0, 7 * k - 9.5 * k * k);
         v.body.rotation.x = Math.min(0.5, k * 1.2) * 0.4;
         v.body.rotation.z = 0.12;
         cv.fireAcc += dt * 26;
@@ -440,14 +443,20 @@ export class GameView {
       }
       v.root.visible = c.invuln <= 0 || Math.floor(t * 14) % 2 === 0;
 
-      // náklon karoserie
+      // náklon karoserie – sklon vozovky se přičítá k rozjezdu/brzdění
       const rollT = THREE.MathUtils.clamp(c.yawRate * c.speed * 0.0017, -0.1, 0.1);
-      const pitchT = THREE.MathUtils.clamp(-c.accel * 0.0032, -0.05, 0.07);
+      const pitchT = THREE.MathUtils.clamp(-c.accel * 0.0032, -0.05, 0.07) - Math.atan(c.grade);
       const k = Math.min(1, dt * 9);
       cv.roll += (rollT - cv.roll) * k; cv.pitch += (pitchT - cv.pitch) * k;
       v.body.rotation.z = cv.roll;
       v.body.rotation.x = cv.pitch;
       v.body.position.y = Math.abs(c.speed) > 3 ? Math.sin(t * 31 + i) * 0.006 : Math.sin(t * 22 + i) * 0.004; // chvění motoru
+      // světelný kužel se na svahu naklopí s vozovkou, ať nezajede do kopce
+      if (cv.headlight) {
+        const ga = Math.atan(c.grade);
+        cv.headlight.rotation.x = -ga;
+        cv.headlight.position.y = 0.08 + Math.tan(ga) * (c.stats.shape.length / 2 + 7.5);
+      }
 
       // kola
       const spin = (c.speed * dt) / c.stats.shape.wheelR;
@@ -470,17 +479,17 @@ export class GameView {
       const rearX = c.x - fxd * (c.stats.shape.length / 2), rearZ = c.z - fzd * (c.stats.shape.length / 2);
       if (c.nitroOn) {
         for (const sx of [-0.5, 0.5]) {
-          fx.nitroFlame(rearX - fzd * sx, v.shape.ground + 0.14, rearZ + fxd * sx, c.vx - fxd * 9, c.vz - fzd * 9);
+          fx.nitroFlame(rearX - fzd * sx, c.y + v.shape.ground + 0.14, rearZ + fxd * sx, c.vx - fxd * 9, c.vz - fzd * 9);
         }
       }
       if ((c.drifting || c.slip > 5.5) && Math.abs(c.speed) > 8) {
         cv.tireAcc += dt * 46;
-        while (cv.tireAcc > 1) { cv.tireAcc--; const sx = Math.random() < 0.5 ? -0.8 : 0.8; fx.tireSmoke(rearX - fzd * sx + fxd * 0.6, rearZ + fxd * sx + fzd * 0.6, c.vx, c.vz); }
+        while (cv.tireAcc > 1) { cv.tireAcc--; const sx = Math.random() < 0.5 ? -0.8 : 0.8; fx.tireSmoke(rearX - fzd * sx + fxd * 0.6, rearZ + fxd * sx + fzd * 0.6, c.vx, c.vz, c.y); }
       }
       const hpK = c.hp / c.stats.hp;
       if (hpK < 0.5) {
         cv.smokeAcc += dt * (hpK < 0.25 ? 30 : 14);
-        while (cv.smokeAcc > 1) { cv.smokeAcc--; fx.damageSmoke(c.x + fxd * 1.2, v.shoulder + 0.1, c.z + fzd * 1.2, c.vx, c.vz, hpK < 0.25); }
+        while (cv.smokeAcc > 1) { cv.smokeAcc--; fx.damageSmoke(c.x + fxd * 1.2, c.y + v.shoulder + 0.1, c.z + fzd * 1.2, c.vx, c.vz, hpK < 0.25); }
       }
     });
 
@@ -489,7 +498,7 @@ export class GameView {
     let n = 0;
     for (const b of sim.bullets) {
       if (n >= 400) break;
-      d.position.set(b.x, 0.85, b.z);
+      d.position.set(b.x, b.y, b.z);
       d.rotation.set(0, Math.atan2(b.vx, b.vz), 0);
       // těžší kulomet má větší a delší stopu
       d.scale.set(b.gun.tracer, b.gun.tracer, 0.7 + b.gun.tracer * 0.5);
@@ -528,7 +537,7 @@ export class GameView {
         const r = (0.15 + Math.sin(t * 48 + i + k) * 0.015) * fade; // lehce pulzuje
         // začátek paprsku je přesně v ústí hlavně
         const mz = cv.v.muzzles[Math.min(k, cv.v.muzzles.length - 1)];
-        const o = mz ? cv.v.body.localToWorld(this.tmpVec.copy(mz)) : this.tmpVec.set(c.x + fx2 * 1.6, cv.v.shoulder, c.z + fz2 * 1.6);
+        const o = mz ? cv.v.body.localToWorld(this.tmpVec.copy(mz)) : this.tmpVec.set(c.x + fx2 * 1.6, c.y + cv.v.shoulder, c.z + fz2 * 1.6);
         const ox = o.x, oy = o.y, oz = o.z;
         m.visible = true;
         m.position.set(ox + fx2 * (len / 2), oy, oz + fz2 * (len / 2));
@@ -545,11 +554,11 @@ export class GameView {
     n = 0;
     for (const r of sim.rockets) {
       if (n >= 24) break;
-      d.position.set(r.x, 0.95, r.z);
+      d.position.set(r.x, r.y, r.z);
       d.rotation.set(0, r.h, t * 9);
       d.updateMatrix();
       this.rockets.setMatrixAt(n++, d.matrix);
-      fx.rocketTrail(r.x, 0.95, r.z, Math.sin(r.h), Math.cos(r.h));
+      fx.rocketTrail(r.x, r.y, r.z, Math.sin(r.h), Math.cos(r.h));
     }
     const hadRockets = this.rockets.count;
     this.rockets.count = n;
@@ -561,7 +570,7 @@ export class GameView {
     for (const m of sim.drops) {
       if (m.def.id === 'ball') {
         if (nb >= MAX_DROPS) continue;
-        d.position.set(m.x, m.y + BALL_R, m.z);
+        d.position.set(m.x, m.gy + m.y + BALL_R, m.z);
         d.rotation.set(m.roll, m.yaw, 0, 'YXZ');  // kutálí se ve směru, kterým letí
         d.updateMatrix();
         for (const im of this.balls) im.setMatrixAt(nb, d.matrix);
@@ -570,7 +579,7 @@ export class GameView {
       }
       if (n >= MAX_DROPS) continue;
       // mina: nenatažená jen slabě doutná, natažená zvolna pulzuje, zapálená bliká naplno
-      d.position.set(m.x, 0, m.z);
+      d.position.set(m.x, m.gy, m.z);
       d.rotation.set(0, m.id * 1.37, 0);
       d.scale.setScalar(m.arm > 0 ? 0.75 + 0.25 * (1 - m.arm / (m.def.arm ?? 0.8)) : 1); // při položení "dosedne"
       d.updateMatrix();
@@ -599,9 +608,9 @@ export class GameView {
       const mz = cv.v.hookMuzzle;
       const o = mz
         ? cv.v.body.localToWorld(this.tmpVec.copy(mz))
-        : this.tmpVec.set(sim.cars[h.owner].x, cv.v.shoulder, sim.cars[h.owner].z);
+        : this.tmpVec.set(sim.cars[h.owner].x, sim.cars[h.owner].y + cv.v.shoulder, sim.cars[h.owner].z);
       const ox = o.x, oy = o.y, oz = o.z;
-      const hy = h.state === 'hold' ? cv.v.shoulder * 0.9 : oy;
+      const hy = h.y;
       const dx = h.x - ox, dy = hy - oy, dz = h.z - oz;
       const len = Math.max(0.4, Math.hypot(dx, dy, dz));
       this.tmpDir.set(dx / len, dy / len, dz / len);
@@ -631,9 +640,9 @@ export class GameView {
       const k = Math.min(1, w.t / (w.gun.waveTime ?? 0.55));
       const fade = (1 - k) ** 0.7;
       high.visible = ground.visible = true;
-      high.position.set(w.x, 1.4, w.z);
+      high.position.set(w.x, w.y + 1.4, w.z);
       high.scale.set(w.r * 0.93, 1, w.r * 0.93);     // horní prstenec kousek pozadu, jako čelo vlny
-      ground.position.set(w.x, 0.06, w.z);
+      ground.position.set(w.x, w.y + 0.06, w.z);
       ground.scale.set(w.r, 1, w.r);
       for (const [m, o] of [[high, 0.8], [ground, 1]] as const) {
         const mat = m.material as THREE.MeshBasicMaterial;
@@ -694,8 +703,8 @@ export class GameView {
         const speedK = THREE.MathUtils.clamp(Math.abs(c.speed) / 70, 0, 1);
         const dist = (c.dead ? 9.5 : 5.5 + speedK * 1.3) + c.stats.shape.length * 0.22;
         const hgt = c.dead ? 4.0 : 2.35 + c.stats.shape.cabinH;
-        cam.position.set(c.x - dx * dist + sx, hgt + sy, c.z - dz * dist + sx);
-        cam.lookAt(c.x + dx * 5, 1.25 + sy * 0.5, c.z + dz * 5);
+        cam.position.set(c.x - dx * dist + sx, c.y + hgt + sy, c.z - dz * dist + sx);
+        cam.lookAt(c.x + dx * 5, c.y + 1.25 + sy * 0.5, c.z + dz * 5);
         const fovT = 60 + speedK * 13 + (c.nitroOn ? 9 : 0);
         r.fov += (fovT - r.fov) * Math.min(1, dt * 8);
       }
@@ -725,8 +734,8 @@ export class GameView {
     const j = (i + Math.round(75 / tr.step)) % tr.n;
     const side = Math.sin(t * 0.055) * 13;
     const hgt = 17 + Math.sin(t * 0.041) * 5;
-    const want = this.tmpVec.set(tr.x[i] + tr.nx[i] * side, hgt, tr.z[i] + tr.nz[i] * side);
-    const look = this.tmpVec2.set(tr.x[j], 0.6, tr.z[j]);
+    const want = this.tmpVec.set(tr.x[i] + tr.nx[i] * side, tr.y[i] + hgt, tr.z[i] + tr.nz[i] * side);
+    const look = this.tmpVec2.set(tr.x[j], tr.y[j] + 0.6, tr.z[j]);
     if (this.tvCut) { this.tvPos.copy(want); this.tvLook.copy(look); this.tvFov = 46; this.tvCut = false; }
     else {
       this.tvPos.lerp(want, 1 - Math.exp(-3 * dt));
@@ -752,7 +761,7 @@ export class GameView {
     if (this.tvShotT <= 0) this.pickTvShot(c, fx, fz, sp);
 
     const want = this.tmpVec.set(0, 0, 0);
-    let lookX = c.x, lookY = 1.1, lookZ = c.z, fov = 52, k = 6;
+    let lookX = c.x, lookY = c.y + 1.1, lookZ = c.z, fov = 52, k = 6;
     if (this.tvShot === SHOT_FLYBY) {
       // kamera stojí u trati a auto ji mine
       want.copy(this.tvAnchor);
@@ -761,14 +770,14 @@ export class GameView {
     } else if (this.tvShot === SHOT_CRANE) {
       // jeřáb: shora se snáší za auto
       const p = THREE.MathUtils.clamp(1 - this.tvShotT / 7, 0, 1);
-      want.set(c.x - fx * (30 - p * 12), 24 - p * 11, c.z - fz * (30 - p * 12));
+      want.set(c.x - fx * (30 - p * 12), c.y + 24 - p * 11, c.z - fz * (30 - p * 12));
       fov = 48;
       k = 3;
     } else {
       // nízká honička za autem (drží se těsně, ať auto neujede)
       const dist = 8 + speedK * 3;
-      want.set(c.x - fx * dist, 1.5 + Math.sin(t * 0.4) * 0.25, c.z - fz * dist);
-      lookX = c.x + fx * 7; lookZ = c.z + fz * 7; lookY = 1.3;
+      want.set(c.x - fx * dist, c.y + 1.5 + Math.sin(t * 0.4) * 0.25, c.z - fz * dist);
+      lookX = c.x + fx * 7; lookZ = c.z + fz * 7; lookY = c.y + 1.3;
       fov = 62 + speedK * 10;
       k = 9;
     }
@@ -797,7 +806,7 @@ export class GameView {
       // bod kus před autem a stranou – auto kolem něj projede
       const side = Math.random() < 0.5 ? 1 : -1;
       const ahead = 36 + sp * 0.9;
-      this.tvAnchor.set(c.x + fx * ahead + fz * side * 10, 2.2, c.z + fz * ahead - fx * side * 10);
+      this.tvAnchor.set(c.x + fx * ahead + fz * side * 10, c.y + 2.2, c.z + fz * ahead - fx * side * 10);
     }
   }
 
@@ -814,8 +823,8 @@ export class GameView {
     if (rig && c) {
       // kamera šikmo zepředu na druhé auto v pořadí, ať je v záběru auto i kus trati
       const a = c.h + 0.55;
-      rig.cam.position.set(c.x + Math.sin(a) * 9.5, 2.6, c.z + Math.cos(a) * 9.5);
-      rig.cam.lookAt(c.x - Math.sin(c.h) * 4, 1.1, c.z - Math.cos(c.h) * 4);
+      rig.cam.position.set(c.x + Math.sin(a) * 9.5, c.y + 2.6, c.z + Math.cos(a) * 9.5);
+      rig.cam.lookAt(c.x - Math.sin(c.h) * 4, c.y + 1.1, c.z - Math.cos(c.h) * 4);
       rig.fov = 58;
       this.tvTarget = c.id;
     }
@@ -856,8 +865,8 @@ export class GameView {
         // stíny: světlo "sleduje" místo, kam se dívá tahle kamera
         const c = sim?.cars[r.carId >= 0 ? r.carId : this.tvTarget];
         const fxp = c ? c.x + Math.sin(c.h) * 18 : cam.position.x, fzp = c ? c.z + Math.cos(c.h) * 18 : cam.position.z;
-        world.sun.target.position.set(fxp, 0, fzp);
-        world.sun.position.set(fxp + world.theme.sunDir.x * 160, world.theme.sunDir.y * 160, fzp + world.theme.sunDir.z * 160);
+        world.sun.target.position.set(fxp, c ? c.y : 0, fzp);
+        world.sun.position.set(fxp + world.theme.sunDir.x * 160, (c ? c.y : 0) + world.theme.sunDir.y * 160, fzp + world.theme.sunDir.z * 160);
         world.sky.position.copy(cam.position).setY(0);
         world.follow(cam.position.x, cam.position.z); // otevřený plac: zem jede s kamerou
       }

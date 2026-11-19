@@ -173,8 +173,8 @@ export class Effects {
     p.s0 = size; p.s1 = size * 1.5; p.r = r; p.g = g; p.b = b; p.r1 = r; p.g1 = g * 0.6; p.b1 = b * 0.3; p.a = 0.75;
   }
 
-  explosion(x: number, z: number, size: number) {
-    const y = 0.8;
+  explosion(x: number, z: number, size: number, baseY = 0) {
+    const y = baseY + 0.8;
     this.flash(x, y + 0.6, z, 16 * size, 3.2, 2.4, 1.4, 0.16);
     this.flash(x, y + 0.6, z, 34 * size, 1.2, 0.6, 0.2, 0.3);
     const nf = Math.round(26 * size);
@@ -198,13 +198,13 @@ export class Effects {
     p.s0 = 0.9; p.s1 = 0.3; p.r = 3.4; p.g = 2.2; p.b = 0.6; p.r1 = 2; p.g1 = 0.6; p.b1 = 0; p.a = 0.9;
   }
 
-  tireSmoke(x: number, z: number, vx: number, vz: number) {
-    this.puff(x + rr(-0.2, 0.2), 0.25, z + rr(-0.2, 0.2), vx * 0.15 + rr(-0.6, 0.6), rr(0.6, 1.6), vz * 0.15 + rr(-0.6, 0.6), rr(1.1, 1.8), rr(0.5, 0.95), rr(0.7, 0.86), 0.34);
+  tireSmoke(x: number, z: number, vx: number, vz: number, baseY = 0) {
+    this.puff(x + rr(-0.2, 0.2), baseY + 0.25, z + rr(-0.2, 0.2), vx * 0.15 + rr(-0.6, 0.6), rr(0.6, 1.6), vz * 0.15 + rr(-0.6, 0.6), rr(1.1, 1.8), rr(0.5, 0.95), rr(0.7, 0.86), 0.34);
   }
 
-  dustPuff(x: number, z: number, vx: number, vz: number) {
+  dustPuff(x: number, z: number, vx: number, vz: number, baseY = 0) {
     const p = this.smoke.spawn();
-    p.life = p.max = rr(0.6, 1.1); p.x = x; p.y = 0.2; p.z = z;
+    p.life = p.max = rr(0.6, 1.1); p.x = x; p.y = baseY + 0.2; p.z = z;
     p.vx = vx * 0.1 + rr(-0.8, 0.8); p.vy = rr(0.5, 1.4); p.vz = vz * 0.1 + rr(-0.8, 0.8);
     p.s0 = 0.8; p.s1 = rr(2.5, 4);
     p.r = this.dust.r; p.g = this.dust.g; p.b = this.dust.b; p.r1 = p.r; p.g1 = p.g; p.b1 = p.b;
@@ -236,8 +236,8 @@ export class Effects {
     this.puff(x - dx * 1.0, y, z - dz * 1.0, rr(-0.6, 0.6), rr(0.2, 1), rr(-0.6, 0.6), 0.9, rr(0.5, 0.9), rr(0.6, 0.8), 0.4);
   }
 
-  pickupBurst(x: number, z: number, c: THREE.Color) {
-    this.flash(x, 1.2, z, 7, c.r * 2.4, c.g * 2.4, c.b * 2.4, 0.22);
-    this.sparks(x, 1.2, z, 14, 8, c.r * 3, c.g * 3, c.b * 3);
+  pickupBurst(x: number, z: number, c: THREE.Color, baseY = 0) {
+    this.flash(x, baseY + 1.2, z, 7, c.r * 2.4, c.g * 2.4, c.b * 2.4, 0.22);
+    this.sparks(x, baseY + 1.2, z, 14, 8, c.r * 3, c.g * 3, c.b * 3);
   }
 }

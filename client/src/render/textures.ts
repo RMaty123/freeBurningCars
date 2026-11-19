@@ -37,7 +37,7 @@ export function roadTexture(theme: ThemeId, shoulderFrac: number, lanes = 2): TH
   const W = 512, H = 512;
   const [c, g] = canvas(W, H);
   const rnd = mulberry(7);
-  const asphalt = theme === 'city' ? '#23252c' : theme === 'desert' ? '#3a3531' : '#34363a';
+  const asphalt = theme === 'city' ? '#23252c' : theme === 'desert' ? '#3a3531' : theme === 'airport' ? '#26282c' : '#34363a';
   g.fillStyle = asphalt;
   g.fillRect(0, 0, W, H);
   speckle(g, W, H, 9000, rnd, 0.09, 0.22);
@@ -63,11 +63,11 @@ export function roadTexture(theme: ThemeId, shoulderFrac: number, lanes = 2): TH
   for (const side of [0, 1]) {
     const x0 = side === 0 ? 0 : W - sh;
     // krajnice (štěrk / beton)
-    g.fillStyle = theme === 'city' ? '#3b3e48' : theme === 'desert' ? '#8a6a48' : '#5b5a4c';
+    g.fillStyle = theme === 'city' ? '#3b3e48' : theme === 'desert' ? '#8a6a48' : theme === 'airport' ? '#63645f' : '#5b5a4c';
     g.fillRect(x0, 0, sh, H);
-    // obrubník: červeno-bílý (ve městě žluto-černý)
+    // obrubník: červeno-bílý (ve městě žluto-černý, na letišti žluto-černý)
     const cx = side === 0 ? sh - curb : W - sh;
-    const colors = theme === 'city' ? ['#f4c21a', '#17181c'] : ['#d92b2b', '#f1f1f1'];
+    const colors = theme === 'city' ? ['#f4c21a', '#17181c'] : theme === 'airport' ? ['#d8b437', '#24241f'] : ['#d92b2b', '#f1f1f1'];
     for (let k = 0; k < 4; k++) {
       g.fillStyle = colors[k % 2];
       g.fillRect(cx, (k * H) / 4, curb, H / 4);
@@ -93,10 +93,10 @@ export function groundTexture(theme: ThemeId): THREE.CanvasTexture {
   const S = 512;
   const [c, g] = canvas(S, S);
   const rnd = mulberry(21);
-  const base = theme === 'desert' ? '#b9824f' : theme === 'city' ? '#1a1c22' : '#3f6b32';
+  const base = theme === 'desert' ? '#b9824f' : theme === 'city' ? '#1a1c22' : theme === 'airport' ? '#191c1f' : '#3f6b32';
   g.fillStyle = base;
   g.fillRect(0, 0, S, S);
-  const blobs = theme === 'desert' ? ['#c9955d', '#a8703f', '#d0a070'] : theme === 'city' ? ['#20232b', '#15171c', '#262a33'] : ['#4a7a38', '#35602b', '#5a8a3e'];
+  const blobs = theme === 'desert' ? ['#c9955d', '#a8703f', '#d0a070'] : theme === 'city' ? ['#20232b', '#15171c', '#262a33'] : theme === 'airport' ? ['#20242a', '#131619', '#2a2e33'] : ['#4a7a38', '#35602b', '#5a8a3e'];
   for (let i = 0; i < 260; i++) {
     g.fillStyle = blobs[i % blobs.length];
     g.globalAlpha = 0.25 + rnd() * 0.3;
@@ -106,9 +106,9 @@ export function groundTexture(theme: ThemeId): THREE.CanvasTexture {
   }
   g.globalAlpha = 1;
   speckle(g, S, S, 14000, rnd, 0.1, 0.16);
-  if (theme === 'city') {
-    // dlažba
-    g.strokeStyle = 'rgba(255,255,255,0.05)';
+  if (theme === 'city' || theme === 'airport') {
+    // dlažba / spáry betonových panelů
+    g.strokeStyle = theme === 'city' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.035)';
     for (let i = 0; i <= 8; i++) {
       g.beginPath(); g.moveTo((i * S) / 8, 0); g.lineTo((i * S) / 8, S); g.stroke();
       g.beginPath(); g.moveTo(0, (i * S) / 8); g.lineTo(S, (i * S) / 8); g.stroke();
@@ -163,10 +163,10 @@ export function wallTexture(theme: ThemeId): THREE.CanvasTexture {
   const W = 256, H = 64;
   const [c, g] = canvas(W, H);
   const rnd = mulberry(5);
-  g.fillStyle = theme === 'city' ? '#2c2f3a' : '#b9b6ad';
+  g.fillStyle = theme === 'city' ? '#2c2f3a' : theme === 'airport' ? '#7f7e76' : '#b9b6ad';
   g.fillRect(0, 0, W, H);
   speckle(g, W, H, 1500, rnd, 0.12, 0.2);
-  const colors = theme === 'city' ? ['#11131a', '#11131a'] : theme === 'desert' ? ['#d9412b', '#f2efe6'] : ['#1f6fd6', '#f2efe6'];
+  const colors = theme === 'city' ? ['#11131a', '#11131a'] : theme === 'desert' ? ['#d9412b', '#f2efe6'] : theme === 'airport' ? ['#d8b437', '#26251f'] : ['#1f6fd6', '#f2efe6'];
   g.fillStyle = colors[0]; g.fillRect(0, 8, W / 2, 26);
   g.fillStyle = colors[1]; g.fillRect(W / 2, 8, W / 2, 26);
   g.fillStyle = 'rgba(0,0,0,0.45)';

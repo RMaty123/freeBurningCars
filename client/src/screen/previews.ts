@@ -8,7 +8,7 @@ import { TRACKS } from '../game/content/tracks';
 import type { App } from './app';
 
 /** Zvyš, když změníš vzhled hry a chceš náhledy vygenerovat znovu. */
-const PREVIEW_VERSION = 3;
+const PREVIEW_VERSION = 4;
 
 function hash(s: string): string {
   let h = 5381;
@@ -18,7 +18,7 @@ function hash(s: string): string {
 
 function keyFor(i: number): string {
   const d = TRACKS[i];
-  return `fbc-preview-${PREVIEW_VERSION}-${d.id}-${hash(JSON.stringify([d.theme, d.width, d.points]))}`;
+  return `fbc-preview-${PREVIEW_VERSION}-${d.id}-${hash(JSON.stringify([d.theme, d.width, d.points, d.elevation]))}`;
 }
 
 /**
