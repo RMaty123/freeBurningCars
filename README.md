@@ -130,7 +130,7 @@ Každá sekundárka má **vlastní barvu**, aby se v HUD i na trati poznaly od s
 | **RAKETY** | naváděná raketa dopředu, 58 dmg v poloměru 8,5 m | 2 kusy, bedna přidá 3 (strop 6) |
 | **MINY** | pustí minu za auto; kdo na ni najede, schytá 46 dmg v poloměru 6,5 m | 20 kusů, bedna přidá 6 (strop 20) |
 | **MÍČKY** | vysype za auto osm malých červeno-bílých míčků, které se rozletí a rozkutálí; jeden dá 9 dmg (pětinu miny) v poloměru 2,2 m | 15 dávek po osmi, bedna přidá 4 (strop 15) |
-| **HÁK** | vystřelí lano dopředu; co zahákne, k tomu tě přitáhne. Sám neubližuje | 4 výstřely, bedna přidá 2 (strop 6) |
+| **HÁK** | vystřelí lano na 95 m s předstihem na cíl; co zahákne, k tomu tě přitáhne. Sám neubližuje | 4 výstřely, bedna přidá 2 (strop 6) |
 
 Mina se pustí kousek za zadní nárazník a **0,8 s se natahuje** – kdo ji položil, na ni může v klidu najet a **nikdy mu nevybouchne pod koly**. Natažená pak bouchne každému cizímu autu, které se dostane blíž než 2,2 m od jejího středu. Leží 30 sekund a pak sama zmizí, takže se trať nezanese. Výbuch (vlastní i cizí) **zapálí ostatní miny v dosahu**, takže položená hromádka odpálí celá za sebou. Prodleva mezi položeními je 0,22 s, dají se tedy sypat za sebou jako korálky – a protože je jich 20, dá se nimi zaminovat celá zatáčka.
 
@@ -140,7 +140,18 @@ Model miny je stejný v nabídce i na trati: **černý** šestiúhelníkový tal
 
 Jeden míček dá **pětinu miny**. Míčky jsou malé (poloměr 17 cm), takže se do nich hůř trefuje – zato průjezd celou dávkou ubere **zhruba to co jedna mina** (naměřeno 46 hp). Kolik si hráč odnese, záleží na tom, kolika míčky projede. Řetězová reakce z výbuchu platí i pro ně, takže průjezd hromádkou dělá sérii malých ran za sebou. Výbuchy míčků jsou schválně malé: je jich hodně, takže se kreslí bez stínů a s drobným efektem, aby sypání naplno nestálo ani snímek navíc.
 
-**Hák** je jediná sekundárka, která sama nic neubližuje – je to taháč. Vrhač sedí **vpravo na kapotě** (naviják s cívkami a vodicí trubka) a při výstřelu z něj vyletí hlavice se třemi drápy rychlostí 78 m/s. Dokud letí, hledá cizí auto do 4,5 m od sebe; když nic nenajde do 62 metrů, navine se zpátky.
+**Hák** je jediná sekundárka, která sama nic neubližuje – je to taháč. Vrhač sedí **vpravo na kapotě** (naviják s cívkami a vodicí trubka) a při výstřelu z něj vyletí hlavice se třemi drápy rychlostí 120 m/s. Dokud letí, hledá cizí auto do 6,5 m od sebe; když nic nenajde do 95 metrů, navine se zpátky.
+
+Vrhač **nestřílí tam, kam míří nos auta, ale tam, kde cíl za chvíli bude**. Najde si v kuželu ±23° před sebou nejlepší cíl a vyřeší, kde se jeho dráha protne s letem háku (kvadratická rovnice `|D + V·t| = speed·t` v `interceptDir`). Srovnání výstřelu je omezené na ±29°, takže mířit pořád musíš – doměření jen dorovná to, že cíl mezitím popojel. Co to dělá s úspěšností, změřeno na botech přes všechny tratě:
+
+| | úspěšnost zaháknutí |
+| --- | --- |
+| krátký dostřel (62 m), bez doměření | 36 % |
+| dostřel 95 m, bez doměření | 40 % |
+| dostřel 95 m + doměření cíle | 58 % |
+| **a k tomu rychlejší hák (120 m/s) a úchyt 6,5 m** | **77 %** |
+
+Rychlejší hák pomáhá dvakrát: je méně času na chybu v předpovědi a cíl mezitím míň stihne zatočit.
 
 Když se zahákne, lano **přitahuje střelce k zaháknutému autu** zrychlením 30 m/s² a zároveň slaběji (22 %) brzdí toho zaháknutého – aby bylo cítit, že ho někdo drží. Nos střelce se při tom sám stáčí po laně, jinak by ho to táhlo bokem. Lano povolí po 2,4 sekundy, při přiblížení na 5,5 m nebo když se soupeř utrhne za dostřel. Tah se v simulaci přičítá až **po** kroku auta – kdyby šel dovnitř fyziky, sežrala by ho boční přilnavost a auto by na laně jen zaskřípělo na místě. Naměřeno: z 29 metrů tě hák dotáhne na 6 metrů za zhruba 1,5 sekundy. Každé auto smí mít ve vzduchu jen jeden hák.
 

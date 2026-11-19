@@ -43,12 +43,14 @@ export const SECONDARIES: SecStats[] = [
   {
     id: 'hook',
     name: 'HÁK',
-    tagline: 'Vystřelí lano. Když se trefí, přitáhne tě k zaháknutému autu.',
+    tagline: 'Vystřelí lano s předstihem na cíl. Co zahákne, k tomu tě přitáhne.',
     color: 0x49d0ff,
     ammo: 4, maxAmmo: 6, pickup: 2, cd: 1.2,
     // sám o sobě neubližuje – jeho síla je v tom, že tě dostane soupeři na nárazník
     dmg: 0, radius: 0,
-    hookSpeed: 78, hookRange: 62, grab: 4.5, pull: 30, hold: 2.4,
+    hookSpeed: 120, hookRange: 95, grab: 6.5, pull: 30, hold: 2.4,
+    // vrhač si cíl v kuželu před autem doměří a střílí tam, kde cíl za letu bude
+    cone: 0.4, aimMax: 0.5,
   },
 ];
 

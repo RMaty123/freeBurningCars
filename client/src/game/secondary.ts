@@ -55,4 +55,8 @@ export interface SecStats {
   hold?: number;
   /** jen `hook`: na jakou vzdálenost se hák chytí auta (m) */
   grab?: number;
+  /** jen `hook`: jak široký kužel před autem se prohledává po cíli (rad) */
+  cone?: number;
+  /** jen `hook`: o kolik se výstřel smí srovnat na předpověď cíle (rad) */
+  aimMax?: number;
 }

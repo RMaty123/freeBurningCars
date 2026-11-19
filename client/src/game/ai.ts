@@ -239,7 +239,7 @@ function wantSecondary(sim: Sim, c: Car, cone: number, range: number): boolean {
   if (c.sec.id === 'mine' || c.sec.id === 'ball') return tailgater(sim, c, 34);
   if (c.sec.id === 'hook') {
     if (sim.hooks.some((h) => h.owner === c.id)) return false;   // jeden už lítá
-    const t = sim.findTarget(c, 0.1, c.sec.hookRange ?? 62);
+    const t = sim.findTarget(c, c.sec.cone ?? 0.4, c.sec.hookRange ?? 95);
     return !!t && Math.hypot(t.x - c.x, t.z - c.z) > 12;
   }
   const t = sim.findTarget(c, cone, range);

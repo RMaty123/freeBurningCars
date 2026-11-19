@@ -187,6 +187,31 @@ export interface SimOptions {
 }
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+/**
+ * Kam vystřelit hák, aby za letu potkal pohyblivý cíl – klasické "vedení" cíle.
+ * Řeší se kvadratická rovnice |D + V·t| = speed·t, kde D je vektor k cíli a V jeho rychlost.
+ * Vrací směr na předpovězené místo, nebo null, když cíl utíká rychleji, než hák letí.
+ */
+function interceptDir(ox: number, oz: number, t: Car, speed: number): number | null {
+  const dx = t.x - ox, dz = t.z - oz;
+  const a = t.vx * t.vx + t.vz * t.vz - speed * speed;
+  const b = 2 * (dx * t.vx + dz * t.vz);
+  const cc = dx * dx + dz * dz;
+  let time: number;
+  if (Math.abs(a) < 1e-4) {
+    if (Math.abs(b) < 1e-6) return null;
+    time = -cc / b;
+  } else {
+    const disc = b * b - 4 * a * cc;
+    if (disc < 0) return null;
+    const r = Math.sqrt(disc);
+    const t1 = (-b + r) / (2 * a), t2 = (-b - r) / (2 * a);
+    time = Math.min(...[t1, t2].filter((v) => v > 0));
+  }
+  if (!Number.isFinite(time) || time <= 0) return null;
+  return Math.atan2(dx + t.vx * time, dz + t.vz * time);
+}
+
 /** Kde na autě sedí vrhač háku – vpravo na kapotě, kousek před čelním sklem. */
 function hookMuzzle(c: Car): { x: number; z: number } {
   const fx = Math.sin(c.h), fz = Math.cos(c.h);
@@ -809,9 +834,17 @@ export class Sim {
       const i = this.hooks.findIndex((h) => h.owner === c.id);
       if (i >= 0) this.hooks.splice(i, 1);
       const o = hookMuzzle(c);
-      const sp = g.hookSpeed ?? 78;
+      const sp = g.hookSpeed ?? 120;
+      // vrhač si cíl doměří: zamíří tam, kde cíl bude, až tam hák doletí
+      let dir = c.h;
+      const tgt = this.findTarget(c, g.cone ?? 0.4, g.hookRange ?? 95);
+      if (tgt) {
+        const lead = interceptDir(o.x, o.z, tgt, sp);
+        const max = g.aimMax ?? 0.5;
+        if (lead !== null) dir = c.h + clamp(angDiff(lead, c.h), -max, max);
+      }
       this.hooks.push({
-        owner: c.id, target: -1, x: o.x, z: o.z, vx: fx * sp, vz: fz * sp,
+        owner: c.id, target: -1, x: o.x, z: o.z, vx: Math.sin(dir) * sp, vz: Math.cos(dir) * sp,
         state: 'fly', flown: 0, t: g.hold ?? 2.4, def: g, id: this.nextId++,
       });
     } else if (g.id === 'mine' || g.id === 'ball') {
@@ -933,7 +966,7 @@ export class Sim {
           this.events.push({ t: 'hooked', car: h.owner, x: h.x, z: h.z });
           break;
         }
-        if (h.state === 'fly' && h.flown > (g.hookRange ?? 62)) h.state = 'back';
+        if (h.state === 'fly' && h.flown > (g.hookRange ?? 95)) h.state = 'back';
       } else if (h.state === 'hold') {
         const tgt = this.cars[h.target];
         if (!tgt || tgt.dead || tgt.finished) { h.state = 'back'; continue; }
@@ -942,7 +975,7 @@ export class Sim {
         const d = Math.hypot(dx, dz) || 1;
         h.t -= dt;
         // lano povolí, když jsme u sebe, vyprší čas nebo se soupeř utrhne za dostřel
-        if (h.t <= 0 || d < 5.5 || d > (g.hookRange ?? 62) * 1.25) { h.state = 'back'; continue; }
+        if (h.t <= 0 || d < 5.5 || d > (g.hookRange ?? 95) * 1.25) { h.state = 'back'; continue; }
         const ux = dx / d, uz = dz / d;
         const pull = g.pull ?? 30;
         me.vx += ux * pull * dt; me.vz += uz * pull * dt;
@@ -956,7 +989,7 @@ export class Sim {
         const dx = o.x - h.x, dz = o.z - h.z;
         const d = Math.hypot(dx, dz);
         if (d < 2.5) { this.hooks.splice(i, 1); continue; }
-        const sp = (g.hookSpeed ?? 78) * 1.3;
+        const sp = (g.hookSpeed ?? 120) * 1.3;
         h.x += (dx / d) * sp * dt; h.z += (dz / d) * sp * dt;
       }
     }
