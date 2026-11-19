@@ -138,7 +138,7 @@ Po výběru auta přijde **výběr zbraně** – na telefonu mřížka s náhled
 | **VULCAN** | rotační minigun, při střelbě se mu točí hlavně, dobře si doměřuje cíl | 1,7 dmg / ránu, 20 ran za sekundu (≈ 34 dmg/s) |
 | **BREAKER** | pomalý těžký kulomet, slabší doměřování, velké rány | 13 dmg / ránu, 2,5 rány za sekundu (≈ 32 dmg/s) |
 | **PRISM** | **dva lasery na dveřích**, nabíjí se držením FIRE 1 | 110 dmg za zásah, dosah 58 m, nabíjení až 5 s |
-| **PULSE** | **EMP vysílač na kapotě**, pustí kruhovou vlnu kolem sebe | 40% šance na roztrhání, jinak 22 dmg + 1,5 s zbláznilého volantu, okruh 42 m, nabíjení 5 s |
+| **PULSE** | **EMP vysílač na kapotě**, pustí kruhovou vlnu kolem sebe | 15% šance na roztrhání, jinak 22 dmg + 1,5 s zbláznilého volantu, okruh 42 m, nabíjení 5 s |
 
 PRISM je **boční zbraň**: dvě laserová děla přišroubovaná zvenku na dveřích, vidět přímo na autě (`mount: 'side'`, `twin: true`). **Držením FIRE 1 se nabíjí, puštěním vystřelí** a paprsky pak svítí **stejně dlouho, jak dlouho se nabíjelo** – nejvýš 5 sekund (`BEAM_MAX` v `game/guns.ts`). Pálí obě děla naráz, každé rovně dopředu ze svého ústí; paprsek se zastaví o první auto v cestě a ubírá mu život po celou dobu, co na něm drží, takže se jím dá po soupeři "přejíždět".
 
@@ -161,7 +161,7 @@ PULSE je jediná primární zbraň, která nemíří a nenabíjí se ručně:
 1. **Vysílač se dobíjí sám** od startu závodu a pořád dokola – hráč pro to nemusí nic dělat. Jádro na kapotě přitom postupně svítí a v HUD se plní pruh.
 2. Po **5 sekundách** je plno: jádro začne pulzovat, ozve se pípnutí a **ťuknutí na FIRE 1** pustí vlnu. Hned po výstřelu se zase začne dobíjet.
 
-Vlna se rozjede z auta do kruhu a za 0,55 s se roztáhne na **42 metrů**. Každé zasažené auto má **40% šanci, že ho vlna rovnou roztrhá** (naměřeno 41 % na 400 zásazích). Kdo přežije, schytá 22 dmg a na **1,5 sekundy se mu zblázní volant**: dostane **tři náhodné šipky po půl sekundě**, takže to může být doleva-doprava-doprava, doprava-doprava-doprava nebo jakákoli jiná kombinace. Po dobu rušení auto neposlouchá hráče ani bota a jede si, kam ho šipky zrovna pošlou. Vlna každého zasáhne jen jednou a svého střelce mine.
+Vlna se rozjede z auta do kruhu a za 0,55 s se roztáhne na **42 metrů**. Každé zasažené auto má **15% šanci, že ho vlna rovnou roztrhá**. Původně to bylo 40 %, jenže měření (6 aut se stejnou zbraní, všechny okruhy, 4 seedy) ukázalo, že s tím vlna ničila 13,6 aut za minutu – skoro jako PRISM (15,3), a to se nemusí mířit ani nabíjet. S 15 % je to 9,6/min, tedy kousek nad BREAKERem (7,7). I úplně bez téhle šance je zbraň použitelná (6,9/min), protože 22 dmg v kruhu a zblázněný volant bolí samy o sobě. Kdo přežije, schytá 22 dmg a na **1,5 sekundy se mu zblázní volant**: dostane **tři náhodné šipky po půl sekundě**, takže to může být doleva-doprava-doprava, doprava-doprava-doprava nebo jakákoli jiná kombinace. Po dobu rušení auto neposlouchá hráče ani bota a jede si, kam ho šipky zrovna pošlou. Vlna každého zasáhne jen jednou a svého střelce mine.
 
 Je to tím pádem nejsilnější zbraň ve hře: jedna vlna může v hustém poli sebrat dvě tři auta naráz a nedá se jí uhnout. Cenou je nabíjení – pět sekund, během kterých se nedá dělat nic než jezdit a doufat, že se někdo připlete do dosahu.
 
