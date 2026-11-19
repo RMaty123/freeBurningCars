@@ -245,7 +245,7 @@ export function pickupTexture(kind: PickupKind): THREE.CanvasTexture {
   return tex(c, false);
 }
 
-export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind | 'mine', cx: number, cy: number, r: number, color: string) {
+export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind | 'mine' | 'ball', cx: number, cy: number, r: number, color: string) {
   g.save();
   g.translate(cx, cy);
   g.fillStyle = color; g.strokeStyle = color;
@@ -258,6 +258,17 @@ export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind | '
     g.moveTo(r * 0.25, -r * 1.1); g.lineTo(-r * 0.6, r * 0.15); g.lineTo(-r * 0.05, r * 0.15);
     g.lineTo(-r * 0.3, r * 1.1); g.lineTo(r * 0.6, -r * 0.25); g.lineTo(r * 0.05, -r * 0.25);
     g.closePath(); g.fill();
+  } else if (kind === 'ball') {
+    // míčky: tři kuličky vedle sebe
+    for (const [ox, oy, rr] of [[-0.5, 0.35, 0.42], [0.52, 0.42, 0.36], [0.06, -0.45, 0.46]] as [number, number, number][]) {
+      g.beginPath();
+      g.arc(ox * r, oy * r, rr * r, 0, Math.PI * 2);
+      g.lineWidth = r * 0.2;
+      g.stroke();
+      g.beginPath();
+      g.arc(ox * r, oy * r, rr * r * 0.4, 0, Math.PI * 2);
+      g.fill();
+    }
   } else if (kind === 'mine') {
     // mina: šestiúhelník s terčíkem uprostřed
     g.beginPath();

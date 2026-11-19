@@ -2,8 +2,9 @@
  * Procedurální modely sekundárních zbraní (FIRE 2) – raketa a mina.
  * Stejný přístup jako u aut a kulometů: žádné soubory, jen válce a krabice.
  *
- * `mineParts()` staví minu v herním měřítku a používá ji i závod (gameView ji kreslí instancovaně),
- * `buildSec()` z toho udělá model do nabídky: položka stojí na nízkém podstavci a míří do +Z.
+ * `mineParts()` a `ballParts()` staví minu a míček v herním měřítku – používá je i závod
+ * (gameView je kreslí instancovaně). `buildSec()` z toho udělá model do nabídky:
+ * položka stojí na nízkém podstavci a míří do +Z.
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -39,6 +40,14 @@ function box(w: number, h: number, d: number, x = 0, y = 0, z = 0, rz = 0): THRE
   return prep(g);
 }
 
+/** Kus oblouku (torus) – používá se na ohebnou hadici vysypávače. */
+function arc(r: number, tube: number, len: number, rotZ: number, x: number, y: number, z: number): THREE.BufferGeometry {
+  const g = new THREE.TorusGeometry(r, tube, 6, Math.max(4, Math.round(len * 14)), len);
+  g.rotateZ(rotZ);
+  g.translate(x, y, z);
+  return prep(g);
+}
+
 /** Šestiúhelníkový talíř (plochý válec o šesti stěnách) – základ miny. */
 const hex = (r: number, h: number, y: number, r2 = r) => cyl(r, h, 0, y, 0, 'y', 6, r2);
 
@@ -47,6 +56,24 @@ export const MINE_COLORS = { metal: 0xd9dde5, dark: 0x16181d, stripe: 0xc0392b, 
 
 /** Poloměr miny (m) – podle něj se staví model i kreslí stín. */
 export const MINE_R = 0.6;
+
+/** Míček: poloměr (musí sedět s BALL_R v sim.ts, podle něj se počítá kutálení) a barvy. */
+export const BALL_R = 0.26;
+export const BALL_COLORS = { shell: 0xeef1f6, band: 0xe0381f };
+
+/**
+ * Míček: světlá koule se dvěma červenými pruhy, jako na obrázku.
+ * Vrací se zvlášť skořápka a pruhy, ať se dají v závodě kreslit dvěma instancovanými sítěmi.
+ */
+export function ballParts(): { shell: THREE.BufferGeometry[]; band: THREE.BufferGeometry[] } {
+  // pruh = výseč koule o kousek větší, ať neprobleskuje skořápka
+  const band = (from: number, to: number) =>
+    prep(new THREE.SphereGeometry(BALL_R * 1.012, 12, 4, 0, Math.PI * 2, from, to - from));
+  return {
+    shell: [prep(new THREE.SphereGeometry(BALL_R, 12, 8))],
+    band: [band(1.1, 1.45), band(1.72, 2.0)],
+  };
+}
 
 /**
  * Mina v herním měřítku: tmavá podstava, červený pruh, světlý šestiúhelníkový talíř
@@ -101,9 +128,56 @@ function rocketParts(): SecParts {
   return p;
 }
 
+/**
+ * Vysypávač míčků do nabídky: zásobník s žebrovanou hadicí dolů a tři míčky kolem.
+ * Tvar vychází z vysypávače v Burnin' Rubber – hranatá bedna, hadice a výstražný pruh.
+ */
+function ballPreviewParts(): SecParts {
+  const out: SecParts = { metal: [], dark: [], stripe: [], glow: [] };
+  const top = 0.3;                        // výška tácku nad podlahou
+  out.metal.push(cyl(0.32, 0.05, 0, 0.025, 0, 'y', 6));
+  out.dark.push(cyl(0.11, top - 0.05, 0, (top - 0.05) / 2 + 0.05, 0, 'y', 10));
+  out.dark.push(cyl(0.72, 0.05, 0, top - 0.025, 0, 'y', 6));
+  out.metal.push(cyl(0.74, 0.03, 0, top, 0, 'y', 6));
+
+  // zásobník: hranatá bedna s rámem navrchu a výstražným pruhem vepředu
+  const bw = 0.5, bh = 0.6, bd = 0.5;
+  const bx = -0.42, by = top + bh / 2, bz = -0.04;
+  const right = bx + bw / 2;
+  out.metal.push(box(bw, bh, bd, bx, by, bz));
+  out.dark.push(box(bw + 0.03, 0.08, bd + 0.03, bx, by + bh / 2 - 0.02, bz));
+  for (const sx of [-1, 1]) out.metal.push(box(0.06, 0.22, bd - 0.04, bx + sx * (bw / 2 - 0.04), by + bh / 2 + 0.1, bz));
+  out.metal.push(box(bw - 0.04, 0.06, 0.09, bx, by + bh / 2 + 0.19, bz - 0.2));
+  out.dark.push(box(0.3, 0.1, 0.03, bx, by + 0.12, bz + bd / 2));    // mřížka
+  out.stripe.push(box(bw - 0.06, 0.09, 0.03, bx, by - 0.16, bz + bd / 2)); // výstražný pruh
+
+  // ohebná hadice: čtvrtoblouk z boku bedny dolů na tácek, se žebry
+  const r = 0.34, hy = top + 0.42 - r, hz = bz + 0.14;
+  out.metal.push(arc(r, 0.08, Math.PI / 2, 0, right, hy, hz));
+  for (let i = 1; i < 6; i++) out.dark.push(arc(r, 0.092, 0.11, (i / 6) * (Math.PI / 2), right, hy, hz));
+  out.metal.push(box(0.16, 0.2, 0.22, right + r + 0.02, hy - 0.02, hz));   // ústí
+  out.dark.push(box(0.17, 0.08, 0.23, right + r + 0.02, hy - 0.11, hz));
+
+  // tři míčky, jako by zrovna vypadly z hadice
+  const bp = ballParts();
+  const put = (x: number, y: number, z: number, sc: number) => {
+    const m = new THREE.Matrix4().compose(
+      new THREE.Vector3(x, y, z),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0.7, 0.4, 0)),
+      new THREE.Vector3(sc, sc, sc),
+    );
+    for (const g of bp.shell) out.metal.push(g.clone().applyMatrix4(m));
+    for (const g of bp.band) out.stripe.push(g.clone().applyMatrix4(m));
+  };
+  put(0.52, top + 0.24, 0.3, 0.88);
+  put(0.8, top + 0.16, -0.08, 0.66);
+  put(0.34, top + 0.14, -0.4, 0.58);
+  return out;
+}
+
 /** Postaví model sekundární zbraně do nabídky. Střed modelu je na podlaze, zbraň míří do +Z. */
 export function buildSec(sec: SecStats): SecVisual {
-  const p = sec.id === 'mine' ? minePreviewParts() : rocketParts();
+  const p = sec.id === 'mine' ? minePreviewParts() : sec.id === 'ball' ? ballPreviewParts() : rocketParts();
   const metal = new THREE.MeshStandardMaterial({ color: MINE_COLORS.metal, metalness: 0.85, roughness: 0.3 });
   const dark = new THREE.MeshStandardMaterial({ color: MINE_COLORS.dark, metalness: 0.5, roughness: 0.6 });
   const stripe = new THREE.MeshStandardMaterial({ color: MINE_COLORS.stripe, metalness: 0.3, roughness: 0.5 });

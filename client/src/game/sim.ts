@@ -105,10 +105,20 @@ export interface Car {
 export interface Bullet { x: number; z: number; vx: number; vz: number; life: number; owner: number; ti: number; gun: GunStats; }
 export interface Rocket { x: number; z: number; h: number; speed: number; life: number; owner: number; target: number; ti: number; id: number; }
 /**
- * Mina ležící na zemi. `arm` se musí odtikat, než začne reagovat (ať si ji auto nehodí pod sebe),
- * `fuse` > 0 znamená, že ji zapálil cizí výbuch a za chvilku bouchne taky (řetězová reakce).
+ * Něco, co auto pustilo na trať – mina nebo míček. Jede to stejným kódem, liší se jen čísly
+ * v `def` a tím, že míček po vyhození ještě chvíli letí a kutálí se (mina má rychlosti nulové).
+ * `arm` se musí odtikat, než to začne reagovat (ať si to auto nehodí pod sebe),
+ * `fuse` > 0 znamená, že to zapálil cizí výbuch a za chvilku to bouchne taky (řetězová reakce).
  */
-export interface Mine { x: number; z: number; owner: number; arm: number; life: number; fuse: number; def: SecStats; id: number; }
+export interface Drop {
+  x: number; z: number;
+  /** výška nad zemí – míček poskakuje, mina leží na nule */
+  y: number;
+  vx: number; vz: number; vy: number;
+  /** jen pro kreslení: o kolik se míček odkutálel a kterým směrem */
+  roll: number; yaw: number;
+  owner: number; arm: number; life: number; fuse: number; def: SecStats; id: number;
+}
 export interface Pickup { x: number; z: number; kind: PickupKind; cooldown: number; id: number; }
 
 export type SimEvent =
@@ -180,8 +190,10 @@ export function mulberry(seed: number) {
 }
 
 export const COUNTDOWN_TIME = 3.6;
-/** Nejvíc min, co smí naráz ležet na trati – víc jich na zem nepustíme, ať se to nezahltí. */
-export const MAX_MINES = 200;
+/** Nejvíc věcí (min a míčků), co smí naráz ležet na trati – víc jich na zem nepustíme. */
+export const MAX_DROPS = 420;
+/** Fyzika míčků: brzdění kutálením (1/s), tíha (m/s²) a kolik rychlosti zbyde po odrazu. */
+const BALL_DRAG = 1.9, BALL_G = 20, BALL_BOUNCE = 0.42, BALL_R = 0.26;
 const BEAM_TWIN: readonly number[] = [-1, 1];
 const BEAM_SINGLE: readonly number[] = [0];
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
@@ -226,7 +238,8 @@ export class Sim {
   cars: Car[] = [];
   bullets: Bullet[] = [];
   rockets: Rocket[] = [];
-  mines: Mine[] = [];
+  /** miny a míčky ležící na trati */
+  drops: Drop[] = [];
   pickups: Pickup[] = [];
   events: SimEvent[] = [];
   /** pracovní pole na řazení pořadí – ať se každý snímek nealokuje nové */
@@ -761,14 +774,25 @@ export class Sim {
     c.secAmmo--;
     c.secCd = g.cd;
     const fx = Math.sin(c.h), fz = Math.cos(c.h);
-    if (g.id === 'mine') {
-      // mina se pustí kousek za zadní nárazník; chvíli se natahuje, ať si ji auto nehodí pod sebe
+    if (g.id === 'mine' || g.id === 'ball') {
+      // pouští se kousek za zadní nárazník; chvíli se to natahuje, ať si to auto nehodí pod sebe
       const back = c.stats.shape.length / 2 + 0.9;
-      if (this.mines.length >= MAX_MINES) this.mines.shift();
-      this.mines.push({
-        x: c.x - fx * back, z: c.z - fz * back, owner: c.id,
-        arm: g.arm ?? 0.8, life: g.life ?? 30, fuse: -1, def: g, id: this.nextId++,
-      });
+      const n = g.count ?? 1;
+      const spread = g.spread ?? 0;
+      for (let i = 0; i < n; i++) {
+        if (this.drops.length >= MAX_DROPS) this.drops.shift();
+        // míčky letí do vějíře dozadu a berou si kus rychlosti auta, ať se kutálí dál
+        const a = spread ? c.h + Math.PI + (i / n - 0.5) * 2.2 + (this.rnd() - 0.5) * 0.5 : 0;
+        const sp = spread ? spread * (0.55 + this.rnd() * 0.75) : 0;
+        this.drops.push({
+          x: c.x - fx * back, z: c.z - fz * back, y: spread ? 0.45 : 0,
+          vx: spread ? Math.sin(a) * sp + c.vx * 0.3 : 0,
+          vz: spread ? Math.cos(a) * sp + c.vz * 0.3 : 0,
+          vy: spread ? 1.4 + this.rnd() * 2.2 : 0,
+          roll: 0, yaw: a,
+          owner: c.id, arm: g.arm ?? 0.8, life: g.life ?? 30, fuse: -1, def: g, id: this.nextId++,
+        });
+      }
     } else {
       const tgt = this.findTarget(c, 0.5, 130);
       this.rockets.push({
@@ -840,13 +864,17 @@ export class Sim {
         this.rockets.splice(i, 1);
       }
     }
-    this.stepMines(dt);
+    this.stepDrops(dt);
   }
 
-  /** Miny: natahují se, pak čekají na cizí auto. Cizí výbuch je zapálí taky (řetězová reakce). */
-  private stepMines(dt: number) {
-    for (let i = this.mines.length - 1; i >= 0; i--) {
-      const m = this.mines[i];
+  /**
+   * Miny a míčky: natahují se, pak čekají na cizí auto. Cizí výbuch je zapálí taky (řetězová
+   * reakce). Míček se navíc odráží od země a kutálí, dokud ho nezastaví tření.
+   */
+  private stepDrops(dt: number) {
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const m = this.drops[i];
+      if (m.vx || m.vz || m.vy || m.y > 0) this.stepBall(m, dt);
       if (m.arm > 0) m.arm -= dt;
       m.life -= dt;
       let boom = false;
@@ -861,17 +889,35 @@ export class Sim {
         }
       }
       if (!boom && m.life > 0) continue;
-      // nejdřív ven ze seznamu, ať ji vlastní výbuch nezapálí znovu
-      this.mines[i] = this.mines[this.mines.length - 1];
-      this.mines.pop();
+      // nejdřív ven ze seznamu, ať to vlastní výbuch nezapálil znovu
+      this.drops[i] = this.drops[this.drops.length - 1];
+      this.drops.pop();
       if (boom) this.explode(m.x, m.z, m.def.radius, m.def.dmg, m.owner);
     }
   }
 
+  /** Let a kutálení jednoho míčku. Nic složitého: tíha, odraz od země a tření. */
+  private stepBall(m: Drop, dt: number) {
+    m.x += m.vx * dt; m.z += m.vz * dt;
+    m.y += m.vy * dt;
+    m.vy -= BALL_G * dt;
+    if (m.y <= 0) {
+      m.y = 0;
+      if (m.vy < -0.6) m.vy = -m.vy * BALL_BOUNCE; else m.vy = 0;
+      // odraz od země sebere i kus vodorovné rychlosti
+      m.vx *= 0.88; m.vz *= 0.88;
+    }
+    const k = Math.max(0, 1 - BALL_DRAG * dt);
+    m.vx *= k; m.vz *= k;
+    const sp = Math.hypot(m.vx, m.vz);
+    if (sp < 0.25 && m.y <= 0) { m.vx = 0; m.vz = 0; }
+    else { m.roll += (sp * dt) / BALL_R; m.yaw = Math.atan2(m.vx, m.vz); }
+  }
+
   explode(x: number, z: number, radius: number, dmg: number, owner: number) {
     this.events.push({ t: 'boom', x, z, size: radius / 8 });
-    // miny v dosahu to zapálí taky – vybouchnou s malým zpožděním za sebou
-    for (const m of this.mines) {
+    // miny a míčky v dosahu to zapálí taky – bouchnou s malým zpožděním za sebou
+    for (const m of this.drops) {
       if (m.fuse < 0 && (m.x - x) ** 2 + (m.z - z) ** 2 < radius * radius) m.fuse = 0.06 + this.rnd() * 0.1;
     }
     for (const c of this.cars) {

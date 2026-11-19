@@ -4,8 +4,12 @@
  * aby šly zbraně přidávat bez sahání do simulace a do menu (stejně jako u primárních zbraní).
  */
 
-/** `rocket` = naváděná raketa dopředu, `mine` = mina položená za auto. */
-export type SecKind = 'rocket' | 'mine';
+/**
+ * `rocket` = naváděná raketa dopředu,
+ * `mine`   = mina položená za auto,
+ * `ball`   = dávka míčků, které se za autem rozletí a rozkutálí.
+ */
+export type SecKind = 'rocket' | 'mine' | 'ball';
 
 export interface SecStats {
   id: SecKind;
@@ -23,16 +27,20 @@ export interface SecStats {
   pickup: number;
   /** prodleva mezi dvěma použitími (s) */
   cd: number;
+  /** kolik kusů vypadne na jedno použití (míčky po osmi; jinak 1) */
+  count?: number;
 
   /** poškození uprostřed výbuchu */
   dmg: number;
   /** poloměr výbuchu (m) */
   radius: number;
 
-  /** jen `mine`: za jak dlouho se mina natáhne a začne reagovat (s) */
+  /** `mine` a `ball`: za jak dlouho se náboj natáhne a začne reagovat (s) */
   arm?: number;
-  /** jen `mine`: jak dlouho mina leží, než sama zmizí (s) */
+  /** `mine` a `ball`: jak dlouho leží na trati, než sám zmizí (s) */
   life?: number;
-  /** jen `mine`: na jakou vzdálenost od středu auta mina vybouchne (m) */
+  /** `mine` a `ball`: na jakou vzdálenost od středu auta to bouchne (m) */
   trigger?: number;
+  /** jen `ball`: jak rychle se míčky rozletí (m/s) */
+  spread?: number;
 }

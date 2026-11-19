@@ -241,7 +241,7 @@ socket.on('host:msg', (m: HostMsg) => {
     else { lapBox.innerHTML = 'ZNIČENO <b id="p-lap"></b>'; $('p-lap').textContent = String(m.kills); }
     $('p-hp').style.transform = `scaleX(${m.hp})`;
     $('p-nitro').style.transform = `scaleX(${m.nitro})`;
-    $('sec-ammo').textContent = (m.sec === 'mine' ? 'miny ×' : 'rakety ×') + m.ammo;
+    $('sec-ammo').textContent = SEC_LABEL[m.sec] + ' ×' + m.ammo;
     $('b-sec').classList.toggle('empty', m.ammo === 0);
     const chg = $('fire-chg');
     const lvl = m.beam > 0 ? m.beam : m.charge;
@@ -296,6 +296,8 @@ tap('mn-back', () => send({ type: 'back' }));
 // Obojí vypadá a funguje stejně, jen jiná mřížka a jiný nadpis.
 type CatalogMsg = Extract<HostMsg, { type: 'catalog' }>;
 const KINDS: PickKind[] = ['car', 'gun', 'sec'];
+/** jak se sekundární zbraň jmenuje na tlačítku FIRE 2 */
+const SEC_LABEL: Record<string, string> = { rocket: 'rakety', mine: 'miny', ball: 'míčky' };
 const GRID: Record<PickKind, string> = { car: 'cs-grid', gun: 'gs-grid', sec: 'ss-grid' };
 const TITLE: Record<PickKind, string> = { car: 'VYBER AUTO', gun: 'VYBER ZBRAŇ · FIRE 1', sec: 'VYBER ZBRAŇ · FIRE 2' };
 const catalog: Record<PickKind, CatalogMsg[]> = { car: [], gun: [], sec: [] };

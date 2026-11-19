@@ -5,10 +5,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hexCss } from '../game/cars';
-import { MAX_MINES, type Car, type PickupKind, type Sim, type SimEvent } from '../game/sim';
+import { MAX_DROPS, type Car, type PickupKind, type Sim, type SimEvent } from '../game/sim';
 import type { Track } from '../game/track';
 import { buildCar, CarVisual, disposeCar, setWrecked } from './carModel';
-import { mergeParts, MINE_COLORS, mineParts } from './secModel';
+import { ballParts, BALL_COLORS, BALL_R, mergeParts, MINE_COLORS, mineParts } from './secModel';
 import { Effects, pointScale } from './effects';
 import { headlightTexture, nameTagTexture, PICKUP_HEX, pickupTexture, blobTexture } from './textures';
 import { buildWorld, World } from './world';
@@ -76,6 +76,8 @@ export class GameView {
   private mines: THREE.InstancedMesh[] = [];
   /** ta z nich, co svítí – každá mina si v ní blikne vlastní barvou */
   private mineLight: THREE.InstancedMesh | null = null;
+  /** míčky: skořápka a červené pruhy */
+  private balls: THREE.InstancedMesh[] = [];
   private pickupGroup = new THREE.Group();
   private pickupMeshes = new Map<number, THREE.Group>();
   private pickupMats = new Map<PickupKind, THREE.MeshStandardMaterial>();
@@ -131,12 +133,22 @@ export class GameView {
     for (const [parts, mat] of mineMats) {
       const geo = mergeParts(parts);
       if (!geo) continue;
-      const im = new THREE.InstancedMesh(geo, mat, MAX_MINES);
+      const im = new THREE.InstancedMesh(geo, mat, MAX_DROPS);
       im.castShadow = mat !== lightMat;
       if (mat === lightMat) this.mineLight = im;
       this.mines.push(im);
     }
-    for (const m of [this.bullets, this.rockets, ...this.mines]) {
+    // míčky: je jich hodně a jsou malé, takže bez stínů – jinak by to zbytečně zdražilo snímek
+    const bp = ballParts();
+    const ballMats: [THREE.BufferGeometry[], THREE.Material][] = [
+      [bp.shell, new THREE.MeshStandardMaterial({ color: BALL_COLORS.shell, metalness: 0.25, roughness: 0.45 })],
+      [bp.band, new THREE.MeshStandardMaterial({ color: BALL_COLORS.band, metalness: 0.2, roughness: 0.5 })],
+    ];
+    for (const [parts, mat] of ballMats) {
+      const geo = mergeParts(parts);
+      if (geo) this.balls.push(new THREE.InstancedMesh(geo, mat, MAX_DROPS));
+    }
+    for (const m of [this.bullets, this.rockets, ...this.mines, ...this.balls]) {
       m.count = 0;
       m.frustumCulled = false;
       this.scene.add(m);
@@ -489,10 +501,21 @@ export class GameView {
     this.rockets.count = n;
     if (n || hadRockets) this.rockets.instanceMatrix.needsUpdate = true;
 
-    // miny: nenatažená jen slabě doutná, natažená zvolna pulzuje, zapálená bliká naplno
+    // miny a míčky leží v jednom seznamu, každý se ale kreslí svou sadou sítí
     n = 0;
-    for (const m of sim.mines) {
-      if (n >= MAX_MINES) break;
+    let nb = 0;
+    for (const m of sim.drops) {
+      if (m.def.id === 'ball') {
+        if (nb >= MAX_DROPS) continue;
+        d.position.set(m.x, m.y + BALL_R, m.z);
+        d.rotation.set(m.roll, m.yaw, 0, 'YXZ');  // kutálí se ve směru, kterým letí
+        d.updateMatrix();
+        for (const im of this.balls) im.setMatrixAt(nb, d.matrix);
+        nb++;
+        continue;
+      }
+      if (n >= MAX_DROPS) continue;
+      // mina: nenatažená jen slabě doutná, natažená zvolna pulzuje, zapálená bliká naplno
       d.position.set(m.x, 0, m.z);
       d.rotation.set(0, m.id * 1.37, 0);
       d.scale.setScalar(m.arm > 0 ? 0.75 + 0.25 * (1 - m.arm / (m.def.arm ?? 0.8)) : 1); // při položení "dosedne"
@@ -500,14 +523,16 @@ export class GameView {
       for (const im of this.mines) im.setMatrixAt(n, d.matrix);
       const blink = m.fuse > 0 ? 1 : m.arm > 0 ? 0.2 : 0.45 + Math.sin(t * 5 + m.id) * 0.4;
       this.mineLight?.setColorAt(n, this.tmpColor.setHex(MINE_COLORS.glow).multiplyScalar(0.35 + 0.8 * blink));
+      d.scale.setScalar(1);
       n++;
     }
-    d.scale.setScalar(1);
     const hadMines = this.mines[0]?.count ?? 0;
     if (n || hadMines) {
       for (const im of this.mines) { im.count = n; im.instanceMatrix.needsUpdate = true; }
       if (this.mineLight?.instanceColor) this.mineLight.instanceColor.needsUpdate = true;
     }
+    const hadBalls = this.balls[0]?.count ?? 0;
+    if (nb || hadBalls) for (const im of this.balls) { im.count = nb; im.instanceMatrix.needsUpdate = true; }
 
     // bedny
     for (const p of sim.pickups) {

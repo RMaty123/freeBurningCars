@@ -5,7 +5,7 @@ Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
-- **3 primární zbraně na výběr** (minigun, těžký kulomet, dvojice laserů na dveřích) a **2 sekundární** (naváděné rakety, miny na trať), k tomu opravy a zrychlení z beden
+- **3 primární zbraně na výběr** (minigun, těžký kulomet, dvojice laserů na dveřích) a **3 sekundární** (naváděné rakety, miny, míčky sypané po osmi), k tomu opravy a zrychlení z beden
 - **4 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory) a Test Strip (osmipruhový testovací ovál)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
 - dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
@@ -127,12 +127,17 @@ Hned po výběru primární zbraně přijde **výběr sekundární zbraně** –
 | --- | --- | --- |
 | **RAKETY** | naváděná raketa dopředu, 58 dmg v poloměru 8,5 m | 2 kusy, bedna přidá 3 (strop 6) |
 | **MINY** | pustí minu za auto; kdo na ni najede, schytá 46 dmg v poloměru 6,5 m | 20 kusů, bedna přidá 6 (strop 20) |
+| **MÍČKY** | vysype za auto osm míčků, které se rozletí a rozkutálí; jeden dá 5,75 dmg (osminu miny) v poloměru 2,6 m | 15 dávek po osmi, bedna přidá 4 (strop 15) |
 
 Mina se pustí kousek za zadní nárazník a **0,8 s se natahuje** – kdo ji položil, na ni může v klidu najet a **nikdy mu nevybouchne pod koly**. Natažená pak bouchne každému cizímu autu, které se dostane blíž než 2,2 m od jejího středu. Leží 30 sekund a pak sama zmizí, takže se trať nezanese. Výbuch (vlastní i cizí) **zapálí ostatní miny v dosahu**, takže položená hromádka odpálí celá za sebou. Prodleva mezi položeními je 0,22 s, dají se tedy sypat za sebou jako korálky – a protože je jich 20, dá se nimi zaminovat celá zatáčka.
 
-Model miny je stejný v nabídce i na trati: šestiúhelníkový talíř s výstražným pruhem a svítící čočkou uprostřed, která **podle stavu bliká jinak** – nenatažená jen doutná, natažená zvolna pulzuje, zapálená svítí naplno. Na trati se kreslí instancovaně (jedno vykreslení na materiál, ať jich leží kolik chce); naráz jich nikdy není víc než 200 (`MAX_MINES` v `sim.ts`).
+Model miny je stejný v nabídce i na trati: šestiúhelníkový talíř s výstražným pruhem a svítící čočkou uprostřed, která **podle stavu bliká jinak** – nenatažená jen doutná, natažená zvolna pulzuje, zapálená svítí naplno. Na trati se kreslí instancovaně (jedno vykreslení na materiál, ať jich leží kolik chce); min a míčků dohromady nikdy neleží víc než 420 (`MAX_DROPS` v `sim.ts`).
 
-AI zbraň používá podle toho, co dostala: raketu posílá na cíl před sebou, minu pouští, až když jí někdo sedí na zadku.
+**Míčky** jedou stejným kódem jako miny (oboje je v simulaci `Drop`), jen mají navíc fyziku: při vysypání dostane každý z osmi míčků náhodnou rychlost do vějíře dozadu, kus rychlosti auta a trochu nahoru, pak se odráží od země (tíha 20 m/s², odraz 42 %) a brzdí kutálením, dokud ho tření nezastaví – obvykle do tří sekund, s rozptylem kolem 4–5 metrů. Kutálení se počítá v simulaci (`roll`, `yaw`), takže míčky i na obrazovce poctivě rotují ve směru, kterým letí. Natahují se 0,5 s, leží 22 s a spustí se na 1,2 m.
+
+Jeden míček dá **osminu miny**, takže celá dávka vyjde zhruba na jednu minu – ale rozprostřenou, takže kolik si hráč odnese, záleží na tom, kolika míčky projede. Řetězová reakce z výbuchu platí i pro ně, takže průjezd hromádkou dělá sérii malých ran za sebou. Výbuchy míčků jsou schválně malé: je jich hodně, takže se kreslí bez stínů a s drobným efektem, aby sypání naplno nestálo ani snímek navíc.
+
+AI zbraň používá podle toho, co dostala: raketu posílá na cíl před sebou, miny i míčky pouští, až když jí někdo sedí na zadku.
 
 ### Auta a jízda
 
@@ -182,7 +187,7 @@ client/src/game/             čistá herní logika bez grafiky
     ai.ts                    AI soupeři
 client/src/render/           Three.js (svět, modely aut, částice, textury, kamery, split-screen)
     gunModel.ts              procedurální modely zbraní FIRE 1 do nabídky
-    secModel.ts              modely rakety a miny (nabídka i mina ležící na trati)
+    secModel.ts              modely rakety, miny a míčků (nabídka i to, co leží na trati)
     showroom.ts              garáž pro výběr aut i zbraní + náhledy pro telefon
 client/src/screen/           obrazovka na PC
     main.ts                  jen propojení: vytvoří App, zaregistruje obrazovky, hlavní smyčka
@@ -239,7 +244,7 @@ Ovladač → server → obrazovka → simulace. Na každém kroku se škrtalo, c
 - **Barvy:** každý typ auta má **svoji pevnou barvu** (`color` v `content/cars.ts`) – stejnou pro hráče i pro boty, takže VIPER GT je vždy červená, HYPERION světle modrý, HAULER bílý atd. Barva patří vozu, ne hráči: i když si dva hráči vyberou stejné auto, obě jedou ve stejné barvě (`carColor()` vrací prostě barvu typu). Kdo je kdo se pozná podle barvy jména nad autem, tečky na minimapě a rámečku v HUD – to je `tagColor` (barva slotu hráče z `PLAYER_COLORS`), která je oddělená od barvy laku. K hlavní barvě má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`, `spine`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION grafitový hřbet (`spine` = klín na kapotě + víko motoru, k tomu střecha). `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
 - **Maska a světla** sedí na šikmém čele samy: `noseAt()` v `carModel.ts` spočítá bod a sklon přídě, takže ani u ostrého klínu nic netrčí z karoserie.
 - **Nová zbraň:** další záznam v `game/content/guns.ts`. Objeví se sama ve výběru na PC i na telefonu (model do nabídky se poskládá podle `shape`: tělo, hlaveň, chladicí plášť s dírami, úsťová brzda, bedna s municí, energetické prstence) a simulace si z ní vezme čísla. `kind: 'bullet'` střílí projektily, `kind: 'beam'` se nabíjí a pak drží paprsek; `mount` říká, kde zbraň na autě sedí (`hood` = kulomety na kapotě, `side` = děla na dveřích) a `twin: true` střílí z obou stran naráz.
-- **Nová sekundární zbraň:** další záznam v `game/content/secondaries.ts` – objeví se sama ve výběru na PC i na telefonu. Chování se liší podle `id` (`rocket` letí dopředu a navádí se, `mine` zůstane ležet); model do nabídky je v `render/secModel.ts`.
+- **Nová sekundární zbraň:** další záznam v `game/content/secondaries.ts` – objeví se sama ve výběru na PC i na telefonu. Chování se liší podle `id` (`rocket` letí dopředu a navádí se, `mine` zůstane ležet, `ball` se rozletí a kutálí); model do nabídky je v `render/secModel.ts`.
 - **Nový krok v menu:** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `weaponSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Nabídka na telefonu je obecná – mřížka s náhledy se staví ze zpráv `catalog` (`kind` říká, co se vybírá), takže pro výběr další věci stačí posílat jiný katalog.
 - **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 

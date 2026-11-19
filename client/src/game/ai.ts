@@ -231,18 +231,18 @@ function aiRoam(sim: Sim, c: Car, dt: number, fx: number, fz: number) {
 }
 
 /**
- * Má AI zmáčknout FIRE 2? Raketa se pouští na cíl vepředu, mina naopak tomu, kdo sedí vzadu
- * na nárazníku – jinak by ji jen rozsypala do prázdna.
+ * Má AI zmáčknout FIRE 2? Raketa se pouští na cíl vepředu, mina a míčky naopak tomu,
+ * kdo sedí vzadu na nárazníku – jinak by je jen rozsypala do prázdna.
  */
 function wantSecondary(sim: Sim, c: Car, cone: number, range: number): boolean {
-  if (c.sec.id === 'mine') return tailgater(sim, c, 34);
+  if (c.sec.id !== 'rocket') return tailgater(sim, c, 34);
   const t = sim.findTarget(c, cone, range);
   return !!t && Math.hypot(t.x - c.x, t.z - c.z) > 14;
 }
 
-/** Jak dlouho počkat do dalšího použití – miny se dají sypat, raket je málo. */
+/** Jak dlouho počkat do dalšího použití – miny a míčky se dají sypat, raket je málo. */
 function secPause(sim: Sim, c: Car): number {
-  return c.sec.id === 'mine' ? 1.2 + sim.rnd() * 2.4 : 3 + sim.rnd() * 5;
+  return c.sec.id === 'rocket' ? 3 + sim.rnd() * 5 : 1.2 + sim.rnd() * 2.4;
 }
 
 /** Jede někdo za mnou (v kuželu dozadu, do `dist` metrů)? */

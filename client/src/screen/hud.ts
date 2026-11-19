@@ -20,7 +20,7 @@ interface Panel {
   shown: { pos: number; lap: number; speed: number; ammo: number; hp: number; nitro: number };
 }
 
-const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f', mine: '#ff6a3c' };
+const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f', mine: '#ff6a3c', ball: '#ff8a5a' };
 
 export class Hud {
   private root: HTMLElement;

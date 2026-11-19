@@ -7,6 +7,7 @@
  * Vyvážení:
  *   RAKETY  2 kusy, bedna přidá 3 (strop 6) – jedna rána skoro zabije, ale ran je málo
  *   MINY   20 kusů, bedna přidá 6 (strop 20) – slabší rána, zato se dají sypat po trati
+ *   MÍČKY  15 dávek po osmi, bedna přidá 4 – jeden míček dá osminu miny, ale leží jich tam osm
  */
 import type { SecStats } from '../secondary';
 
@@ -27,6 +28,16 @@ export const SECONDARIES: SecStats[] = [
     ammo: 20, maxAmmo: 20, pickup: 6, cd: 0.22,
     dmg: 46, radius: 6.5,
     arm: 0.8, life: 30, trigger: 2.2,
+  },
+  {
+    id: 'ball',
+    name: 'MÍČKY',
+    tagline: 'Vysype za auto osm míčků. Rozletí se a kdo do nich vjede, sbírá rány.',
+    color: 0xff6f5a,
+    ammo: 15, maxAmmo: 15, pickup: 4, cd: 0.35, count: 8,
+    // osmina miny na kus – celá dávka tedy dá zhruba to co jedna mina, ale rozprostřeně
+    dmg: 46 / 8, radius: 2.6,
+    arm: 0.5, life: 22, trigger: 1.2, spread: 7,
   },
 ];
 
