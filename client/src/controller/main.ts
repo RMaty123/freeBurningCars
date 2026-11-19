@@ -284,23 +284,6 @@ tap('tilt-btn', () => send({ type: 'tilt' }));
 tap('tilt-allow', () => { tiltDenied = false; void tiltEnable(true); });
 tap('t-zero', () => { tiltZeroNow(); vibe(30); });
 tap('b-engine', () => setEngine(!engineOn));
-const setRange = (d: number) => {
-  const next = clampRange(tiltFull + d);
-  if (next === tiltFull) return;
-  tiltFull = next;
-  store('fbc-tilt-full', String(tiltFull));
-  showRange();
-  tiltZeroNow();
-  vibe(20);
-};
-tap('t-less', () => setRange(-TILT_STEP_DEG));
-tap('t-more', () => setRange(TILT_STEP_DEG));
-tap('t-flip', () => {
-  tiltFlip = -tiltFlip;
-  store('fbc-tilt-flip', tiltFlip < 0 ? '1' : '0');
-  tiltZeroNow();
-  vibe(30);
-});
 tap('continue', () => send({ type: 'select' }));
 
 // ------------------------------------------------------------------ menu (výběr tratě…)
@@ -389,11 +372,10 @@ tap('cs-back', () => send({ type: 'back' }));
  *               z nich vybereme úhel, o který je telefon natočený kolem osy pohledu (jako volant).
  *  2) nula    – při zapnutí (a tlačítkem SROVNAT nebo na startu závodu) si zapamatujeme, jak hráč drží
  *               telefon; počítá se jen odchylka od téhle nuly, takže je jedno, jestli leží nebo stojí.
- *  3) křivka  – do mrtvé zóny se nezatáčí vůbec (klid v rukou), `tiltFull`° je plný rejd a mezi tím
- *               mocnina, která se dopočítá z rozsahu. Rozsah si hráč nastavuje tlačítky − / +
- *               od 12° do 60° po dvou stupních: čím větší úhel, tím víc se musí naklonit, ale tím
- *               jemněji se dá korigovat. Mrtvá zóna roste s rozsahem (11 %, nejmíň 2°) a křivka
- *               se s ním taky mění – malý rozsah skoro lineárně, velký s jemnějším středem.
+ *  3) křivka  – do mrtvé zóny (5°) se nezatáčí vůbec (klid v rukou), TILT_FULL = 46° je plný rejd
+ *               a mezi tím mocninná křivka s jemnějším středem. Rozsah je natvrdo, nenastavuje se:
+ *               46° je tak akorát na to, aby se dalo doma na gauči korigovat po malých kouscích
+ *               a zároveň se telefonem nemuselo máchat.
  *  4) hlazení – adaptivní filtr (á la "1€"): když telefon leží v klidu, hladí silně (klid v ruce),
  *               jakmile s ním hneš, se otevře a skoro nezpožďuje. Pevný filtr by buď šuměl, nebo zpožďoval.
  *  5) odesílání – počítá se rovnou v obsluze senzoru (žádné čekání na časovač), hodnota se zaokrouhlí
@@ -401,7 +383,9 @@ tap('cs-back', () => send({ type: 'back' }));
  *  6) pojistka – když do 1,8 s nepřijde ze senzoru nic (nepovolený přístup, chybí HTTPS, starý telefon),
  *               ovladač se sám vrátí k tlačítkům a napíše proč.
  */
-const TILT_MIN = 12, TILT_MAX = 60, TILT_STEP_DEG = 2; // rozsah plného rejdu, nastavitelný na padu
+const TILT_FULL = 46;       // o kolik stupňů se telefon nakloní na plný rejd (napevno)
+const TILT_DEAD = 5;        // mrtvá zóna kolem nuly (°) – klid v rukou se nepočítá
+const TILT_CURVE = 1.47;    // mocnina převodu: střed jemný, kraje rychlé
 // Na kolik se zaokrouhluje posílaná hodnota. Paket unese 201 poloh volantu (0–200), tak ať se
 // využijí všechny – jemnější krok nestojí ani bajt navíc a auto na něj v simulaci slyší.
 const TILT_STEP = 1 / 100;
@@ -417,16 +401,7 @@ let tiltZero = 0;           // srovnaná nula
 let tiltVal = 0;            // vyhlazený výstup -1…1
 let tiltSeen = 0;           // čas posledního vzorku
 let oeAng = 0, oeVel = 0, oeT = 0, oeReady = false; // stav adaptivního filtru
-let tiltFlip = store('fbc-tilt-flip') === '1' ? -1 : 1;
 let tiltDenied = false;      // povolení senzoru zamítnuto – nezkoušíme to pak při každém ťuknutí
-let tiltFull = clampRange(Number(store('fbc-tilt-full')) || 26);
-function clampRange(v: number) {
-  const step = Math.round(v / TILT_STEP_DEG) * TILT_STEP_DEG;
-  return Math.min(TILT_MAX, Math.max(TILT_MIN, step));
-}
-const tiltDead = () => Math.max(2, tiltFull * 0.11);
-/** Křivka podle rozsahu: malý rozsah skoro lineárně, velký s jemnějším středem. */
-const tiltCurve = () => 1.15 + ((tiltFull - TILT_MIN) / (TILT_MAX - TILT_MIN)) * 0.45;
 
 type OrientEvt = DeviceOrientationEvent;
 type PermDOE = typeof DeviceOrientationEvent & { requestPermission?: () => Promise<'granted' | 'denied'> };
@@ -462,10 +437,9 @@ function onOrient(e: OrientEvt) {
   tiltRaw = ang;
   if (!tiltLive) { tiltLive = true; applyPad(); tiltNote('náklon zapnutý ✓', 'ok'); }
   // hodnota se počítá i posílá hned tady – žádný časovač mezi senzorem a sítí
-  const d = (tiltFilter(ang, dt) - tiltZero) * tiltFlip;
-  const dead = tiltDead();
-  const mag = Math.min(1, Math.max(0, Math.abs(d) - dead) / (tiltFull - dead));
-  tiltVal = Math.sign(d) * Math.pow(mag, tiltCurve());
+  const d = tiltFilter(ang, dt) - tiltZero; // smysl zatáčení je daný, nepřepíná se
+  const mag = Math.min(1, Math.max(0, Math.abs(d) - TILT_DEAD) / (TILT_FULL - TILT_DEAD));
+  tiltVal = Math.sign(d) * Math.pow(mag, TILT_CURVE);
   const q = Math.round(tiltVal / TILT_STEP) * TILT_STEP;
   if (q !== input.s) {
     input.s = q;
@@ -514,14 +488,6 @@ async function tiltEnable(fromTap: boolean) {
 }
 
 /** Zapamatuje si, jak hráč zrovna drží telefon – od téhle polohy se počítá zatáčení. */
-/** Popisek na tlačítku rozsahu: o kolik stupňů se musí telefon naklonit na plný rejd. */
-function showRange() {
-  $('t-range').textContent = `${tiltFull}°`;
-  $('t-less').classList.toggle('off', tiltFull <= TILT_MIN);
-  $('t-more').classList.toggle('off', tiltFull >= TILT_MAX);
-}
-showRange();
-
 function tiltZeroNow() {
   if (!tiltLive) return;
   tiltZero = tiltRaw;

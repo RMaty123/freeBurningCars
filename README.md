@@ -65,9 +65,9 @@ Na počítači to jede přes `http://localhost:3000`. Kdyby prohlížeč Wake Lo
 
 **Telefon (na šířku):** nahoře FIRE 1 (primární zbraň), DRIFT, FIRE 2 (sekundární zbraň); dole LEFT, BRAKE (podržením couvá), RIGHT.
 
-**Dva typy hry – čím se zatáčí.** V lobby se klávesou `T` (nebo tlačítkem ZATÁČENÍ na telefonu prvního hráče) přepíná mezi *tlačítky* a *náklonem*. Při náklonu se telefon drží na šířku a naklání jako volant; pad se promění na čtyři velká tlačítka (FIRE 1 | FIRE 2 nahoře, DRIFT | BRAKE dole) a uprostřed je vodováha, tlačítko **SROVNAT** (zapamatuje si, jak telefon zrovna držíš – od téhle polohy se měří) a **⇄ STRANY** (otočí smysl zatáčení, kdyby ho telefon hlásil obráceně).
+**Dva typy hry – čím se zatáčí.** V lobby se klávesou `T` (nebo tlačítkem ZATÁČENÍ na telefonu prvního hráče) přepíná mezi *tlačítky* a *náklonem*. Při náklonu se telefon drží na šířku a naklání jako volant; pad se promění na čtyři velká tlačítka (FIRE 1 | FIRE 2 nahoře, DRIFT | BRAKE dole) a uprostřed je vodováha a tlačítko **SROVNAT** (zapamatuje si, jak telefon zrovna držíš – od téhle polohy se měří). Nic dalšího se nenastavuje: rozsah i smysl zatáčení jsou dané.
 
-Náklon čte `deviceorientation`: ±3° kolem nuly je klid, ±26° je plný rejd, mezi tím mocninná křivka (jemný střed), výstup se vyhlazuje filtrem s konstantou 70 ms a posílá se zaokrouhlený na 0,02 maximálně 30× za vteřinu. Nula se nastaví při zapnutí a znovu na začátku každého závodu. Prohlížeče pouští senzory jen po povolení (na iPhonu je k tomu tlačítko ZAPNOUT NÁKLON v lobby) a **jen na HTTPS nebo localhostu** – když senzor do 1,8 s nic nepošle, ovladač se sám vrátí k tlačítkům a napíše proč.
+Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný rejd** (napevno, nenastavuje se), mezi tím mocninná křivka s jemným středem. Výstup hladí adaptivní filtr – v klidu hladí silně, při pohybu se otevře a skoro nezpožďuje – a posílá se zaokrouhlený na 0,01 rovnou z obsluhy senzoru, jen když se změní. Nula se nastaví při zapnutí a znovu na začátku každého závodu. Prohlížeče pouští senzory jen po povolení (na iPhonu je k tomu tlačítko ZAPNOUT NÁKLON v lobby) a **jen na HTTPS nebo localhostu** – když senzor do 1,8 s nic nepošle, ovladač se sám vrátí k tlačítkům a napíše proč.
 
 **Klávesnice:**
 
