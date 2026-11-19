@@ -77,7 +77,7 @@ Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný re
 | S / šipka dolů | brzda, zpátečka |
 | Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš, puštěním vystřelíš) |
 | W (nebo SHIFT) | drift |
-| E (nebo F) | sekundární zbraň (raketa / mina) |
+| E (nebo F) | sekundární zbraň (raketa / mina / míčky) |
 | X | vypnout/nastartovat motor (jen testovací plac) |
 | ESC | ukončit závod |
 
@@ -122,6 +122,8 @@ Bedny: zelená opravuje, červená doplňuje munici do FIRE 2 (rakety i miny –
 ### Sekundární zbraně (FIRE 2)
 
 Hned po výběru primární zbraně přijde **výběr sekundární zbraně** – stejná obrazovka, jen jiný katalog. Vybírá si ji každý hráč zvlášť, boti ji dostanou na střídačku.
+
+Každá sekundárka má **vlastní barvu**, aby se v HUD i na trati poznaly od sebe na první pohled: rakety jsou **žluté** (olivový trup se žlutými kroužky a černou špičkou), miny **červené** (černé tělo s červeným světýlkem) a míčky **bílé** (červeno-bílá koule). Barva se bere z `color` v `content/secondaries.ts` a používá ji ikonka v HUD i model v nabídce.
 
 | Zbraň | Jak funguje | Zásobník |
 | --- | --- | --- |

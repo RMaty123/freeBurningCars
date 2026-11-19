@@ -20,7 +20,8 @@ interface Panel {
   shown: { pos: number; lap: number; speed: number; ammo: number; hp: number; nitro: number };
 }
 
-const SEC_COLORS: Record<string, string> = { rocket: '#ff3b2f', mine: '#ff2a20', ball: '#ff8a5a' };
+// každá sekundární zbraň má vlastní barvu, ať se ikonky v HUD nepletou
+const SEC_COLORS: Record<string, string> = { rocket: '#ffc83c', mine: '#ff2a20', ball: '#f2f5fa' };
 
 export class Hud {
   private root: HTMLElement;

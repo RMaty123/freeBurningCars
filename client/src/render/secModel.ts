@@ -57,6 +57,13 @@ const PART_COLORS = { metal: 0xd9dde5, dark: 0x16181d, stripe: 0xc0392b };
 /** Mina je černá se šedým víkem a červeným světýlkem – nic oranžového. */
 export const MINE_COLORS = { metal: 0x515760, dark: 0x0e1013, stripe: 0x191c22, glow: 0xff1410 };
 
+/**
+ * Raketa je vojensky olivová se žlutými výstražnými kroužky a černou špičkou.
+ * Každá sekundární zbraň má vlastní barvu (raketa žlutá, mina červená, míčky bílé),
+ * aby se v HUD i na trati poznaly od sebe na první pohled.
+ */
+export const ROCKET_COLORS = { metal: 0x6d7047, dark: 0x15171a, stripe: 0xf2c230 };
+
 /** Poloměr miny (m) – podle něj se staví model i kreslí stín. */
 export const MINE_R = 0.6;
 
@@ -105,14 +112,14 @@ export function mergeParts(list: THREE.BufferGeometry[]): THREE.BufferGeometry |
   return list.length ? mergeGeometries(list, false) : null;
 }
 
-/** Raketa do nabídky: trup s kuželem, křidélka a červený pruh, leží v kolébce. */
+/** Raketa do nabídky: olivový trup, černá špička, žluté kroužky a křidélka, leží v kolébce. */
 function rocketParts(): SecParts {
   const p: SecParts = { metal: [], dark: [], stripe: [], glow: [] };
   const y = 0.46, L = 1.0, r = 0.13, z0 = -0.06;
   const zN = z0 + L / 2, zR = z0 - L / 2;                         // nos a záď trupu
   p.metal.push(cyl(r, L, 0, y, z0, 'z', 14));                     // trup
-  p.metal.push(cyl(0.012, 0.36, 0, y, zN + 0.18, 'z', 14, r));    // kužel (vpředu špička)
-  p.stripe.push(cyl(r * 1.04, 0.09, 0, y, zN - 0.12, 'z', 14));   // výstražné pruhy
+  p.dark.push(cyl(0.012, 0.36, 0, y, zN + 0.18, 'z', 14, r));     // černá špička
+  p.stripe.push(cyl(r * 1.04, 0.09, 0, y, zN - 0.12, 'z', 14));   // žluté výstražné kroužky
   p.stripe.push(cyl(r * 1.04, 0.09, 0, y, zR + 0.26, 'z', 14));
   p.dark.push(cyl(r * 0.94, 0.11, 0, y, zR - 0.03, 'z', 14));     // tryska
   p.glow.push(cyl(r * 0.62, 0.05, 0, y, zR - 0.1, 'z', 12));      // žhavé ústí
@@ -182,8 +189,8 @@ function ballPreviewParts(): SecParts {
 /** Postaví model sekundární zbraně do nabídky. Střed modelu je na podlaze, zbraň míří do +Z. */
 export function buildSec(sec: SecStats): SecVisual {
   const p = sec.id === 'mine' ? minePreviewParts() : sec.id === 'ball' ? ballPreviewParts() : rocketParts();
-  // mina má vlastní (černou) paletu, zbytek nabídky jede na společné
-  const pal = sec.id === 'mine' ? MINE_COLORS : PART_COLORS;
+  // mina a raketa mají vlastní paletu, vysypávač míčků jede na společné
+  const pal = sec.id === 'mine' ? MINE_COLORS : sec.id === 'rocket' ? ROCKET_COLORS : PART_COLORS;
   const metal = new THREE.MeshStandardMaterial({ color: pal.metal, metalness: 0.85, roughness: 0.3 });
   const dark = new THREE.MeshStandardMaterial({ color: pal.dark, metalness: 0.5, roughness: 0.6 });
   const stripe = new THREE.MeshStandardMaterial({ color: pal.stripe, metalness: 0.3, roughness: 0.5 });

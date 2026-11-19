@@ -8,7 +8,7 @@ import { hexCss } from '../game/cars';
 import { MAX_DROPS, type Car, type PickupKind, type Sim, type SimEvent } from '../game/sim';
 import type { Track } from '../game/track';
 import { buildCar, CarVisual, disposeCar, setWrecked } from './carModel';
-import { ballParts, BALL_COLORS, BALL_R, mergeParts, MINE_COLORS, mineParts } from './secModel';
+import { ballParts, BALL_COLORS, BALL_R, mergeParts, MINE_COLORS, mineParts, ROCKET_COLORS } from './secModel';
 import { Effects, pointScale } from './effects';
 import { headlightTexture, nameTagTexture, PICKUP_HEX, pickupTexture, blobTexture } from './textures';
 import { buildWorld, World } from './world';
@@ -120,7 +120,8 @@ export class GameView {
       new THREE.BoxGeometry(0.5, 0.04, 0.3).translate(0, 0, -0.45),
       new THREE.BoxGeometry(0.04, 0.5, 0.3).translate(0, 0, -0.45),
     ])!;
-    this.rockets = new THREE.InstancedMesh(rocketGeo, new THREE.MeshStandardMaterial({ color: 0xe8e8e8, metalness: 0.6, roughness: 0.35, emissive: 0x551100 }), 24);
+    // olivový trup, motor zezadu žhne – stejná barva jako raketa v nabídce
+    this.rockets = new THREE.InstancedMesh(rocketGeo, new THREE.MeshStandardMaterial({ color: ROCKET_COLORS.metal, metalness: 0.5, roughness: 0.45, emissive: 0x3a2a04 }), 24);
     // miny leží na zemi: stejný model jako v nabídce, jen kreslený instancovaně
     const mp = mineParts();
     const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });

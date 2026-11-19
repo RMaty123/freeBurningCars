@@ -16,7 +16,7 @@ export const SECONDARIES: SecStats[] = [
     id: 'rocket',
     name: 'RAKETY',
     tagline: 'Naváděná raketa dopředu. Málo kusů, ale pořádně to bouchne.',
-    color: 0xff3b2f,
+    color: 0xffc83c,
     ammo: 2, maxAmmo: 6, pickup: 3, cd: 0.7,
     dmg: 58, radius: 8.5,
   },
@@ -33,7 +33,7 @@ export const SECONDARIES: SecStats[] = [
     id: 'ball',
     name: 'MÍČKY',
     tagline: 'Vysype za auto osm červeno-bílých míčků. Malé, ale kousnou.',
-    color: 0xff5a4a,
+    color: 0xf2f5fa,
     ammo: 15, maxAmmo: 15, pickup: 4, cd: 0.35, count: 8,
     // pětina miny na kus: míčky jsou malé a trefit se do nich je těžší, tak každý bolí víc
     dmg: 9, radius: 2.2,
