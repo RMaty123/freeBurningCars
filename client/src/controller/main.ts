@@ -209,10 +209,9 @@ socket.on('host:msg', (m: HostMsg) => {
     $('l-bots').textContent = m.bots ? String(m.bots) : 'žádní';
     setTiltMode(m.tilt);
     // pomocné brzdy: nabídnou se jen se zapnutými cheaty a každý hráč si je přepíná sám
-    for (const id of ['assist-btn', 'p-assist']) $(id).hidden = !m.cheats;
-    $('assist-mode').textContent = m.assist ? 'ZAPNUTÉ' : 'VYPNUTÉ';
+    $('p-assist').hidden = !m.cheats;
     $('p-assist-val').textContent = m.assist ? 'ZAP' : 'VYP';
-    for (const id of ['assist-btn', 'p-assist']) $(id).classList.toggle('on', m.assist);
+    $('p-assist').classList.toggle('on', m.assist);
     if (!m.cheats && !m.open) { $('b-engine').hidden = true; if (!engineOn) setEngine(true); } // bez cheatů mimo plac motor vždycky jede
     $('t-name').textContent = m.name;
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
@@ -285,8 +284,6 @@ tap('laps-inc', () => send({ type: 'laps', dir: 1 }));
 tap('bots-dec', () => send({ type: 'bots', dir: -1 }));
 tap('bots-inc', () => send({ type: 'bots', dir: 1 }));
 tap('start', () => send({ type: 'select' }));
-tap('tilt-btn', () => send({ type: 'tilt' }));
-tap('assist-btn', () => send({ type: 'assist' }));
 tap('p-assist', () => send({ type: 'assist' }));
 tap('tilt-allow', () => { tiltDenied = false; void tiltEnable(true); });
 tap('t-zero', () => { tiltZeroNow(); vibe(30); });
@@ -522,8 +519,7 @@ function setEngine(on: boolean) {
 }
 
 function setTiltMode(on: boolean) {
-  $('tilt-mode').textContent = on ? 'NÁKLON' : 'TLAČÍTKA';
-  $('tilt-btn').hidden = !isMaster;
+  // typ zatáčení se nastavuje jen na PC (klávesa T) – ovladač ho jen přijme
   $('tilt-box').hidden = !on;
   if (on === tiltMode) { if (on) void tiltEnable(false); return; }
   tiltMode = on;

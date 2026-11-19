@@ -120,15 +120,15 @@ kbd {
 #slots .tagr .master { color: var(--fire2); font-weight: 700; }
 .kbd { margin-top: 1.6vh; }
 
-.opt { display: grid; grid-template-columns: 1fr; padding: 1.5vh 0; border-bottom: 1px solid var(--line); }
+.opt { display: grid; grid-template-columns: 1fr; padding: 1.05vh 0; border-bottom: 1px solid var(--line); }
 .opt span { color: var(--dim); letter-spacing: 0.2em; font-size: clamp(10px, 1.5vh, 15px); }
-.opt b { font-family: var(--display); font-weight: 400; font-style: italic; font-size: clamp(22px, 4.6vh, 52px); letter-spacing: 0.03em; }
-.opt small { color: var(--dim); font-size: clamp(10px, 1.5vh, 15px); }
+.opt b { font-family: var(--display); font-weight: 400; font-style: italic; font-size: clamp(18px, 3.5vh, 38px); letter-spacing: 0.03em; line-height: 1.1; }
+.opt small { color: var(--dim); font-size: clamp(9px, 1.35vh, 14px); line-height: 1.35; }
 .opt small i { color: #fff; font-style: normal; font-weight: 700; }
 .hint.next { margin-top: 1.6vh; }
 .start-hint {
-  margin-top: auto; text-align: center; font-family: var(--display); font-style: italic; font-size: clamp(16px, 3vh, 34px); letter-spacing: 0.04em;
-  padding: 1.6vh 1vw; border-radius: 1vh; background: rgba(255, 255, 255, 0.05); color: var(--dim);
+  margin-top: auto; text-align: center; font-family: var(--display); font-style: italic; font-size: clamp(14px, 2.4vh, 27px); letter-spacing: 0.04em;
+  padding: 1.2vh 1vw; border-radius: 1vh; background: rgba(255, 255, 255, 0.05); color: var(--dim);
 }
 .start-hint.ready { background: linear-gradient(90deg, var(--fire1), var(--fire2)); color: #140800; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(1.03); filter: brightness(1.15); } }

@@ -109,13 +109,6 @@ export class LobbyScreen implements Screen {
     if (m.type === 'laps' && isMaster) {
       app.settings.laps = Math.max(1, Math.min(9, app.settings.laps + m.dir));
       app.audio.ui();
-    } else if (m.type === 'tilt' && isMaster) {
-      app.settings.tilt = !app.settings.tilt;
-      app.audio.ui();
-      this.refresh();
-    } else if (m.type === 'assist') {
-      // pomocné brzdy si zapíná každý hráč sám (a jen když jsou povolené cheaty)
-      if (app.settings.cheats) { p.assist = !p.assist; app.audio.ui(); this.refresh(); }
     } else if (m.type === 'bots' && isMaster) {
       app.settings.bots = Math.max(0, Math.min(this.maxBots(), app.settings.bots + m.dir));
       app.audio.ui();
@@ -153,10 +146,6 @@ export class LobbyScreen implements Screen {
       app.audio.ui();
       this.refresh();
       s.changed();
-    } else if (e.code === 'KeyY') {
-      // Y = pomocné brzdy pro hráče na klávesnici (jen se zapnutými cheaty)
-      const kp = s.keyboard;
-      if (kp && app.settings.cheats) { kp.assist = !kp.assist; app.audio.ui(); this.refresh(); s.changed(); }
     } else if (e.code === 'KeyC') {
       // C = cheaty: vypínač motoru na všech mapách a BRAKE ASSIST
       app.settings.cheats = !app.settings.cheats;

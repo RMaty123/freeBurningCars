@@ -49,7 +49,6 @@ export function unpackInput(n: number): InputState {
 export type CtrlMsg =
   | { type: 'laps'; dir: 1 | -1 }
   /** přepnutí způsobu zatáčení (tlačítka / náklon telefonu) – smí jen první hráč */
-  | { type: 'tilt' }
   | { type: 'assist' }
   /** počet AI soupeřů (0 = jede se jen s lidmi) */
   | { type: 'bots'; dir: 1 | -1 }
