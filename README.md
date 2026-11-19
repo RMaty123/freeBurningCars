@@ -127,15 +127,15 @@ Hned po výběru primární zbraně přijde **výběr sekundární zbraně** –
 | --- | --- | --- |
 | **RAKETY** | naváděná raketa dopředu, 58 dmg v poloměru 8,5 m | 2 kusy, bedna přidá 3 (strop 6) |
 | **MINY** | pustí minu za auto; kdo na ni najede, schytá 46 dmg v poloměru 6,5 m | 20 kusů, bedna přidá 6 (strop 20) |
-| **MÍČKY** | vysype za auto osm míčků, které se rozletí a rozkutálí; jeden dá 5,75 dmg (osminu miny) v poloměru 2,6 m | 15 dávek po osmi, bedna přidá 4 (strop 15) |
+| **MÍČKY** | vysype za auto osm malých červeno-bílých míčků, které se rozletí a rozkutálí; jeden dá 9 dmg (pětinu miny) v poloměru 2,2 m | 15 dávek po osmi, bedna přidá 4 (strop 15) |
 
 Mina se pustí kousek za zadní nárazník a **0,8 s se natahuje** – kdo ji položil, na ni může v klidu najet a **nikdy mu nevybouchne pod koly**. Natažená pak bouchne každému cizímu autu, které se dostane blíž než 2,2 m od jejího středu. Leží 30 sekund a pak sama zmizí, takže se trať nezanese. Výbuch (vlastní i cizí) **zapálí ostatní miny v dosahu**, takže položená hromádka odpálí celá za sebou. Prodleva mezi položeními je 0,22 s, dají se tedy sypat za sebou jako korálky – a protože je jich 20, dá se nimi zaminovat celá zatáčka.
 
 Model miny je stejný v nabídce i na trati: šestiúhelníkový talíř s výstražným pruhem a svítící čočkou uprostřed, která **podle stavu bliká jinak** – nenatažená jen doutná, natažená zvolna pulzuje, zapálená svítí naplno. Na trati se kreslí instancovaně (jedno vykreslení na materiál, ať jich leží kolik chce); min a míčků dohromady nikdy neleží víc než 420 (`MAX_DROPS` v `sim.ts`).
 
-**Míčky** jedou stejným kódem jako miny (oboje je v simulaci `Drop`), jen mají navíc fyziku: při vysypání dostane každý z osmi míčků náhodnou rychlost do vějíře dozadu, kus rychlosti auta a trochu nahoru, pak se odráží od země (tíha 20 m/s², odraz 42 %) a brzdí kutálením, dokud ho tření nezastaví – obvykle do tří sekund, s rozptylem kolem 4–5 metrů. Kutálení se počítá v simulaci (`roll`, `yaw`), takže míčky i na obrazovce poctivě rotují ve směru, kterým letí. Natahují se 0,5 s, leží 22 s a spustí se na 1,2 m.
+**Míčky** jedou stejným kódem jako miny (oboje je v simulaci `Drop`), jen mají navíc fyziku: při vysypání dostane každý z osmi míčků náhodnou rychlost do vějíře dozadu, kus rychlosti auta a trochu nahoru, pak se odráží od země (tíha 20 m/s², odraz 42 %) a brzdí kutálením, dokud ho tření nezastaví – obvykle do tří sekund, s rozptylem kolem 4–5 metrů. Kutálení se počítá v simulaci (`roll`, `yaw`), takže míčky i na obrazovce poctivě rotují ve směru, kterým letí. Jsou červeno-bílé zhruba půl na půl (červená čepička nahoře i dole, široký pruh kolem rovníku), aby byly na asfaltu vidět z každé strany. Natahují se 0,5 s, leží 22 s a spustí se na 1,2 m.
 
-Jeden míček dá **osminu miny**, takže celá dávka vyjde zhruba na jednu minu – ale rozprostřenou, takže kolik si hráč odnese, záleží na tom, kolika míčky projede. Řetězová reakce z výbuchu platí i pro ně, takže průjezd hromádkou dělá sérii malých ran za sebou. Výbuchy míčků jsou schválně malé: je jich hodně, takže se kreslí bez stínů a s drobným efektem, aby sypání naplno nestálo ani snímek navíc.
+Jeden míček dá **pětinu miny**. Míčky jsou malé (poloměr 17 cm), takže se do nich hůř trefuje – zato průjezd celou dávkou ubere **zhruba to co jedna mina** (naměřeno 46 hp). Kolik si hráč odnese, záleží na tom, kolika míčky projede. Řetězová reakce z výbuchu platí i pro ně, takže průjezd hromádkou dělá sérii malých ran za sebou. Výbuchy míčků jsou schválně malé: je jich hodně, takže se kreslí bez stínů a s drobným efektem, aby sypání naplno nestálo ani snímek navíc.
 
 AI zbraň používá podle toho, co dostala: raketu posílá na cíl před sebou, miny i míčky pouští, až když jí někdo sedí na zadku.
 

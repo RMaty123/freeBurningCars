@@ -58,20 +58,21 @@ export const MINE_COLORS = { metal: 0xd9dde5, dark: 0x16181d, stripe: 0xc0392b, 
 export const MINE_R = 0.6;
 
 /** Míček: poloměr (musí sedět s BALL_R v sim.ts, podle něj se počítá kutálení) a barvy. */
-export const BALL_R = 0.26;
-export const BALL_COLORS = { shell: 0xeef1f6, band: 0xe0381f };
+export const BALL_R = 0.17;
+export const BALL_COLORS = { shell: 0xf4f6fa, band: 0xe01f16 };
 
 /**
- * Míček: světlá koule se dvěma červenými pruhy, jako na obrázku.
- * Vrací se zvlášť skořápka a pruhy, ať se dají v závodě kreslit dvěma instancovanými sítěmi.
+ * Míček: červeno-bílá koule – červená čepička nahoře i dole a široký pruh kolem rovníku,
+ * takže je červené a bílé zhruba půl na půl a pozná se z každé strany.
+ * Vrací se zvlášť skořápka a červené díly, ať se v závodě kreslí dvěma instancovanými sítěmi.
  */
 export function ballParts(): { shell: THREE.BufferGeometry[]; band: THREE.BufferGeometry[] } {
-  // pruh = výseč koule o kousek větší, ať neprobleskuje skořápka
+  // červený díl = výseč koule o kousek větší, ať neprobleskuje bílá skořápka zpod ní
   const band = (from: number, to: number) =>
-    prep(new THREE.SphereGeometry(BALL_R * 1.012, 12, 4, 0, Math.PI * 2, from, to - from));
+    prep(new THREE.SphereGeometry(BALL_R * 1.015, 14, 5, 0, Math.PI * 2, from, to - from));
   return {
-    shell: [prep(new THREE.SphereGeometry(BALL_R, 12, 8))],
-    band: [band(1.1, 1.45), band(1.72, 2.0)],
+    shell: [prep(new THREE.SphereGeometry(BALL_R, 14, 10))],
+    band: [band(0, 0.72), band(1.28, 1.86), band(2.56, Math.PI)],
   };
 }
 

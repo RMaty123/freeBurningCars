@@ -193,7 +193,7 @@ export const COUNTDOWN_TIME = 3.6;
 /** Nejvíc věcí (min a míčků), co smí naráz ležet na trati – víc jich na zem nepustíme. */
 export const MAX_DROPS = 420;
 /** Fyzika míčků: brzdění kutálením (1/s), tíha (m/s²) a kolik rychlosti zbyde po odrazu. */
-const BALL_DRAG = 1.9, BALL_G = 20, BALL_BOUNCE = 0.42, BALL_R = 0.26;
+const BALL_DRAG = 1.9, BALL_G = 20, BALL_BOUNCE = 0.42, BALL_R = 0.17;
 const BEAM_TWIN: readonly number[] = [-1, 1];
 const BEAM_SINGLE: readonly number[] = [0];
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
