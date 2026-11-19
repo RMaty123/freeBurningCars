@@ -254,6 +254,7 @@ socket.on('host:msg', (m: HostMsg) => {
     chg.style.transform = `scaleX(${lvl})`;
     // vypínač motoru patří jen živému autu – u vraku by jen ležel přes nápis
     $('b-engine').hidden = !m.engineSw || m.dead || m.finished;
+    $('p-assist').classList.toggle('now', !!m.braking); // svítí, zrovna když asistent brzdí
     // Stav motoru drží obrazovka (vrací ho třeba po respawnu), ale hned po ťuknutí má přednost
     // to, co hráč zrovna zmáčkl – jinak by starší zpráva "v letu" na chvilku přepsala nápis zpátky.
     if (m.engine !== engineOn && performance.now() - engineTapAt > 700) showEngine(m.engine);

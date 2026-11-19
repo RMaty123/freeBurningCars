@@ -75,6 +75,10 @@ export interface Car {
   firePrev: boolean;
   /** cheat: pomocné brzdy zapnuté pro tohle auto (hráč si je přepíná i během závodu) */
   assist: boolean;
+  /** kolik brzdy teď asistent drží (0–1) – hladí se, ať to necuká; 0 = nedělá nic */
+  assistK: number;
+  /** kolik asistent zrovna ubírá plyn (0–1) */
+  assistLift: number;
   /** rušení po zásahu EMP: zbývající čas celkem, čas do přehození šipky, délka jedné šipky a směr */
   jam: number; jamT: number; jamEvery: number; jamDir: number;
   /** jak dlouho ještě svítí paprsek (s) */
@@ -367,7 +371,7 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, assist: !!e.assist, charge: 0, firePrev: false,
+        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, assist: !!e.assist, assistK: 0, assistLift: 0, charge: 0, firePrev: false,
         jam: 0, jamT: 0, jamEvery: 0.5, jamDir: 1, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
         fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
@@ -561,11 +565,11 @@ export class Sim {
     let throttle = clamp(inp.throttle, 0, 1);
     let brake = clamp(inp.brake, 0, 1);
     // BRAKE ASSIST (cheat): komu je zapnutý, tomu se auto samo přibrzdí před zatáčkou.
-    // Drift je úmysl, do toho asistent nemluví.
-    if (c.assist && !inp.drift) {
-      const k = this.brakeAssist(c);
-      if (k > 0) { brake = Math.max(brake, k); throttle = Math.min(throttle, 1 - k * 0.9); }
-    }
+    // Drift je úmysl a rušení z EMP je zbraň – do obojího asistent nemluví.
+    if (c.assist && !inp.drift && c.jam <= 0) this.brakeAssist(c, dt);
+    else { c.assistK = approach(c.assistK, 0, 5 * dt); c.assistLift = 0; }
+    if (c.assistK > 0) brake = Math.max(brake, c.assistK);
+    if (c.assistLift > 0) throttle = Math.min(throttle, 1 - c.assistLift);
 
     c.drifting = inp.drift && vf > 8;
 
@@ -661,33 +665,89 @@ export class Sim {
   }
 
   /**
-   * BRAKE ASSIST: o kolik přibrzdit (0–1), aby se stihla projet zatáčka před autem.
+   * BRAKE ASSIST: o kolik asistent přibrzdí a ubere plyn (zapíše do `c.assistK` / `c.assistLift`).
    *
-   * Počítá se to stejně, jak si rychlost hlídá AI: projde křivost trati před autem a pro každé
-   * místo spočítá, jak rychle se tam dá jet (přilnavost + jak ostře auto vůbec umí zatočit)
-   * a jestli se na to z aktuální rychlosti ještě dá dobrzdit. Nejpřísnější místo rozhoduje.
+   * Tři vrstvy, vždy se bere ta nejpřísnější:
+   *  1. **Zatáčka před autem** – projde křivost trati až do vzdálenosti, ze které se auto ještě
+   *     ubrzdí, a pro každé místo spočítá, jakou rychlostí se tam dá projet (boční přilnavost +
+   *     jak ostře auto vůbec umí zatočit, a to po širší stopě, protože trať není nitka).
+   *     Pak se ptá obráceně, než je zvykem: *kdybych od teď brzdil / jen pustil plyn, kolik tam
+   *     doveze?* Brzdná dráha počítá i s odporem vzduchu, takže sedí i v nitru.
+   *  2. **Jen pustit plyn** – když na zatáčku stačí dojet setrvačností, asistent nebrzdí vůbec,
+   *     jen ubere plyn. Většina mírných zatáček se tím vyřídí, aniž by to hráč poznal.
+   *  3. **"Tohle už nevytočím"** – dopředu si přehraje, kam auto dojede, i kdyby hned zatočilo
+   *     na doraz. Když ani tak neudrží trať, brzdí podle toho, jak moc by ji přejelo. Tahle
+   *     vrstva chytá to, co osa trati nevidí: špatný nájezd, odhození po zásahu nebo smyk.
    *
-   * Narozdíl od AI má asistent rezervu: pustí hráče o pár m/s rychleji a brzdí postupně,
-   * aby to nebylo cítit jako by auto řídil někdo jiný. Na volné ploše nedělá nic – tam
-   * není žádná zatáčka, na kterou by se dalo brzdit.
+   * Výsledek se hladí – nasazuje rychle, pouští pozvolna – takže auto nekubne a hráč má pořád
+   * pocit, že řídí on. Do driftu ani do rušení z EMP asistent nemluví a na volné ploše nedělá nic.
    */
-  private brakeAssist(c: Car): number {
+  private brakeAssist(c: Car, dt: number) {
     const tr = this.track;
-    if (tr.def.open || c.speed < 14) return 0;
     const st = c.stats;
-    const aLat = 4.2 * st.grip;
-    const dec = st.brake * 0.75;
-    let target = st.top * 1.5;
-    const K = Math.round((24 + c.speed * 2.2) / tr.step);
-    for (let j = 1; j < K; j += 2) {
-      const k = Math.abs(tr.curv[wrapIdx(tr, c.ti + j)]);
-      if (k < 0.004) continue;
-      const vmax = Math.min(Math.sqrt(aLat / k), maxCornerSpeed(st, k) * 0.94);
-      const allow = Math.sqrt(vmax * vmax + 2 * dec * j * tr.step);
-      if (allow < target) target = allow;
+    const v = c.speed;
+    if (tr.def.open || v < 12) {
+      c.assistK = approach(c.assistK, 0, 5 * dt);
+      c.assistLift = 0;
+      return;
     }
-    const over = c.speed - (target + 4);   // rezerva, ať asistent nebrzdí pořád
-    return over <= 0 ? 0 : clamp(over / 12, 0.15, 1);
+    // zpomalení je rychlostí závislé (odpor vzduchu): na úseku v→vmax stačí vzít průměr
+    const brakeDec = (vmax: number) => st.brake + 0.05 * (v + vmax);
+    const coastDec = (vmax: number) => 2.2 + 0.05 * (v + vmax);
+
+    // trať je široká – zatáčka jde projet po mírnějším oblouku, než má osa
+    const useW = Math.max(0, tr.wallDist - 2.6) * 0.9;
+    const aLat = 5.4 * st.grip;
+    // kouká se přesně tak daleko, kolik je brzdná dráha (+ kousek na reakci)
+    const scan = Math.min(260, Math.round((v * v / (2 * (st.brake + 0.1 * v)) + 16) / tr.step));
+    let wantBrake = 0, wantLift = 0;
+    for (let j = 1; j <= scan; j++) {
+      const k0 = Math.abs(tr.curv[wrapIdx(tr, c.ti + j)]);
+      if (k0 < 0.0035) continue;
+      const k = 1 / (1 / k0 + useW);
+      const vmax = Math.min(Math.sqrt(aLat / k), maxCornerSpeed(st, k));
+      if (vmax >= v) continue;
+      const d = Math.max(0, j * tr.step - 3); // rezerva, ať se nebrzdí na poslední chvíli
+      const vb = Math.sqrt(Math.max(0, v * v - 2 * brakeDec(vmax) * d));
+      const vc = Math.sqrt(Math.max(0, v * v - 2 * coastDec(vmax) * d));
+      // mírnou zatáčku vyřídí pouhé puštění plynu – ale až když je blízko, ať se nejede na půl plynu zbytečně
+      if (vc > vmax + 0.8 && j * tr.step < 45) wantLift = Math.max(wantLift, clamp((vc - vmax) / 6, 0, 0.6));
+      if (vb > vmax + 0.4) wantBrake = Math.max(wantBrake, clamp((vb - vmax) / 7, 0.12, 1));
+      if (wantBrake >= 1) break; // silněji už brzdit nejde, zbytek zatáček nemá cenu počítat
+    }
+    wantBrake = Math.max(wantBrake, this.escapeRisk(c));
+
+    // nasadit svižně, pustit pozvolna – jinak by to v zatáčce cukalo
+    c.assistK = approach(c.assistK, wantBrake, (wantBrake > c.assistK ? 9 : 3.5) * dt);
+    if (c.assistK < 0.02) c.assistK = 0;
+    c.assistLift = Math.max(wantLift, c.assistK);
+  }
+
+  /**
+   * "Vytočím to ještě?" Spočítá, jak ostrý oblouk by auto teď muselo opsat, aby se vrátilo na
+   * stopu (míří na bod kus před sebou po ose trati), a porovná to s tím, jak ostře vůbec umí
+   * při téhle rychlosti zatočit. Když na to nemá, vrací 0–1 podle toho, jak moc mu to chybí.
+   *
+   * Tohle chytá situace, které křivost trati před autem nevidí: nájezd do zatáčky zevnitř ven,
+   * odhození po zásahu nebo po nárazu, rozjetý zadek.
+   */
+  private escapeRisk(c: Car): number {
+    const tr = this.track;
+    const v = c.speed;
+    const kCap = yawAt(c.stats, v) / v; // nejostřejší oblouk, na který auto při téhle rychlosti má
+    if (kCap <= 0) return 0;
+    const L = clamp(v * 0.62, 9, 26); // kam se dívá (m)
+    const j = wrapIdx(tr, c.ti + Math.round(L / tr.step));
+    const dx = tr.x[j] - c.x, dz = tr.z[j] - c.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1) return 0;
+    // úhel mezi nosem auta a spojnicí k mířenému bodu → potřebná křivost oblouku (pure pursuit)
+    let a = Math.atan2(dx, dz) - c.h;
+    while (a > Math.PI) a -= 2 * Math.PI;
+    while (a < -Math.PI) a += 2 * Math.PI;
+    const kNeed = (2 * Math.abs(Math.sin(a))) / d;
+    const ratio = kNeed / kCap;
+    return ratio <= 0.85 ? 0 : clamp((ratio - 0.85) / 0.4, 0.2, 1);
   }
 
   /** Je někdo v dosahu? (bot si podle toho načasuje EMP) */

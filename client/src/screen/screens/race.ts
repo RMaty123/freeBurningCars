@@ -233,7 +233,7 @@ export class RaceScreen implements Screen {
         app.session.sendHud(p, {
           type: 'hud', pos: car.rank, total: sim.cars.length, lap: Math.min(sim.laps, Math.max(1, car.lap + 1)), laps: sim.laps,
           kills: sim.track.def.open ? car.kills : undefined,
-          engine: !car.engineOff, engineSw: this.engineSwitch(),
+          engine: !car.engineOff, engineSw: this.engineSwitch(), braking: car.assistK > 0.05,
           hp: Math.max(0, car.hp / car.stats.hp), nitro: car.nitro, sec: car.sec.id, ammo: car.secAmmo, dead: car.dead, finished: car.finished,
           charge: car.gun.chargeMax ? car.charge / car.gun.chargeMax : 0,
           beam: car.beamT > 0 ? car.beam / car.beamT : 0,

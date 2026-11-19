@@ -122,6 +122,8 @@ export type HostMsg =
       kills?: number;
       /** běží motor? (vypínač na testovacím placu – stav drží obrazovka) */
       engine: boolean;
+      /** pomocné brzdy právě přibrzďují (ovladač to ukáže na tlačítku BRZDY) */
+      braking?: boolean;
       hp: number;
       /** zbývající boost 0…1 */
       nitro: number;

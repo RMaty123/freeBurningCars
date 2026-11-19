@@ -462,7 +462,7 @@ export class GameView {
       }
 
       // světla + záblesk při zásahu
-      v.rearLights.emissiveIntensity = c.input.brake > 0.1 ? 4.5 : 1.4;
+      v.rearLights.emissiveIntensity = Math.max(c.input.brake, c.assistK) > 0.1 ? 4.5 : 1.4;
       const fl = c.hitFlash * 3;
       v.paint.emissive.setRGB(fl, fl * 0.8, fl * 0.6);
 

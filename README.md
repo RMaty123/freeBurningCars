@@ -76,16 +76,31 @@ Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný re
 
 **Pomocné brzdy.** Volba každého hráče zvlášť a **ve výchozím stavu vypnuté**. Zapínají se **až za jízdy, přímo na jízdním ovladači** – v žádné nabídce na to volba není. Se zapnutými cheaty přibude na padu nahoře tlačítko **BRZDY VYP / ZAP**, ťuknutím se přepne a zapnuté svítí zeleně; kdo hraje na počítači, mačká `Y` (taky až v závodě). Auto to vezme okamžitě, i uprostřed zatáčky, takže si každý může asistenta zapnout a vypnout kdykoli během závodu – a jeden hráč s ním může jet, zatímco ostatní jedou načisto. Volba se drží do dalšího závodu; v lobby je pak u hráče vidět `· pomocné brzdy`, ale přepnout se tam nedá.
 
-Asistent počítá to samé, čím si hlídá rychlost AI: projde křivost trati před autem a pro každé místo spočítá, jak rychle se tam dá jet (přilnavost + jak ostře auto vůbec umí zatočit) a jestli se na to z aktuální rychlosti ještě dá dobrzdit. Nejpřísnější místo rozhoduje. Narozdíl od AI má ale rezervu: pustí hráče o pár m/s rychleji a brzdí postupně, aby to nebylo cítit jako by auto řídil někdo jiný. **Do driftu nemluví** (podržený DRIFT je úmysl) a na volné ploše nedělá nic, protože tam žádná zatáčka k ubrzdění není.
+**Jak asistent přemýšlí.** Nejsou to „zapnuté brzdy“, ale tři vrstvy, z nichž vždy platí ta nejpřísnější:
 
-Co to udělá, změřeno na autě, které drží plyn na podlaze a vůbec nebrzdí, přes všechny okruhy:
+1. **Zatáčka před autem.** Projde křivost trati přesně tak daleko, kolik je *skutečná* brzdná dráha z aktuální rychlosti (ne napevno daných pár desítek metrů), a pro každé místo spočítá, jak rychle se tam dá projet – z boční přilnavosti a z toho, jak ostře auto vůbec umí při té rychlosti zatočit. A počítá se s tím, že **trať je široká**: zatáčka jde projet po mírnějším oblouku, než má její osa, takže asistent nebrzdí na nitku uprostřed. Pak se ptá obráceně, než je zvykem: *kdybych od teď brzdil, jakou rychlostí tam dojedu?* Brzdná dráha zahrnuje i odpor vzduchu, takže sedí i v nitru, kde je auto o 70 % rychlejší.
+2. **Stačí pustit plyn?** Mírné zatáčky se vyřídí bez brzdy – asistent jen ubere plyn (nejvýš o 60 % a až když je zatáčka do 45 m). Brzdu vytáhne, až když samotné dojetí setrvačností nestačí. Tohle je rozdíl mezi „auto si kousek ubere“ a „auto mi brzdí pod rukama“.
+3. **„Tohle už nevytočím.“** Spočítá, jak ostrý oblouk by auto *teď* muselo opsat, aby se vrátilo na stopu, a porovná to s tím, na co při téhle rychlosti vůbec má volant. Když mu to chybí, brzdí podle velikosti schodku. Tahle vrstva vidí to, co křivost trati před autem nevidí: nájezd zevnitř ven, odhození po zásahu nebo po nárazu, rozjetý zadek. Díky ní může být první vrstva velkorysá – nechá hráče jet rychle a tvrdě se ozve, až když se to vážně nevejde.
 
-| | nárazů do mantinelu | 3 kola |
+Výsledek se **hladí**: nasazuje rychle (9/s), pouští pozvolna (3,5/s), takže auto necukne a nepřepíná se pořád tam a zpět. Když asistent brzdí, **rozsvítí se brzdová světla** a na telefonu se tlačítko BRZDY rozzáří – je vidět, že ubírá auto, ne hráč. **Do driftu nemluví** (podržený DRIFT je úmysl), **po zásahu EMP se vypne** (rušení je zbraň, od té nemá co zachraňovat) a na volné ploše nedělá nic.
+
+Změřeno přes všechny okruhy a všechny typy aut na autě, které drží plyn na podlaze a vůbec nebrzdí (3 kola, průměr):
+
+| řidič | nárazů do mantinelu | síla nárazů | 3 kola |
+| --- | --- | --- | --- |
+| bez asistenta | 1258 | 20151 | 81,9 s |
+| se starým asistentem | 480 | 5212 | 84,5 s |
+| **s novým asistentem** | **0** | **0** | **89,6 s** |
+| AI řídící se sama (pro srovnání) | 41 | 275 | 88,4 s |
+
+A to samé se **slušným řidičem** (volant řídí AI, plyn pořád na podlaze) – tam je rozdíl nejvíc vidět:
+
+| | nárazů | 3 kola |
 | --- | --- | --- |
-| bez asistenta | 134 | 75,3 s |
-| **s asistentem** | **24** | 76,6 s |
+| se starým asistentem | 330 | 82,4 s |
+| **s novým asistentem** | **0** | **85,9 s** |
 
-Tedy o 82 % míň nárazů za cenu 1,3 sekundy na tři kola. Asistent nejezdí za hráče – jen mu nedovolí nalétnout do zatáčky rychlostí, ze které se nedá ubrzdit.
+Čili: kdo umí držet stopu, projede s asistentem celý závod **bez jediného doteku svodidel** a je přitom **rychlejší než AI**, která si rychlost hlídá sama (85,9 s vs. 88,4 s). Kdo stopu neumí, přijde o pár sekund, ale místo 1258 nárazů má nulu. Asistent nejezdí za hráče – jen mu nedovolí nalétnout do zatáčky rychlostí, ze které se nedá ubrzdit.
 
 **Klávesnice:**
 

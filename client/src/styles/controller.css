@@ -297,4 +297,6 @@ body.playing .topbar { padding-right: calc(max(2vw, env(safe-area-inset-right)) 
   letter-spacing: 0.06em; white-space: nowrap;
 }
 .tb-assist.on { border-color: #7cffa8; color: #7cffa8; }
+/* asistent zrovna přibrzďuje – ať je vidět, že to ubírá auto a ne hráč */
+.tb-assist.on.now { background: rgba(124, 255, 168, 0.22); border-color: #c8ffd9; color: #e8fff0; }
 .tb-assist b { font-weight: 900; }
