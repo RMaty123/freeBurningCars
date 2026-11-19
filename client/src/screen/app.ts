@@ -220,6 +220,11 @@ export class App {
         case 'crash': a.crash(this.volAt(e.x, e.z) * Math.min(1, e.force / 14)); break;
         case 'wall': a.crash(this.volAt(e.x, e.z) * Math.min(1, e.force / 16)); break;
         case 'pickup': a.pickup(this.volAt(e.x, e.z)); break;
+        case 'hooked': {
+          a.hook(this.volAt(e.x, e.z));
+          this.view.effects.sparks(e.x, 0.8, e.z, 6, 10, 2.2, 3.4, 4.2);
+          break;
+        }
         case 'launch': {
           const c = s.cars[e.car];
           if (e.kind === 'rocket') a.launch(this.volAt(c.x, c.z)); else a.mine(this.volAt(c.x, c.z));

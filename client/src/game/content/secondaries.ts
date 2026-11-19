@@ -8,6 +8,7 @@
  *   RAKETY  2 kusy, bedna přidá 3 (strop 6) – jedna rána skoro zabije, ale ran je málo
  *   MINY   20 kusů, bedna přidá 6 (strop 20) – slabší rána, zato se dají sypat po trati
  *   MÍČKY  15 dávek po osmi, bedna přidá 4 – jeden míček dá pětinu miny, ale leží jich tam osm
+ *   HÁK     4 výstřely, bedna přidá 2 – sám nezabíjí, ale přitáhne tě k soupeři
  */
 import type { SecStats } from '../secondary';
 
@@ -38,6 +39,16 @@ export const SECONDARIES: SecStats[] = [
     // pětina miny na kus: míčky jsou malé a trefit se do nich je těžší, tak každý bolí víc
     dmg: 9, radius: 2.2,
     arm: 0.5, life: 22, trigger: 1, spread: 7,
+  },
+  {
+    id: 'hook',
+    name: 'HÁK',
+    tagline: 'Vystřelí lano. Když se trefí, přitáhne tě k zaháknutému autu.',
+    color: 0x49d0ff,
+    ammo: 4, maxAmmo: 6, pickup: 2, cd: 1.2,
+    // sám o sobě neubližuje – jeho síla je v tom, že tě dostane soupeři na nárazník
+    dmg: 0, radius: 0,
+    hookSpeed: 78, hookRange: 62, grab: 4.5, pull: 30, hold: 2.4,
   },
 ];
 

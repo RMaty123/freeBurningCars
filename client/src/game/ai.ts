@@ -231,18 +231,26 @@ function aiRoam(sim: Sim, c: Car, dt: number, fx: number, fz: number) {
 }
 
 /**
- * Má AI zmáčknout FIRE 2? Raketa se pouští na cíl vepředu, mina a míčky naopak tomu,
+ * Má AI zmáčknout FIRE 2? Raketa se pouští na cíl vepředu, hák na toho, kdo ujíždí
+ * (a je dost daleko, aby mělo smysl se přitáhnout), mina a míčky naopak tomu,
  * kdo sedí vzadu na nárazníku – jinak by je jen rozsypala do prázdna.
  */
 function wantSecondary(sim: Sim, c: Car, cone: number, range: number): boolean {
-  if (c.sec.id !== 'rocket') return tailgater(sim, c, 34);
+  if (c.sec.id === 'mine' || c.sec.id === 'ball') return tailgater(sim, c, 34);
+  if (c.sec.id === 'hook') {
+    if (sim.hooks.some((h) => h.owner === c.id)) return false;   // jeden už lítá
+    const t = sim.findTarget(c, 0.1, c.sec.hookRange ?? 62);
+    return !!t && Math.hypot(t.x - c.x, t.z - c.z) > 12;
+  }
   const t = sim.findTarget(c, cone, range);
   return !!t && Math.hypot(t.x - c.x, t.z - c.z) > 14;
 }
 
-/** Jak dlouho počkat do dalšího použití – miny a míčky se dají sypat, raket je málo. */
+/** Jak dlouho počkat do dalšího použití – miny a míčky se dají sypat, raket a háků je málo. */
 function secPause(sim: Sim, c: Car): number {
-  return c.sec.id === 'rocket' ? 3 + sim.rnd() * 5 : 1.2 + sim.rnd() * 2.4;
+  if (c.sec.id === 'rocket') return 3 + sim.rnd() * 5;
+  if (c.sec.id === 'hook') return 2.5 + sim.rnd() * 3.5;
+  return 1.2 + sim.rnd() * 2.4;
 }
 
 /** Jede někdo za mnou (v kuželu dozadu, do `dist` metrů)? */

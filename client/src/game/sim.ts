@@ -110,6 +110,25 @@ export interface Rocket { x: number; z: number; h: number; speed: number; life: 
  * `arm` se musí odtikat, než to začne reagovat (ať si to auto nehodí pod sebe),
  * `fuse` > 0 znamená, že to zapálil cizí výbuch a za chvilku to bouchne taky (řetězová reakce).
  */
+/**
+ * Lanový hák. Nejdřív letí dopředu (`fly`), když se trefí do cizího auta, zahákne se (`hold`)
+ * a lano táhne střelce k zaháknutému autu. Když se netrefí nebo čas vyprší, navíjí se zpátky (`back`).
+ * Každé auto může mít ve vzduchu jen jeden.
+ */
+export interface Hook {
+  owner: number;
+  /** id zaháknutého auta, nebo -1 když hák ještě letí / nic nechytil */
+  target: number;
+  x: number; z: number; vx: number; vz: number;
+  state: 'fly' | 'hold' | 'back';
+  /** kolik dráhy hák uletěl (m) – podle toho se pozná, že je na konci lana */
+  flown: number;
+  /** zbývající čas tahu (s) */
+  t: number;
+  def: SecStats;
+  id: number;
+}
+
 export interface Drop {
   x: number; z: number;
   /** výška nad zemí – míček poskakuje, mina leží na nule */
@@ -131,6 +150,7 @@ export type SimEvent =
   | { t: 'crash'; a: number; b: number; x: number; z: number; force: number }
   | { t: 'boom'; x: number; z: number; size: number }
   | { t: 'launch'; car: number; kind: SecKind }
+  | { t: 'hooked'; car: number; x: number; z: number }
   /** laser vystřelil – `len` je, jak dlouho bude svítit (s) */
   | { t: 'beam'; car: number; len: number }
   | { t: 'destroyed'; car: number; by: number }
@@ -167,6 +187,14 @@ export interface SimOptions {
 }
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+/** Kde na autě sedí vrhač háku – vpravo na kapotě, kousek před čelním sklem. */
+function hookMuzzle(c: Car): { x: number; z: number } {
+  const fx = Math.sin(c.h), fz = Math.cos(c.h);
+  // auto míří po (sin h, cos h); doprava od řidiče je tedy (−cos h, sin h)
+  const rx = -fz, rz = fx;
+  const fwd = c.stats.shape.length * 0.42, side = c.stats.shape.width * 0.3;
+  return { x: c.x + fx * fwd + rx * side, z: c.z + fz * fwd + rz * side };
+}
 export function angDiff(a: number, b: number): number {
   let d = a - b;
   while (d > Math.PI) d -= 2 * Math.PI;
@@ -240,6 +268,8 @@ export class Sim {
   rockets: Rocket[] = [];
   /** miny a míčky ležící na trati */
   drops: Drop[] = [];
+  /** lanové háky ve vzduchu nebo zaháknuté */
+  hooks: Hook[] = [];
   pickups: Pickup[] = [];
   events: SimEvent[] = [];
   /** pracovní pole na řazení pořadí – ať se každý snímek nealokuje nové */
@@ -774,7 +804,17 @@ export class Sim {
     c.secAmmo--;
     c.secCd = g.cd;
     const fx = Math.sin(c.h), fz = Math.cos(c.h);
-    if (g.id === 'mine' || g.id === 'ball') {
+    if (g.id === 'hook') {
+      // hák letí z vrhače na pravé straně kapoty; ve vzduchu může být jen jeden
+      const i = this.hooks.findIndex((h) => h.owner === c.id);
+      if (i >= 0) this.hooks.splice(i, 1);
+      const o = hookMuzzle(c);
+      const sp = g.hookSpeed ?? 78;
+      this.hooks.push({
+        owner: c.id, target: -1, x: o.x, z: o.z, vx: fx * sp, vz: fz * sp,
+        state: 'fly', flown: 0, t: g.hold ?? 2.4, def: g, id: this.nextId++,
+      });
+    } else if (g.id === 'mine' || g.id === 'ball') {
       // pouští se kousek za zadní nárazník; chvíli se to natahuje, ať si to auto nehodí pod sebe
       const back = c.stats.shape.length / 2 + 0.9;
       const n = g.count ?? 1;
@@ -865,6 +905,61 @@ export class Sim {
       }
     }
     this.stepDrops(dt);
+    this.stepHooks(dt);
+  }
+
+  /**
+   * Háky: let dopředu, zaháknutí do nejbližšího cizího auta a pak tah po laně.
+   * Tah se přičítá k rychlosti až po kroku auta, aby ho nesnědla boční přilnavost –
+   * auto se po laně doopravdy rozjede, místo aby jen zaskřípělo na místě.
+   */
+  private stepHooks(dt: number) {
+    for (let i = this.hooks.length - 1; i >= 0; i--) {
+      const h = this.hooks[i];
+      const me = this.cars[h.owner];
+      const g = h.def;
+      if (!me || me.dead || me.finished) { this.hooks.splice(i, 1); continue; }
+      const o = hookMuzzle(me);
+
+      if (h.state === 'fly') {
+        h.x += h.vx * dt; h.z += h.vz * dt;
+        h.flown += Math.hypot(h.vx, h.vz) * dt;
+        const grab = (g.grab ?? 3.4) ** 2;
+        for (const c of this.cars) {
+          if (c.id === h.owner || c.dead || c.finished) continue;
+          if ((c.x - h.x) ** 2 + (c.z - h.z) ** 2 > grab) continue;
+          h.state = 'hold';
+          h.target = c.id;
+          this.events.push({ t: 'hooked', car: h.owner, x: h.x, z: h.z });
+          break;
+        }
+        if (h.state === 'fly' && h.flown > (g.hookRange ?? 62)) h.state = 'back';
+      } else if (h.state === 'hold') {
+        const tgt = this.cars[h.target];
+        if (!tgt || tgt.dead || tgt.finished) { h.state = 'back'; continue; }
+        h.x = tgt.x; h.z = tgt.z;
+        const dx = tgt.x - me.x, dz = tgt.z - me.z;
+        const d = Math.hypot(dx, dz) || 1;
+        h.t -= dt;
+        // lano povolí, když jsme u sebe, vyprší čas nebo se soupeř utrhne za dostřel
+        if (h.t <= 0 || d < 5.5 || d > (g.hookRange ?? 62) * 1.25) { h.state = 'back'; continue; }
+        const ux = dx / d, uz = dz / d;
+        const pull = g.pull ?? 30;
+        me.vx += ux * pull * dt; me.vz += uz * pull * dt;
+        // lano táhne i druhou stranu, jen slaběji – soupeř cítí, že ho někdo drží
+        tgt.vx -= ux * pull * 0.22 * dt; tgt.vz -= uz * pull * 0.22 * dt;
+        // a stáčí nos střelce po laně, ať ho to netáhne bokem
+        const da = angDiff(Math.atan2(ux, uz), me.h);
+        me.h += clamp(da, -1.6 * dt, 1.6 * dt);
+      } else {
+        // navíjení zpátky k vrhači
+        const dx = o.x - h.x, dz = o.z - h.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 2.5) { this.hooks.splice(i, 1); continue; }
+        const sp = (g.hookSpeed ?? 78) * 1.3;
+        h.x += (dx / d) * sp * dt; h.z += (dz / d) * sp * dt;
+      }
+    }
   }
 
   /**

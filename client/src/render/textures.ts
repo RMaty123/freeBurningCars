@@ -245,7 +245,7 @@ export function pickupTexture(kind: PickupKind): THREE.CanvasTexture {
   return tex(c, false);
 }
 
-export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind | 'mine' | 'ball', cx: number, cy: number, r: number, color: string) {
+export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind | 'mine' | 'ball' | 'hook', cx: number, cy: number, r: number, color: string) {
   g.save();
   g.translate(cx, cy);
   g.fillStyle = color; g.strokeStyle = color;
@@ -258,6 +258,26 @@ export function drawPickupIcon(g: CanvasRenderingContext2D, kind: PickupKind | '
     g.moveTo(r * 0.25, -r * 1.1); g.lineTo(-r * 0.6, r * 0.15); g.lineTo(-r * 0.05, r * 0.15);
     g.lineTo(-r * 0.3, r * 1.1); g.lineTo(r * 0.6, -r * 0.25); g.lineTo(r * 0.05, -r * 0.25);
     g.closePath(); g.fill();
+  } else if (kind === 'hook') {
+    // hák: trojzubec na laně
+    g.lineWidth = r * 0.22;
+    g.beginPath();
+    g.moveTo(-r * 0.75, r * 0.85);
+    g.quadraticCurveTo(-r * 0.2, r * 0.1, 0, -r * 0.25);
+    g.stroke();
+    g.beginPath();
+    g.arc(0, -r * 0.3, r * 0.5, Math.PI * 0.15, Math.PI * 0.85, true);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(0, -r * 0.8);
+    g.lineTo(0, -r * 0.2);
+    g.stroke();
+    for (const sx of [-1, 1]) {
+      g.beginPath();
+      g.moveTo(sx * r * 0.48, -r * 0.14);
+      g.lineTo(sx * r * 0.68, -r * 0.5);
+      g.stroke();
+    }
   } else if (kind === 'ball') {
     // míčky: tři kuličky vedle sebe
     for (const [ox, oy, rr] of [[-0.5, 0.35, 0.42], [0.52, 0.42, 0.36], [0.06, -0.45, 0.46]] as [number, number, number][]) {

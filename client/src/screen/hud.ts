@@ -21,7 +21,7 @@ interface Panel {
 }
 
 // každá sekundární zbraň má vlastní barvu, ať se ikonky v HUD nepletou
-const SEC_COLORS: Record<string, string> = { rocket: '#ffc83c', mine: '#ff2a20', ball: '#f2f5fa' };
+const SEC_COLORS: Record<string, string> = { rocket: '#ffc83c', mine: '#ff2a20', ball: '#f2f5fa', hook: '#49d0ff' };
 
 export class Hud {
   private root: HTMLElement;

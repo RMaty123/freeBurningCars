@@ -8,7 +8,7 @@ import { hexCss } from '../game/cars';
 import { MAX_DROPS, type Car, type PickupKind, type Sim, type SimEvent } from '../game/sim';
 import type { Track } from '../game/track';
 import { buildCar, CarVisual, disposeCar, setWrecked } from './carModel';
-import { ballParts, BALL_COLORS, BALL_R, mergeParts, MINE_COLORS, mineParts, ROCKET_COLORS } from './secModel';
+import { ballParts, BALL_COLORS, BALL_R, HOOK_COLORS, hookHeadParts, mergeParts, MINE_COLORS, mineParts, ROCKET_COLORS } from './secModel';
 import { Effects, pointScale } from './effects';
 import { headlightTexture, nameTagTexture, PICKUP_HEX, pickupTexture, blobTexture } from './textures';
 import { buildWorld, World } from './world';
@@ -46,6 +46,10 @@ function angDiff(a: number, b: number): number {
 
 /** typy televizních záběrů */
 const SHOT_CHASE = 0, SHOT_FLYBY = 1, SHOT_CRANE = 2;
+/** Kolik háků se naráz vykreslí – simulace jich víc než jeden na auto nepustí. */
+const MAX_HOOKS = 8;
+/** Osa, podél které jsou postavené lano i hlavice háku. */
+const FWD = new THREE.Vector3(0, 0, 1);
 
 export class GameView {
   renderer: THREE.WebGLRenderer;
@@ -70,6 +74,7 @@ export class GameView {
   private beamGeo: THREE.BufferGeometry | null = null;
   private tmpColor = new THREE.Color();
   private tmpVec = new THREE.Vector3();
+  private tmpDir = new THREE.Vector3();
   private tmpVec2 = new THREE.Vector3();
   private rockets: THREE.InstancedMesh;
   /** miny: tělo, výstražný pruh a svítící čočka – každý materiál jedna instancovaná síť */
@@ -78,6 +83,9 @@ export class GameView {
   private mineLight: THREE.InstancedMesh | null = null;
   /** míčky: skořápka a červené pruhy */
   private balls: THREE.InstancedMesh[] = [];
+  /** hlavice háků ve vzduchu a lana k nim (jedno na auto) */
+  private hookHeads: THREE.InstancedMesh;
+  private ropes: THREE.Mesh[] = [];
   private pickupGroup = new THREE.Group();
   private pickupMeshes = new Map<number, THREE.Group>();
   private pickupMats = new Map<PickupKind, THREE.MeshStandardMaterial>();
@@ -149,7 +157,11 @@ export class GameView {
       const geo = mergeParts(parts);
       if (geo) this.balls.push(new THREE.InstancedMesh(geo, mat, MAX_DROPS));
     }
-    for (const m of [this.bullets, this.rockets, ...this.mines, ...this.balls]) {
+    // hlavice háku: stejný kus železa jako v nabídce
+    const hookGeo = mergeParts(hookHeadParts())!;
+    this.hookHeads = new THREE.InstancedMesh(hookGeo, new THREE.MeshStandardMaterial({ color: HOOK_COLORS.metal, metalness: 0.85, roughness: 0.3 }), MAX_HOOKS);
+    this.hookHeads.castShadow = true;
+    for (const m of [this.bullets, this.rockets, ...this.mines, ...this.balls, this.hookHeads]) {
       m.count = 0;
       m.frustumCulled = false;
       this.scene.add(m);
@@ -217,7 +229,7 @@ export class GameView {
     this.effects.clear();
     const night = !!this.world?.theme.night;
     for (const c of sim.cars) {
-      const v = buildCar(c.stats.shape, c.color, c.gun);
+      const v = buildCar(c.stats.shape, c.color, c.gun, c.sec);
       const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTagTexture(c.name, hexCss(c.tagColor)), depthWrite: false, transparent: true, fog: false }));
       tag.scale.set(3.0, 0.75, 1);
       tag.position.y = v.roofY + 1.15;
@@ -297,6 +309,18 @@ export class GameView {
     m.frustumCulled = false;
     this.scene.add(m);
     this.beams[i] = m;
+    return m;
+  }
+
+  /** Mesh lana pro hák `i` (stejný válec jako paprsek, jen tmavý a tenký). */
+  private rope(i: number): THREE.Mesh {
+    let m = this.ropes[i];
+    if (m) return m;
+    this.beamGeo ??= new THREE.CylinderGeometry(1, 1, 1, 8, 1).rotateX(Math.PI / 2);
+    m = new THREE.Mesh(this.beamGeo, new THREE.MeshStandardMaterial({ color: 0x59616e, metalness: 0.5, roughness: 0.6 }));
+    m.frustumCulled = false;
+    this.scene.add(m);
+    this.ropes[i] = m;
     return m;
   }
 
@@ -534,6 +558,40 @@ export class GameView {
     }
     const hadBalls = this.balls[0]?.count ?? 0;
     if (nb || hadBalls) for (const im of this.balls) { im.count = nb; im.instanceMatrix.needsUpdate = true; }
+
+    // háky: hlavice ve vzduchu a napnuté lano od vrhače na kapotě
+    this.ropes.forEach((m) => (m.visible = false));
+    let nh = 0;
+    for (const h of sim.hooks) {
+      if (nh >= MAX_HOOKS) break;
+      const cv = this.cars[h.owner];
+      if (!cv) continue;
+      cv.v.body.updateWorldMatrix(true, false);
+      const mz = cv.v.hookMuzzle;
+      const o = mz
+        ? cv.v.body.localToWorld(this.tmpVec.copy(mz))
+        : this.tmpVec.set(sim.cars[h.owner].x, cv.v.shoulder, sim.cars[h.owner].z);
+      const ox = o.x, oy = o.y, oz = o.z;
+      const hy = h.state === 'hold' ? cv.v.shoulder * 0.9 : oy;
+      const dx = h.x - ox, dy = hy - oy, dz = h.z - oz;
+      const len = Math.max(0.4, Math.hypot(dx, dy, dz));
+      this.tmpDir.set(dx / len, dy / len, dz / len);
+      // hlavice míří po laně od auta pryč
+      d.position.set(h.x, hy, h.z);
+      d.quaternion.setFromUnitVectors(FWD, this.tmpDir);
+      d.rotation.z += h.id;                        // ať nemají všechny drápy stejně
+      d.updateMatrix();
+      this.hookHeads.setMatrixAt(nh, d.matrix);
+      // lano
+      const rope = this.rope(nh);
+      rope.visible = true;
+      rope.position.set(ox + dx / 2, oy + dy / 2, oz + dz / 2);
+      rope.quaternion.setFromUnitVectors(FWD, this.tmpDir);
+      rope.scale.set(0.05, 0.05, len);
+      nh++;
+    }
+    const hadHooks = this.hookHeads.count;
+    if (nh || hadHooks) { this.hookHeads.count = nh; this.hookHeads.instanceMatrix.needsUpdate = true; }
 
     // bedny
     for (const p of sim.pickups) {

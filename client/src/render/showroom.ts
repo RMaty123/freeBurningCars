@@ -207,10 +207,10 @@ export class Showroom {
     s.pop = 1;
   }
 
-  /** Postaví na místo `i` dané auto v dané barvě (a s vybranou zbraní, pokud nějakou má). */
-  setCar(i: number, car: CarStats, color: number, gun?: GunStats) {
-    this.put(i, `car|${car.id}|${color}|${gun?.id ?? '-'}`, 'car', () => {
-      const v: CarVisual = buildCar(car.shape, color, gun);
+  /** Postaví na místo `i` dané auto v dané barvě (a s vybranými zbraněmi, pokud nějaké má). */
+  setCar(i: number, car: CarStats, color: number, gun?: GunStats, sec?: SecStats) {
+    this.put(i, `car|${car.id}|${color}|${gun?.id ?? '-'}|${sec?.id ?? '-'}`, 'car', () => {
+      const v: CarVisual = buildCar(car.shape, color, gun, sec);
       return { root: v.root, free: () => disposeCar(v) };
     });
   }

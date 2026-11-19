@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { AccentPart, CarShape } from '../game/cars';
 import type { GunStats } from '../game/guns';
+import type { SecStats } from '../game/secondary';
 
 export interface CarVisual {
   root: THREE.Group;
@@ -35,6 +36,8 @@ export interface CarVisual {
   muzzles: THREE.Vector3[];
   /** svazky hlavní rotačního kulometu – při střelbě se točí kolem své osy */
   gunSpins: THREE.Group[];
+  /** ústí vrhače háku (v souřadnicích karoserie), nebo null, když auto hák nemá */
+  hookMuzzle: THREE.Vector3 | null;
   color: number;
   shape: CarShape;
   /** výška ramen karoserie (kam se dává kulomet, kouř…) */
@@ -142,7 +145,7 @@ function merged(list: THREE.BufferGeometry[], mat: THREE.Material, shadow = true
 }
 
 // ---------------------------------------------------------------- stavba auta
-export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVisual {
+export function buildCar(shape: CarShape, color: number, gun?: GunStats, sec?: SecStats): CarVisual {
   const L = shape.length, W = shape.width, g = shape.ground, wr = shape.wheelR, ww = shape.wheelW;
   const open = !!shape.openWheels;   // bugina / formule: kola vně karoserie
   const roofless = !!shape.roofless; // bez střechy, jen ochranný oblouk
@@ -462,6 +465,8 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
   const muzzles: THREE.Vector3[] = [];
   /** točící se svazky hlavní (minigun) – přidají se do karoserie až se staví meshe */
   const gunSpins: THREE.Group[] = [];
+  /** odkud vyletí lano háku (jen když auto hák veze) */
+  let hookMuzzle: THREE.Vector3 | null = null;
   if (gun?.mount === 'side') {
     // laserové dělo přišroubované zvenku na dveře – končí kousek za předním kolem, míří dopředu
     const zF = axF - wr - 0.28;
@@ -529,6 +534,21 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
   }
   // ústí se ukládají zleva doprava, ať odpovídají pořadí paprsků v simulaci
   muzzles.sort((a, b) => a.x - b.x);
+
+  // ---- vrhač háku: sedí vpravo na kapotě, trubkou dopředu
+  if (sec?.id === 'hook') {
+    // karoserie míří do +Z, takže pravá strana řidiče je −X
+    const hx = -bodyW * 0.3, hy = sh + 0.075, hz = gz - 0.16;
+    gunGeo.push(box(0.2, 0.15, 0.32, hx, hy, hz));                          // naviják
+    darkGeo.push(box(0.21, 0.04, 0.33, hx, hy + 0.09, hz));                 // kryt navijáku
+    for (const sx of [-1, 1]) darkGeo.push(cyl(0.065, 0.03, hx + sx * 0.1, hy + 0.01, hz, 'x', 10)); // cívky po stranách
+    darkGeo.push(box(0.14, 0.1, 0.1, hx, hy - 0.09, hz + 0.02));            // nožka do kapoty
+    gunGeo.push(cyl(0.055, 0.42, hx, hy + 0.03, hz + 0.3, 'z', 10));        // vodicí trubka
+    chromeGeo.push(cyl(0.07, 0.07, hx, hy + 0.03, hz + 0.5, 'z', 10));      // ústí
+    // hák čeká zaražený v trubce; odtud se kreslí lano
+    chromeGeo.push(cyl(0.028, 0.14, hx, hy + 0.03, hz + 0.58, 'z', 8));
+    hookMuzzle = new THREE.Vector3(hx, hy + 0.03, hz + 0.56);
+  }
 
   // ---- offroad výbava
   if (shape.rugged) {
@@ -627,7 +647,7 @@ export function buildCar(shape: CarShape, color: number, gun?: GunStats): CarVis
 
   return {
     root, body, wheels, spins, paint, accent, caliper, stripe, rim, rearLights, frontLights,
-    laser: laserMat, muzzles, gunSpins, color, shape, shoulder: sh, roofY,
+    laser: laserMat, muzzles, gunSpins, hookMuzzle, color, shape, shoulder: sh, roofY,
   };
 }
 

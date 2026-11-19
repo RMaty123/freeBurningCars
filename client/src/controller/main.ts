@@ -297,7 +297,7 @@ tap('mn-back', () => send({ type: 'back' }));
 type CatalogMsg = Extract<HostMsg, { type: 'catalog' }>;
 const KINDS: PickKind[] = ['car', 'gun', 'sec'];
 /** jak se sekundární zbraň jmenuje na tlačítku FIRE 2 */
-const SEC_LABEL: Record<string, string> = { rocket: 'rakety', mine: 'miny', ball: 'míčky' };
+const SEC_LABEL: Record<string, string> = { rocket: 'rakety', mine: 'miny', ball: 'míčky', hook: 'hák' };
 const GRID: Record<PickKind, string> = { car: 'cs-grid', gun: 'gs-grid', sec: 'ss-grid' };
 const TITLE: Record<PickKind, string> = { car: 'VYBER AUTO', gun: 'VYBER ZBRAŇ · FIRE 1', sec: 'VYBER ZBRAŇ · FIRE 2' };
 const catalog: Record<PickKind, CatalogMsg[]> = { car: [], gun: [], sec: [] };

@@ -7,9 +7,10 @@
 /**
  * `rocket` = naváděná raketa dopředu,
  * `mine`   = mina položená za auto,
- * `ball`   = dávka míčků, které se za autem rozletí a rozkutálí.
+ * `ball`   = dávka míčků, které se za autem rozletí a rozkutálí,
+ * `hook`   = lanový hák, který se zahákne do cizího auta a přitáhne k němu to tvoje.
  */
-export type SecKind = 'rocket' | 'mine' | 'ball';
+export type SecKind = 'rocket' | 'mine' | 'ball' | 'hook';
 
 export interface SecStats {
   id: SecKind;
@@ -43,4 +44,15 @@ export interface SecStats {
   trigger?: number;
   /** jen `ball`: jak rychle se míčky rozletí (m/s) */
   spread?: number;
+
+  /** jen `hook`: jak rychle letí hák (m/s) */
+  hookSpeed?: number;
+  /** jen `hook`: jak daleko hák doletí, než se vrátí (m) */
+  hookRange?: number;
+  /** jen `hook`: jak silně lano přitahuje (m/s²) */
+  pull?: number;
+  /** jen `hook`: jak dlouho lano táhne, než se samo pustí (s) */
+  hold?: number;
+  /** jen `hook`: na jakou vzdálenost se hák chytí auta (m) */
+  grab?: number;
 }

@@ -5,7 +5,7 @@ Hra běží v prohlížeči na PC / televizi, **telefony slouží jako ovladače
 Vlastní server v Node.js – není potřeba AirConsole ani internet.
 
 - až **4 hráči** ve split-screenu + **0 až 7 AI soupeřů** podle nastavení (nejvíc 8 aut na trati)
-- **3 primární zbraně na výběr** (minigun, těžký kulomet, dvojice laserů na dveřích) a **3 sekundární** (naváděné rakety, miny, míčky sypané po osmi), k tomu opravy a zrychlení z beden
+- **3 primární zbraně na výběr** (minigun, těžký kulomet, dvojice laserů na dveřích) a **4 sekundární** (naváděné rakety, miny, míčky sypané po osmi, lanový hák), k tomu opravy a zrychlení z beden
 - **4 tratě**: Sunset Canyon (poušť při západu slunce), Neon City (noční město), Alpine Rush (les a hory) a Test Strip (osmipruhový testovací ovál)
 - **12 aut**, která se opravdu jinak řídí – od formule a hypersportu po náklaďák (rozdíl v kole až 1,6×)
 - dvoubarevný lak, čtyři povrchy laku, brzdové kotouče s barevnými třmeny – každé auto vypadá jinak
@@ -77,7 +77,7 @@ Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný re
 | S / šipka dolů | brzda, zpátečka |
 | Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš, puštěním vystřelíš) |
 | W (nebo SHIFT) | drift |
-| E (nebo F) | sekundární zbraň (raketa / mina / míčky) |
+| E (nebo F) | sekundární zbraň (raketa / mina / míčky / hák) |
 | X | vypnout/nastartovat motor (jen testovací plac) |
 | ESC | ukončit závod |
 
@@ -123,13 +123,14 @@ Bedny: zelená opravuje, červená doplňuje munici do FIRE 2 (rakety i miny –
 
 Hned po výběru primární zbraně přijde **výběr sekundární zbraně** – stejná obrazovka, jen jiný katalog. Vybírá si ji každý hráč zvlášť, boti ji dostanou na střídačku.
 
-Každá sekundárka má **vlastní barvu**, aby se v HUD i na trati poznaly od sebe na první pohled: rakety jsou **žluté** (olivový trup se žlutými kroužky a černou špičkou), miny **červené** (černé tělo s červeným světýlkem) a míčky **bílé** (červeno-bílá koule). Barva se bere z `color` v `content/secondaries.ts` a používá ji ikonka v HUD i model v nabídce.
+Každá sekundárka má **vlastní barvu**, aby se v HUD i na trati poznaly od sebe na první pohled: rakety jsou **žluté** (olivový trup se žlutými kroužky a černou špičkou), miny **červené** (černé tělo s červeným světýlkem), míčky **bílé** (červeno-bílá koule) a hák **modrý** (ocelová hlavice, modrý naviják). Barva se bere z `color` v `content/secondaries.ts` a používá ji ikonka v HUD i model v nabídce.
 
 | Zbraň | Jak funguje | Zásobník |
 | --- | --- | --- |
 | **RAKETY** | naváděná raketa dopředu, 58 dmg v poloměru 8,5 m | 2 kusy, bedna přidá 3 (strop 6) |
 | **MINY** | pustí minu za auto; kdo na ni najede, schytá 46 dmg v poloměru 6,5 m | 20 kusů, bedna přidá 6 (strop 20) |
 | **MÍČKY** | vysype za auto osm malých červeno-bílých míčků, které se rozletí a rozkutálí; jeden dá 9 dmg (pětinu miny) v poloměru 2,2 m | 15 dávek po osmi, bedna přidá 4 (strop 15) |
+| **HÁK** | vystřelí lano dopředu; co zahákne, k tomu tě přitáhne. Sám neubližuje | 4 výstřely, bedna přidá 2 (strop 6) |
 
 Mina se pustí kousek za zadní nárazník a **0,8 s se natahuje** – kdo ji položil, na ni může v klidu najet a **nikdy mu nevybouchne pod koly**. Natažená pak bouchne každému cizímu autu, které se dostane blíž než 2,2 m od jejího středu. Leží 30 sekund a pak sama zmizí, takže se trať nezanese. Výbuch (vlastní i cizí) **zapálí ostatní miny v dosahu**, takže položená hromádka odpálí celá za sebou. Prodleva mezi položeními je 0,22 s, dají se tedy sypat za sebou jako korálky – a protože je jich 20, dá se nimi zaminovat celá zatáčka.
 
@@ -139,7 +140,11 @@ Model miny je stejný v nabídce i na trati: **černý** šestiúhelníkový tal
 
 Jeden míček dá **pětinu miny**. Míčky jsou malé (poloměr 17 cm), takže se do nich hůř trefuje – zato průjezd celou dávkou ubere **zhruba to co jedna mina** (naměřeno 46 hp). Kolik si hráč odnese, záleží na tom, kolika míčky projede. Řetězová reakce z výbuchu platí i pro ně, takže průjezd hromádkou dělá sérii malých ran za sebou. Výbuchy míčků jsou schválně malé: je jich hodně, takže se kreslí bez stínů a s drobným efektem, aby sypání naplno nestálo ani snímek navíc.
 
-AI zbraň používá podle toho, co dostala: raketu posílá na cíl před sebou, miny i míčky pouští, až když jí někdo sedí na zadku.
+**Hák** je jediná sekundárka, která sama nic neubližuje – je to taháč. Vrhač sedí **vpravo na kapotě** (naviják s cívkami a vodicí trubka) a při výstřelu z něj vyletí hlavice se třemi drápy rychlostí 78 m/s. Dokud letí, hledá cizí auto do 4,5 m od sebe; když nic nenajde do 62 metrů, navine se zpátky.
+
+Když se zahákne, lano **přitahuje střelce k zaháknutému autu** zrychlením 30 m/s² a zároveň slaběji (22 %) brzdí toho zaháknutého – aby bylo cítit, že ho někdo drží. Nos střelce se při tom sám stáčí po laně, jinak by ho to táhlo bokem. Lano povolí po 2,4 sekundy, při přiblížení na 5,5 m nebo když se soupeř utrhne za dostřel. Tah se v simulaci přičítá až **po** kroku auta – kdyby šel dovnitř fyziky, sežrala by ho boční přilnavost a auto by na laně jen zaskřípělo na místě. Naměřeno: z 29 metrů tě hák dotáhne na 6 metrů za zhruba 1,5 sekundy. Každé auto smí mít ve vzduchu jen jeden hák.
+
+AI zbraň používá podle toho, co dostala: raketu posílá na cíl před sebou, hák na toho, kdo ujíždí (a je dál než 12 m, aby se vyplatil), miny i míčky pouští, až když jí někdo sedí na zadku.
 
 ### Auta a jízda
 
@@ -246,7 +251,7 @@ Ovladač → server → obrazovka → simulace. Na každém kroku se škrtalo, c
 - **Barvy:** každý typ auta má **svoji pevnou barvu** (`color` v `content/cars.ts`) – stejnou pro hráče i pro boty, takže VIPER GT je vždy červená, HYPERION světle modrý, HAULER bílý atd. Barva patří vozu, ne hráči: i když si dva hráči vyberou stejné auto, obě jedou ve stejné barvě (`carColor()` vrací prostě barvu typu). Kdo je kdo se pozná podle barvy jména nad autem, tečky na minimapě a rámečku v HUD – to je `tagColor` (barva slotu hráče z `PLAYER_COLORS`), která je oddělená od barvy laku. K hlavní barvě má každý typ vlastní **druhou barvu** (`accentColor`) a seznam dílů, které ji dostanou (`accent`: `hood`, `roof`, `flares`, `wing`, `mirrors`, `lower`, `bed`, `spine`) – PIXIE má bílou střechu jako Mini, SPECTER černou kapotu i střechu, HYPERION grafitový hřbet (`spine` = klín na kapotě + víko motoru, k tomu střecha). `finish` určuje povrch laku (`gloss`, `matte`, `metallic`, `pearl`), `liveryColor` barvu pruhů a `caliperColor` barvu brzdových třmenů, které jsou vidět mezi paprsky kol. Pojmenované barvy jsou v `PAINT` v `game/cars.ts`.
 - **Maska a světla** sedí na šikmém čele samy: `noseAt()` v `carModel.ts` spočítá bod a sklon přídě, takže ani u ostrého klínu nic netrčí z karoserie.
 - **Nová zbraň:** další záznam v `game/content/guns.ts`. Objeví se sama ve výběru na PC i na telefonu (model do nabídky se poskládá podle `shape`: tělo, hlaveň, chladicí plášť s dírami, úsťová brzda, bedna s municí, energetické prstence) a simulace si z ní vezme čísla. `kind: 'bullet'` střílí projektily, `kind: 'beam'` se nabíjí a pak drží paprsek; `mount` říká, kde zbraň na autě sedí (`hood` = kulomety na kapotě, `side` = děla na dveřích) a `twin: true` střílí z obou stran naráz.
-- **Nová sekundární zbraň:** další záznam v `game/content/secondaries.ts` – objeví se sama ve výběru na PC i na telefonu. Chování se liší podle `id` (`rocket` letí dopředu a navádí se, `mine` zůstane ležet, `ball` se rozletí a kutálí); model do nabídky je v `render/secModel.ts`.
+- **Nová sekundární zbraň:** další záznam v `game/content/secondaries.ts` – objeví se sama ve výběru na PC i na telefonu. Chování se liší podle `id` (`rocket` letí dopředu a navádí se, `mine` zůstane ležet, `ball` se rozletí a kutálí, `hook` táhne na laně); model do nabídky je v `render/secModel.ts`.
 - **Nový krok v menu:** nový soubor ve `screen/screens/` (stejné rozhraní `Screen` jako `weaponSelect.ts`) a jeden řádek `app.register(...)` v `main.ts`. Nabídka na telefonu je obecná – mřížka s náhledy se staví ze zpráv `catalog` (`kind` říká, co se vybírá), takže pro výběr další věci stačí posílat jiný katalog.
 - **Náhledy tratí** se ukládají do úložiště prohlížeče. Když změníš vzhled hry a chceš je vygenerovat znovu, zvyš `PREVIEW_VERSION` v `previews.ts`.
 

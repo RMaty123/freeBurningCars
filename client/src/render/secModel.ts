@@ -64,6 +64,25 @@ export const MINE_COLORS = { metal: 0x515760, dark: 0x0e1013, stripe: 0x191c22, 
  */
 export const ROCKET_COLORS = { metal: 0x6d7047, dark: 0x15171a, stripe: 0xf2c230 };
 
+/** Hák je ocelový s modrým naviják­em – modrá ho odliší od žluté rakety a červené miny. */
+export const HOOK_COLORS = { metal: 0x9aa6b4, dark: 0x15181c, stripe: 0x2f7fa8 };
+
+/**
+ * Hlavice háku v herním měřítku: kužel se třemi drápy dozadu. Míří do +Z.
+ * Používá ji nabídka i závod (gameView ji kreslí instancovaně), ať je to pořád týž kus železa.
+ */
+export function hookHeadParts(): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [
+    prep(new THREE.ConeGeometry(0.1, 0.34, 7).rotateX(Math.PI / 2).translate(0, 0, 0.1)),
+    prep(new THREE.CylinderGeometry(0.07, 0.07, 0.14, 7).rotateX(Math.PI / 2).translate(0, 0, -0.12)),
+  ];
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    out.push(prep(new THREE.BoxGeometry(0.035, 0.035, 0.26).rotateX(-0.5).translate(0, 0.1, -0.16).rotateZ(a)));
+  }
+  return out;
+}
+
 /** Poloměr miny (m) – podle něj se staví model i kreslí stín. */
 export const MINE_R = 0.6;
 
@@ -186,11 +205,52 @@ function ballPreviewParts(): SecParts {
   return out;
 }
 
+/** Vrhač háku do nabídky: naviják s cívkami, vodicí trubka a hlavice, co z ní kouká. */
+function hookPreviewParts(): SecParts {
+  const out: SecParts = { metal: [], dark: [], stripe: [], glow: [] };
+  const top = 0.3;
+  out.metal.push(cyl(0.32, 0.05, 0, 0.025, 0, 'y', 6));
+  out.dark.push(cyl(0.11, top - 0.05, 0, (top - 0.05) / 2 + 0.05, 0, 'y', 10));
+  out.dark.push(cyl(0.72, 0.05, 0, top - 0.025, 0, 'y', 6));
+  out.metal.push(cyl(0.74, 0.03, 0, top, 0, 'y', 6));
+
+  // naviják: tělo s cívkami po stranách a navinutým lanem
+  const y = top + 0.26, z0 = -0.2;
+  out.metal.push(box(0.4, 0.34, 0.46, 0, y, z0));
+  out.dark.push(box(0.42, 0.06, 0.48, 0, y + 0.18, z0));
+  for (const sx of [-1, 1]) {
+    out.stripe.push(cyl(0.17, 0.07, sx * 0.21, y, z0, 'x', 14));     // modrá cívka
+    out.dark.push(cyl(0.11, 0.09, sx * 0.25, y, z0, 'x', 12));       // navinuté lano
+  }
+  out.dark.push(box(0.26, 0.1, 0.12, 0, y - 0.2, z0 - 0.02));        // patka
+
+  // vodicí trubka dopředu a hlavice háku, co z ní kouká
+  out.metal.push(cyl(0.085, 0.5, 0, y + 0.03, z0 + 0.48, 'z', 12));
+  out.stripe.push(cyl(0.095, 0.07, 0, y + 0.03, z0 + 0.68, 'z', 12));
+  const head = new THREE.Matrix4().compose(
+    new THREE.Vector3(0, y + 0.03, z0 + 0.86),
+    new THREE.Quaternion(),
+    new THREE.Vector3(1.25, 1.25, 1.25),
+  );
+  for (const gm of hookHeadParts()) out.metal.push(gm.clone().applyMatrix4(head));
+  // kus lana, který visí z trubky dolů
+  for (let i = 0; i < 4; i++) {
+    out.dark.push(cyl(0.022, 0.12, 0.02 * i, y - 0.04 - i * 0.055, z0 + 0.62 + i * 0.03, 'y', 6));
+  }
+  return out;
+}
+
 /** Postaví model sekundární zbraně do nabídky. Střed modelu je na podlaze, zbraň míří do +Z. */
 export function buildSec(sec: SecStats): SecVisual {
-  const p = sec.id === 'mine' ? minePreviewParts() : sec.id === 'ball' ? ballPreviewParts() : rocketParts();
+  const p = sec.id === 'mine' ? minePreviewParts()
+    : sec.id === 'ball' ? ballPreviewParts()
+    : sec.id === 'hook' ? hookPreviewParts()
+    : rocketParts();
   // mina a raketa mají vlastní paletu, vysypávač míčků jede na společné
-  const pal = sec.id === 'mine' ? MINE_COLORS : sec.id === 'rocket' ? ROCKET_COLORS : PART_COLORS;
+  const pal = sec.id === 'mine' ? MINE_COLORS
+    : sec.id === 'rocket' ? ROCKET_COLORS
+    : sec.id === 'hook' ? HOOK_COLORS
+    : PART_COLORS;
   const metal = new THREE.MeshStandardMaterial({ color: pal.metal, metalness: 0.85, roughness: 0.3 });
   const dark = new THREE.MeshStandardMaterial({ color: pal.dark, metalness: 0.5, roughness: 0.6 });
   const stripe = new THREE.MeshStandardMaterial({ color: pal.stripe, metalness: 0.3, roughness: 0.5 });
