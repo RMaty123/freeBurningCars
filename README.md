@@ -69,6 +69,24 @@ Na počítači to jede přes `http://localhost:3000`. Kdyby prohlížeč Wake Lo
 
 Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný rejd** (napevno, nenastavuje se), mezi tím mocninná křivka s jemným středem. Výstup hladí adaptivní filtr – v klidu hladí silně, při pohybu se otevře a skoro nezpožďuje – a posílá se zaokrouhlený na 0,01 rovnou z obsluhy senzoru, jen když se změní. Nula se nastaví při zapnutí a znovu na začátku každého závodu. Prohlížeče pouští senzory jen po povolení (na iPhonu je k tomu tlačítko ZAPNOUT NÁKLON v lobby) a **jen na HTTPS nebo localhostu** – když senzor do 1,8 s nic nepošle, ovladač se sám vrátí k tlačítkům a napíše proč.
 
+**Cheaty.** Hlavní vypínač je **jen na počítači** – v hlavním menu klávesou `C`. Na telefonu se nezapínají. Zapnuté cheaty dělají dvě věci:
+
+1. **Vypínač motoru funguje na všech mapách**, ne jen na testovacím placu – `X` na klávesnici i tlačítko START/STOP uprostřed telefonu.
+2. **Nabídnou pomocné brzdy (BRAKE ASSIST)** – ty už si ale zapíná **každý hráč sám za sebe**, ne hlavní menu.
+
+**Pomocné brzdy.** Volba každého hráče zvlášť a **ve výchozím stavu vypnuté**. Dokud nejsou cheaty zapnuté, nejde je zapnout vůbec a na ovladači nejsou ani vidět. Se zapnutými cheaty se na telefonu ukáže tlačítko **POMOCNÉ BRZDY: VYPNUTÉ / ZAPNUTÉ** (v lobby pod jménem, za jízdy jako tlačítko **BRZDY** nahoře na padu) – ťuknutím se přepne, zapnuté svítí zeleně. Kdo hraje na počítači, přepíná si je klávesou `Y` – v nabídce na to **není žádná volba**, jen se u hráče ve seznamu ukáže `· pomocné brzdy`, když je má zapnuté. Přepnout to jde **i během závodu**, auto to vezme okamžitě. Každý hráč tedy může jet s asistentem, zatímco ostatní jedou načisto.
+
+Asistent počítá to samé, čím si hlídá rychlost AI: projde křivost trati před autem a pro každé místo spočítá, jak rychle se tam dá jet (přilnavost + jak ostře auto vůbec umí zatočit) a jestli se na to z aktuální rychlosti ještě dá dobrzdit. Nejpřísnější místo rozhoduje. Narozdíl od AI má ale rezervu: pustí hráče o pár m/s rychleji a brzdí postupně, aby to nebylo cítit jako by auto řídil někdo jiný. **Do driftu nemluví** (podržený DRIFT je úmysl) a na volné ploše nedělá nic, protože tam žádná zatáčka k ubrzdění není.
+
+Co to udělá, změřeno na autě, které drží plyn na podlaze a vůbec nebrzdí, přes všechny okruhy:
+
+| | nárazů do mantinelu | 3 kola |
+| --- | --- | --- |
+| bez asistenta | 134 | 75,3 s |
+| **s asistentem** | **24** | 76,6 s |
+
+Tedy o 82 % míň nárazů za cenu 1,3 sekundy na tři kola. Asistent nejezdí za hráče – jen mu nedovolí nalétnout do zatáčky rychlostí, ze které se nedá ubrzdit.
+
 **Klávesnice:**
 
 | Klávesa | Akce |
@@ -78,10 +96,11 @@ Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný re
 | Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš a puštěním vystřelíš, PULSE se nabíjí sám a ťuknutím ho odpálíš) |
 | W (nebo SHIFT) | drift |
 | E (nebo F) | sekundární zbraň (raketa / mina / míčky / hák) |
-| X | vypnout/nastartovat motor (jen testovací plac) |
+| X | vypnout/nastartovat motor (testovací plac; se zapnutými cheaty všude) |
+| Y | pomocné brzdy zap/vyp (jen se zapnutými cheaty, vlastní volba, i za jízdy) |
 | ESC | ukončit závod |
 
-V lobby navíc: `L` kola, `B` počet AI, `O` obtížnost, `T` typ hry (tlačítka / náklon), `N` síťovka v QR kódu.
+V lobby navíc: `L` kola, `B` počet AI, `O` obtížnost, `T` typ hry (tlačítka / náklon), `C` cheaty, `Y` pomocné brzdy, `N` síťovka v QR kódu.
 
 Levá ruka tak drží celé ovládání na **Q W A S D** – palec má volný mezerník jako druhou možnost pro střelbu.
 

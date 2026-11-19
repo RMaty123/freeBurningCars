@@ -208,7 +208,12 @@ socket.on('host:msg', (m: HostMsg) => {
     $('l-laps').textContent = String(m.laps);
     $('l-bots').textContent = m.bots ? String(m.bots) : 'žádní';
     setTiltMode(m.tilt);
-    if (!m.open) { $('b-engine').hidden = true; if (!engineOn) setEngine(true); } // mimo plac motor vždycky jede
+    // pomocné brzdy: nabídnou se jen se zapnutými cheaty a každý hráč si je přepíná sám
+    for (const id of ['assist-btn', 'p-assist']) $(id).hidden = !m.cheats;
+    $('assist-mode').textContent = m.assist ? 'ZAPNUTÉ' : 'VYPNUTÉ';
+    $('p-assist-val').textContent = m.assist ? 'ZAP' : 'VYP';
+    for (const id of ['assist-btn', 'p-assist']) $(id).classList.toggle('on', m.assist);
+    if (!m.cheats && !m.open) { $('b-engine').hidden = true; if (!engineOn) setEngine(true); } // bez cheatů mimo plac motor vždycky jede
     $('t-name').textContent = m.name;
     $('master-box').style.display = m.master && !m.waiting ? '' : 'none';
     const wait = $('l-wait');
@@ -248,8 +253,8 @@ socket.on('host:msg', (m: HostMsg) => {
     chg.classList.toggle('on', lvl > 0.001);
     chg.classList.toggle('fire', m.beam > 0);
     chg.style.transform = `scaleX(${lvl})`;
-    // vypínač motoru patří jen živému autu na placu – u vraku by jen ležel přes nápis
-    $('b-engine').hidden = m.kills === undefined || m.dead || m.finished;
+    // vypínač motoru patří jen živému autu – u vraku by jen ležel přes nápis
+    $('b-engine').hidden = !m.engineSw || m.dead || m.finished;
     // Stav motoru drží obrazovka (vrací ho třeba po respawnu), ale hned po ťuknutí má přednost
     // to, co hráč zrovna zmáčkl – jinak by starší zpráva "v letu" na chvilku přepsala nápis zpátky.
     if (m.engine !== engineOn && performance.now() - engineTapAt > 700) showEngine(m.engine);
@@ -281,6 +286,8 @@ tap('bots-dec', () => send({ type: 'bots', dir: -1 }));
 tap('bots-inc', () => send({ type: 'bots', dir: 1 }));
 tap('start', () => send({ type: 'select' }));
 tap('tilt-btn', () => send({ type: 'tilt' }));
+tap('assist-btn', () => send({ type: 'assist' }));
+tap('p-assist', () => send({ type: 'assist' }));
 tap('tilt-allow', () => { tiltDenied = false; void tiltEnable(true); });
 tap('t-zero', () => { tiltZeroNow(); vibe(30); });
 tap('b-engine', () => setEngine(!engineOn));

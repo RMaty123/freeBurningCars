@@ -113,6 +113,9 @@ export class LobbyScreen implements Screen {
       app.settings.tilt = !app.settings.tilt;
       app.audio.ui();
       this.refresh();
+    } else if (m.type === 'assist') {
+      // pomocné brzdy si zapíná každý hráč sám (a jen když jsou povolené cheaty)
+      if (app.settings.cheats) { p.assist = !p.assist; app.audio.ui(); this.refresh(); }
     } else if (m.type === 'bots' && isMaster) {
       app.settings.bots = Math.max(0, Math.min(this.maxBots(), app.settings.bots + m.dir));
       app.audio.ui();
@@ -150,6 +153,16 @@ export class LobbyScreen implements Screen {
       app.audio.ui();
       this.refresh();
       s.changed();
+    } else if (e.code === 'KeyY') {
+      // Y = pomocné brzdy pro hráče na klávesnici (jen se zapnutými cheaty)
+      const kp = s.keyboard;
+      if (kp && app.settings.cheats) { kp.assist = !kp.assist; app.audio.ui(); this.refresh(); s.changed(); }
+    } else if (e.code === 'KeyC') {
+      // C = cheaty: vypínač motoru na všech mapách a BRAKE ASSIST
+      app.settings.cheats = !app.settings.cheats;
+      app.audio.ui();
+      this.refresh();
+      s.changed();
     } else if (e.code === 'KeyN') {
       this.pickNet(this.netIdx + 1); // další síťovka v QR kódu
     } else if (e.code === 'KeyO') {
@@ -181,13 +194,15 @@ export class LobbyScreen implements Screen {
       }
       html += `<li style="--pc:${hexCss(PLAYER_COLORS[s])}">
         <div class="badge">${s + 1}</div>
-        <div class="who"><b>${esc(p.name)}</b><small>${p.pid === KBD ? 'klávesnice' : p.connected ? 'telefon' : 'odpojen'}${p.points ? ` · ${p.points} b.` : ''}</small></div>
+        <div class="who"><b>${esc(p.name)}</b><small>${p.pid === KBD ? 'klávesnice' : p.connected ? 'telefon' : 'odpojen'}${app.settings.cheats && p.assist ? ' · pomocné brzdy' : ''}${p.points ? ` · ${p.points} b.` : ''}</small></div>
         <div class="tagr">${m?.pid === p.pid ? '<span class="master">★ ovládá menu</span>' : ''}</div>
       </li>`;
     }
     $('slots').innerHTML = html;
     $('laps').textContent = String(app.settings.laps);
     $('steer-mode').textContent = app.settings.tilt ? 'náklon telefonu' : 'tlačítka';
+    $('cheats').textContent = app.settings.cheats ? 'zapnuté' : 'vypnuté';
+    $('cheats').classList.toggle('on', app.settings.cheats);
     $('ai-level').textContent = DIFFS[app.settings.diff].name;
     // nabídku zúží, když se připojí další hráči
     app.settings.bots = Math.min(app.settings.bots, this.maxBots());

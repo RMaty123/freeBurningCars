@@ -23,6 +23,8 @@ export interface Player {
   gunIdx: number;
   /** vybraná sekundární zbraň (index do SECONDARIES) */
   secIdx: number;
+  /** pomocné brzdy (cheat) – každý hráč si je zapíná sám, výchozí vypnuto */
+  assist: boolean;
   /** výběr (auta nebo zbraně) potvrzený */
   ready: boolean;
   connected: boolean;
@@ -57,6 +59,7 @@ export interface SessionHooks {
   bots(): number;
   /** typ hry: zatáčí se náklonem telefonu? */
   tilt(): boolean;
+  cheats(): boolean;
   /** jede se na testovacím placu (volná jízda)? */
   open(): boolean;
   /** popisek pro menu na ovladači (jen ve fázích s menu) */
@@ -133,7 +136,7 @@ export class Session {
   }
 
   private makePlayer(pid: string, name: string, slot: number): Player {
-    return { pid, name, slot, carIdx: slot % CAR_TYPES.length, gunIdx: DEFAULT_GUN, secIdx: DEFAULT_SEC, ready: false, connected: true, input: { ...EMPTY_INPUT }, points: 0, waiting: false, lastBuzz: 0 };
+    return { pid, name, slot, carIdx: slot % CAR_TYPES.length, gunIdx: DEFAULT_GUN, secIdx: DEFAULT_SEC, assist: false, ready: false, connected: true, input: { ...EMPTY_INPUT }, points: 0, waiting: false, lastBuzz: 0 };
   }
 
   // ------------------------------------------------------------ dotazy
@@ -213,6 +216,8 @@ export class Session {
       laps: this.hooks.laps(),
       bots: this.hooks.bots(),
       tilt: this.hooks.tilt(),
+      cheats: this.hooks.cheats(),
+      assist: p.assist,
       open: this.hooks.open(),
       menu: this.hooks.menu(),
     };

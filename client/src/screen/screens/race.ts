@@ -34,7 +34,8 @@ export class RaceScreen implements Screen {
     // každé auto jezdí ve své barvě (i dvě stejná auta); hráč se pozná podle jmenovky a HUD ve své slotové barvě
     const entries: CarEntry[] = humans.map((p) => ({
       name: p.name, color: carColor(p.carIdx), tagColor: PLAYER_COLORS[p.slot],
-      typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), sec: secAt(p.secIdx), human: true, pid: p.pid,
+      typeIdx: p.carIdx, stats: CAR_TYPES[p.carIdx], gun: gunAt(p.gunIdx), sec: secAt(p.secIdx),
+      assist: p.assist && app.settings.cheats, human: true, pid: p.pid,
       // náklon telefonu dává plynulé hodnoty, klávesnice pořád jen -1/0/1
       analog: app.settings.tilt && p.pid !== KBD,
     }));
@@ -110,9 +111,19 @@ export class RaceScreen implements Screen {
 
   command(p: Player, m: CtrlMsg) {
     const sim = this.app.sim;
-    // vypínač motoru na testovacím placu – každý hráč si vypíná jen svoje auto
-    if (m.type === 'engine' && sim?.track.def.open) {
-      const car = sim.carByPid(p.pid);
+    // pomocné brzdy si přepíná každý hráč sám, klidně i uprostřed závodu
+    if (m.type === 'assist') {
+      if (!this.app.settings.cheats) return;
+      p.assist = !p.assist;
+      const car = sim?.carByPid(p.pid);
+      if (car) car.assist = p.assist;
+      this.app.audio.ui();
+      this.app.session.changed();
+      return;
+    }
+    // vypínač motoru – každý hráč si vypíná jen svoje auto
+    if (m.type === 'engine' && this.engineSwitch()) {
+      const car = sim?.carByPid(p.pid);
       if (car) car.engineOff = !m.on;
       return;
     }
@@ -120,12 +131,25 @@ export class RaceScreen implements Screen {
     if (this.app.phase === 'results' && (m.type === 'select' || m.type === 'back')) this.next();
   }
 
+  /**
+   * Smí se teď přepínat motor? Normálně jen na testovacím placu – se zapnutými cheaty všude.
+   * Platí stejně pro tlačítko na telefonu i pro klávesu X.
+   */
+  private engineSwitch(): boolean {
+    return !!this.app.sim?.track.def.open || this.app.settings.cheats;
+  }
+
   key(e: KeyboardEvent) {
-    // X = vypínač motoru pro hráče na klávesnici (jen na testovacím placu, stejně jako na telefonu)
+    // X = vypínač motoru (na placu vždycky, jinde jen se zapnutými cheaty)
+    // Y = pomocné brzdy pro hráče na klávesnici
+    if (e.code === 'KeyY') {
+      const kp = this.app.session.keyboard;
+      if (kp && this.app.settings.cheats) this.command(kp, { type: 'assist' });
+      return;
+    }
     if (e.code === 'KeyX') {
-      const sim = this.app.sim;
-      const car = sim?.carByPid(KBD);
-      if (sim?.track.def.open && car && !car.dead) {
+      const car = this.app.sim?.carByPid(KBD);
+      if (this.engineSwitch() && car && !car.dead) {
         car.engineOff = !car.engineOff;
         this.app.audio.ui();
       }
@@ -209,7 +233,7 @@ export class RaceScreen implements Screen {
         app.session.sendHud(p, {
           type: 'hud', pos: car.rank, total: sim.cars.length, lap: Math.min(sim.laps, Math.max(1, car.lap + 1)), laps: sim.laps,
           kills: sim.track.def.open ? car.kills : undefined,
-          engine: !car.engineOff,
+          engine: !car.engineOff, engineSw: this.engineSwitch(),
           hp: Math.max(0, car.hp / car.stats.hp), nitro: car.nitro, sec: car.sec.id, ammo: car.secAmmo, dead: car.dead, finished: car.finished,
           charge: car.gun.chargeMax ? car.charge / car.gun.chargeMax : 0,
           beam: car.beamT > 0 ? car.beam / car.beamT : 0,

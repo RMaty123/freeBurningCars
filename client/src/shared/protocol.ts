@@ -50,6 +50,7 @@ export type CtrlMsg =
   | { type: 'laps'; dir: 1 | -1 }
   /** přepnutí způsobu zatáčení (tlačítka / náklon telefonu) – smí jen první hráč */
   | { type: 'tilt' }
+  | { type: 'assist' }
   /** počet AI soupeřů (0 = jede se jen s lidmi) */
   | { type: 'bots'; dir: 1 | -1 }
   | { type: 'nav'; dir: 1 | -1 }
@@ -103,6 +104,10 @@ export type HostMsg =
       bots: number;
       /** typ hry: true = zatáčí se náklonem telefonu, false = tlačítky LEFT/RIGHT */
       tilt: boolean;
+      /** zapnuté cheaty (nastavuje se jen na PC): vypínač motoru všude a nabídka pomocných brzd */
+      cheats: boolean;
+      /** pomocné brzdy tohohle hráče – každý si je zapíná sám, výchozí je vypnuto */
+      assist: boolean;
       /** testovací plac: volná jízda bez kol, na ovladači přibude vypínač motoru */
       open: boolean;
       /** vyplněno ve fázích s menu (výběr tratě…) */
@@ -121,6 +126,8 @@ export type HostMsg =
       hp: number;
       /** zbývající boost 0…1 */
       nitro: number;
+      /** smí se teď přepínat motor? (plac, nebo zapnuté cheaty) */
+      engineSw: boolean;
       /** která sekundární zbraň (ikona v HUD na telefonu) */
       sec: SecKind;
       ammo: number;

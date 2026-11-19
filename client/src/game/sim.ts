@@ -73,6 +73,8 @@ export interface Car {
   charge: number;
   /** FIRE 1 v minulém snímku – kvůli rozpoznání nového stisku */
   firePrev: boolean;
+  /** cheat: pomocné brzdy zapnuté pro tohle auto (hráč si je přepíná i během závodu) */
+  assist: boolean;
   /** rušení po zásahu EMP: zbývající čas celkem, čas do přehození šipky, délka jedné šipky a směr */
   jam: number; jamT: number; jamEvery: number; jamDir: number;
   /** jak dlouho ještě svítí paprsek (s) */
@@ -194,6 +196,8 @@ export interface CarEntry {
   gun: GunStats;
   /** vybraná sekundární zbraň */
   sec: SecStats;
+  /** cheat: pomocné brzdy – auto si samo ubere rychlost před zatáčkou (každý hráč zvlášť) */
+  assist?: boolean;
   human: boolean;
   pid: string | null;
   /** plynulé zatáčení (náklon telefonu) – volant se pak smí otáčet rychleji než u tlačítek */
@@ -363,7 +367,7 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, charge: 0, firePrev: false,
+        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, assist: !!e.assist, charge: 0, firePrev: false,
         jam: 0, jamT: 0, jamEvery: 0.5, jamDir: 1, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
         fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
@@ -554,8 +558,14 @@ export class Sim {
     c.boost = Math.max(0, c.boost - dt);
     c.nitroOn = c.boost > 0;
     c.nitro = c.boost / BOOST_TIME;
-    const throttle = clamp(inp.throttle, 0, 1);
-    const brake = clamp(inp.brake, 0, 1);
+    let throttle = clamp(inp.throttle, 0, 1);
+    let brake = clamp(inp.brake, 0, 1);
+    // BRAKE ASSIST (cheat): komu je zapnutý, tomu se auto samo přibrzdí před zatáčkou.
+    // Drift je úmysl, do toho asistent nemluví.
+    if (c.assist && !inp.drift) {
+      const k = this.brakeAssist(c);
+      if (k > 0) { brake = Math.max(brake, k); throttle = Math.min(throttle, 1 - k * 0.9); }
+    }
 
     c.drifting = inp.drift && vf > 8;
 
@@ -648,6 +658,36 @@ export class Sim {
     }
     // nabito – čeká se na odpálení; bot pálí, až má koho zasáhnout
     if (pressed || (!c.human && this.someoneNear(c, g.range * 0.75))) this.fireWave(c);
+  }
+
+  /**
+   * BRAKE ASSIST: o kolik přibrzdit (0–1), aby se stihla projet zatáčka před autem.
+   *
+   * Počítá se to stejně, jak si rychlost hlídá AI: projde křivost trati před autem a pro každé
+   * místo spočítá, jak rychle se tam dá jet (přilnavost + jak ostře auto vůbec umí zatočit)
+   * a jestli se na to z aktuální rychlosti ještě dá dobrzdit. Nejpřísnější místo rozhoduje.
+   *
+   * Narozdíl od AI má asistent rezervu: pustí hráče o pár m/s rychleji a brzdí postupně,
+   * aby to nebylo cítit jako by auto řídil někdo jiný. Na volné ploše nedělá nic – tam
+   * není žádná zatáčka, na kterou by se dalo brzdit.
+   */
+  private brakeAssist(c: Car): number {
+    const tr = this.track;
+    if (tr.def.open || c.speed < 14) return 0;
+    const st = c.stats;
+    const aLat = 4.2 * st.grip;
+    const dec = st.brake * 0.75;
+    let target = st.top * 1.5;
+    const K = Math.round((24 + c.speed * 2.2) / tr.step);
+    for (let j = 1; j < K; j += 2) {
+      const k = Math.abs(tr.curv[wrapIdx(tr, c.ti + j)]);
+      if (k < 0.004) continue;
+      const vmax = Math.min(Math.sqrt(aLat / k), maxCornerSpeed(st, k) * 0.94);
+      const allow = Math.sqrt(vmax * vmax + 2 * dec * j * tr.step);
+      if (allow < target) target = allow;
+    }
+    const over = c.speed - (target + 4);   // rezerva, ať asistent nebrzdí pořád
+    return over <= 0 ? 0 : clamp(over / 12, 0.15, 1);
   }
 
   /** Je někdo v dosahu? (bot si podle toho načasuje EMP) */

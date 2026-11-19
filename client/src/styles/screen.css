@@ -345,3 +345,6 @@ kbd {
   .lobby-grid { grid-template-columns: 1fr; overflow: auto; max-height: 70vh; }
   .card { min-height: 0; }
 }
+
+/* zapnuté cheaty v menu svítí, ať je na první pohled jasné, že se nehraje načisto */
+.opt b.on { color: #7cffa8; }

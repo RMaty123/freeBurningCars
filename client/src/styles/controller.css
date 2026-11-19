@@ -287,3 +287,14 @@ body.playing .topbar { padding-right: calc(max(2vw, env(safe-area-inset-right)) 
   #s-join h1 { font-size: 13vh; }
   .big { font-size: 24px; padding: 10px 30px; }
 }
+
+/* pomocné brzdy: vlastní volba hráče – v lobby řádek, na padu tlačítko nahoře. Zapnuté svítí. */
+.rowbtn.on { border-color: #7cffa8; color: #7cffa8; }
+.rowbtn.own { margin-top: 0.6vh; }
+.tb-assist {
+  align-self: center; padding: 0.3em 0.7em; border: 1px solid #4a5160; border-radius: 0.4em;
+  background: #20242e; color: #9aa4b4; font: inherit; font-size: 1.7vh; font-weight: 800;
+  letter-spacing: 0.06em; white-space: nowrap;
+}
+.tb-assist.on { border-color: #7cffa8; color: #7cffa8; }
+.tb-assist b { font-weight: 900; }
