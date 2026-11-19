@@ -13,7 +13,7 @@
  *            takže delší dosah byl jen nápis – teď musí zbraň blíž, aby na něco dosáhla.
  *            Stačí po někom paprskem řeznout a je po něm; těžká auta (120+ hp)
  *            to přežijí a padnou druhou ranou. Zato se musí nejdřív nabít.
- *   PULSE    22 dmg v kruhu 42 m – nabíjí se 5 s a zasaženým autům na 1,5 s zblázní volant.
+ *   PULSE    22 dmg v kruhu 42 m – dobíjí se sám 5 s a zasaženým autům na 1,5 s zblázní volant.
  *            Navíc má každé zasažené auto 40% šanci, že to rovnou roztrhá.
  */
 import type { GunStats } from '../guns';

@@ -75,7 +75,7 @@ Náklon čte `deviceorientation`: ±5° kolem nuly je klid, **±46° je plný re
 | --- | --- |
 | A D / šipky vlevo, vpravo | zatáčení |
 | S / šipka dolů | brzda, zpátečka |
-| Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš a puštěním vystřelíš, u PULSE ťuknutím spustíš nabíjení a druhým ťuknutím vystřelíš) |
+| Q (nebo MEZERNÍK) | FIRE 1 – vybraná zbraň (u PRISM držením nabíjíš a puštěním vystřelíš, PULSE se nabíjí sám a ťuknutím ho odpálíš) |
 | W (nebo SHIFT) | drift |
 | E (nebo F) | sekundární zbraň (raketa / mina / míčky / hák) |
 | X | vypnout/nastartovat motor (jen testovací plac) |
@@ -122,14 +122,14 @@ Bedny: zelená opravuje, červená doplňuje munici do FIRE 2 (rakety i miny –
 
 ### PULSE – EMP vlna
 
-PULSE je jediná primární zbraň, která nemíří. Funguje na dvě ťuknutí:
+PULSE je jediná primární zbraň, která nemíří a nenabíjí se ručně:
 
-1. **První ťuknutí na FIRE 1** spustí nabíjení. Běží dál, i když tlačítko pustíš – jádro vysílače na kapotě přitom postupně svítí a v HUD se plní pruh.
-2. Po **5 sekundách** je plno (jádro začne pulzovat) a **druhé ťuknutí** pustí vlnu.
+1. **Vysílač se dobíjí sám** od startu závodu a pořád dokola – hráč pro to nemusí nic dělat. Jádro na kapotě přitom postupně svítí a v HUD se plní pruh.
+2. Po **5 sekundách** je plno: jádro začne pulzovat, ozve se pípnutí a **ťuknutí na FIRE 1** pustí vlnu. Hned po výstřelu se zase začne dobíjet.
 
 Vlna se rozjede z auta do kruhu a za 0,55 s se roztáhne na **42 metrů**. Každé zasažené auto má **40% šanci, že ho vlna rovnou roztrhá** (naměřeno 41 % na 400 zásazích). Kdo přežije, schytá 22 dmg a na **1,5 sekundy se mu zblázní volant**: dostane **tři náhodné šipky po půl sekundě**, takže to může být doleva-doprava-doprava, doprava-doprava-doprava nebo jakákoli jiná kombinace. Po dobu rušení auto neposlouchá hráče ani bota a jede si, kam ho šipky zrovna pošlou. Vlna každého zasáhne jen jednou a svého střelce mine.
 
-Je to tím pádem nejsilnější zbraň ve hře: jedna vlna může v hustém poli sebrat dvě tři auta naráz a nedá se jí uhnout. Cenou je nabíjení – pět sekund, během kterých musíš jen jezdit a doufat, že se někdo připlete do dosahu.
+Je to tím pádem nejsilnější zbraň ve hře: jedna vlna může v hustém poli sebrat dvě tři auta naráz a nedá se jí uhnout. Cenou je nabíjení – pět sekund, během kterých se nedá dělat nic než jezdit a doufat, že se někdo připlete do dosahu.
 
 Animace je schválně laciná: dva tenké prstence (jeden po zemi, druhý ve výšce aut), které se rozjíždějí ven a cestou blednou. Koule ani průhledná stěna by při aditivním míchání vybílily půl obrazovky, protože kamera bývá vlně přímo v cestě – dva prstence stojí dvě vykreslení a jsou čitelnější.
 

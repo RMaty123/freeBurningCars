@@ -71,8 +71,6 @@ export interface Car {
   gun: GunStats;
   /** nabití laseru (s) – u ostatních zbraní 0 */
   charge: number;
-  /** EMP se po ťuknutí nabíjí samo, i když hráč pustí tlačítko */
-  charging: boolean;
   /** FIRE 1 v minulém snímku – kvůli rozpoznání nového stisku */
   firePrev: boolean;
   /** rušení po zásahu EMP: zbývající čas celkem, čas do přehození šipky, délka jedné šipky a směr */
@@ -365,7 +363,7 @@ export class Sim {
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
         ti, lat: off, lap: -1, rank: k + 1, wrongWay: 0,
         hp: e.stats.hp, boost: 0, nitro: 0, nitroOn: false, drifting: false,
-        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, charge: 0, charging: false, firePrev: false,
+        sec: e.sec, secAmmo: e.sec.ammo, gun: e.gun, charge: 0, firePrev: false,
         jam: 0, jamT: 0, jamEvery: 0.5, jamDir: 1, beam: 0, beamT: 0, beamLen: [], beamHitAt: [],
         fireCd: 0, secCd: 0, gunSide: 1,
         dead: false, deadT: 0, invuln: 0, hitFlash: 0, lastHitBy: -1, lastHitT: -99, wallT: 0,
@@ -630,26 +628,26 @@ export class Sim {
       if (inp.secondary && c.secCd <= 0 && c.secAmmo > 0) this.fireSecondary(c);
     } else if (c.gun.kind !== 'bullet') {
       c.charge = 0;
-      c.charging = false;
     }
     c.firePrev = inp.fire;
   }
 
   /**
-   * EMP: první ťuknutí na FIRE 1 spustí nabíjení (běží dál, i když hráč pustí tlačítko),
-   * druhé ťuknutí po plném nabití vystřelí vlnu. Nedonabitý náboj se nedá vystřelit.
+   * EMP: vysílač se dobíjí sám od startu závodu a jakmile je plný,
+   * ťuknutím na FIRE 1 se vlna odpálí. Nedonabitý náboj se vystřelit nedá.
    */
   private stepEmp(c: Car, pressed: boolean, dt: number) {
     const g = c.gun;
-    const full = g.chargeMax ?? 10;
+    const full = g.chargeMax ?? 5;
     if (c.fireCd > 0) return;
-    if (c.charge >= full) {
-      // nabito – čeká se na odpálení; bot pálí, až má koho zasáhnout
-      if (pressed || (!c.human && this.someoneNear(c, g.range * 0.75))) this.fireWave(c);
+    if (c.charge < full) {
+      // vysílač se dobíjí sám, pořád – hráč jen čeká, až bude plno
+      c.charge = Math.min(full, c.charge + dt);
+      if (c.charge >= full && c.human) this.events.push({ t: 'charge', car: c.id }); // pípne, že je nabito
       return;
     }
-    if (c.charging) c.charge = Math.min(full, c.charge + dt);
-    else if (pressed || !c.human) { c.charging = true; if (c.human) this.events.push({ t: 'charge', car: c.id }); }
+    // nabito – čeká se na odpálení; bot pálí, až má koho zasáhnout
+    if (pressed || (!c.human && this.someoneNear(c, g.range * 0.75))) this.fireWave(c);
   }
 
   /** Je někdo v dosahu? (bot si podle toho načasuje EMP) */
@@ -665,7 +663,6 @@ export class Sim {
   private fireWave(c: Car) {
     const g = c.gun;
     c.charge = 0;
-    c.charging = false;
     c.fireCd = g.cd;
     this.waves.push({ owner: c.id, x: c.x, z: c.z, t: 0, r: 0, gun: g, hit: [], id: this.nextId++ });
     this.events.push({ t: 'wave', car: c.id, x: c.x, z: c.z });
