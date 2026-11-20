@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Track, ThemeId, distToTrack } from '../game/track';
 import { mulberry } from '../game/sim';
-import { PAD_TILE, bannerTexture, buildingTexture, checkerTexture, groundTexture, padTexture, roadTexture, wallTexture } from './textures';
+import { PAD_TILE, arrowTexture, bannerTexture, buildingTexture, checkerTexture, garageWallTexture, groundTexture, hazardTexture, padTexture, roadTexture, wallTexture } from './textures';
 import { makeGlowPoints } from './effects';
 
 export interface Theme {
@@ -98,6 +98,34 @@ function strip(tr: Track, offA: number, yA: number, offB: number, yB: number, ti
     pos.set([tr.x[i] + tr.nx[i] * offA, base + yA, tr.z[i] + tr.nz[i] * offA, tr.x[i] + tr.nx[i] * offB, base + yB, tr.z[i] + tr.nz[i] * offB], r * 6);
     if (alongU) uv.set([v, 0, v, 1], r * 4); else uv.set([0, v, 1, v], r * 4);
     if (r < n) { const a = r * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * Pás podél zvoleného úseku trati (od indexu i0 do i1) – stejná geometrie jako `strip`,
+ * ale jen pro kus trati. Používá se na zdi a stropy garážových koridorů, kde by pás
+ * přes celou trať neměl smysl.
+ */
+function trackRibbon(tr: Track, i0: number, i1: number, offA: number, yA: number, offB: number, yB: number, tile = 8, alongU = false, topFn?: (i: number) => number): THREE.BufferGeometry {
+  const len = Math.max(2, i1 - i0 + 1);
+  const reps = Math.max(1, (len * tr.step) / tile);
+  const pos = new Float32Array(len * 6), uv = new Float32Array(len * 4);
+  const idx: number[] = [];
+  for (let k = 0; k < len; k++) {
+    const i = i0 + k;
+    const v = (k / (len - 1)) * reps;
+    const base = tr.y[i];
+    // topFn umí druhou hranu pásu zvednout do pevné výšky (zdi šachet otoček)
+    const top = topFn ? topFn(i) : base + yB;
+    pos.set([tr.x[i] + tr.nx[i] * offA, base + yA, tr.z[i] + tr.nz[i] * offA, tr.x[i] + tr.nx[i] * offB, top, tr.z[i] + tr.nz[i] * offB], k * 6);
+    if (alongU) uv.set([v, 0, v, 1], k * 4); else uv.set([0, v, 1, v], k * 4);
+    if (k < len - 1) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -450,7 +478,7 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
     map: winTex, emissiveMap: winTex, emissive: 0xffffff, emissiveIntensity: 1.0,
     roughness: 0.6, metalness: 0.3,
   });
-  // hala leží západně od sjezdové rovinky (ta vede u x ≈ 110), aby do ní trať nevrývala
+  // hala leží západně od trati, která jede kolem terminálu do garáže, aby do ní nevrážela
   const hall = new THREE.Mesh(new THREE.BoxGeometry(160, 15, 42), termMat);
   hall.position.set(-10, 7.5, -58);
   hall.castShadow = true;
@@ -482,7 +510,7 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   group.add(instanced(box, concrete, posts, false));
   for (let x = -75; x <= 65; x += 20) glows.push({ x, y: 9.7, z: -31, size: 2.6, color: warm });
 
-  // --- řídicí věž (mezi terminálem a sjezdovou rovinkou)
+  // --- řídicí věž (mezi terminálem a parkovacím domem)
   const towerX = 90, towerZ = -100;
   const shaft = new THREE.Mesh(new THREE.BoxGeometry(7, 31, 7), concrete);
   shaft.position.set(towerX, 15.5, towerZ);
@@ -501,38 +529,231 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   glows.push({ x: towerX, y: 44.6, z: towerZ, size: 4.2, color: red });
   glows.push({ x: towerX, y: 33.7, z: towerZ + 6.7, size: 2.4, color: cool });
 
-  // --- vícepatrová garáž pod vyvýšenou zatáčkou
-  const gcx = 222, gcz = -132, gw = 150, gd = 122;
-  for (const fy of [3, 9, 15]) {
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.75, gd), concrete);
-    slab.position.set(gcx, fy, gcz);
-    slab.receiveShadow = true;
-    group.add(slab);
-    // zářivky pod stropem
-    for (let gx = -3; gx <= 3; gx++) {
-      for (const gz of [-1.5, 0, 1.5]) {
-        glows.push({ x: gcx + gx * 19, y: fy - 0.55, z: gcz + gz * 28, size: 2.6, color: new THREE.Color(2.2, 1.9, 1.45), alpha: 0.65 });
+  // --- parkovací dům, kterým trať projíždí: tři patra, dvě vnitřní otočky a výjezd na střechu
+  const gx0 = 150, gx1 = 290, gz0 = -228, gz1 = -42;
+  const slab = (x0: number, x1: number, z0: number, z1: number, y: number) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.8, z1 - z0), concrete);
+    m.position.set((x0 + x1) / 2, y - 0.4, (z0 + z1) / 2);
+    m.receiveShadow = true;
+    m.castShadow = true;
+    group.add(m);
+  };
+  // desky s otvory nad otočkami – rampa mezi patry tak nikde neprojde stropem
+  for (const y of [10, 15]) {
+    slab(gx0, gx1, gz0, -222, y);
+    slab(gx0, 164, -222, -164, y);
+    slab(236, gx1, -222, -164, y);
+    slab(gx0, gx1, -164, gz1, y);
+  }
+  slab(gx0, gx1, gz0, -118, 20);
+  slab(gx0, 204, -118, -45, 20);
+  slab(276, gx1, -118, -45, 20);
+  slab(gx0, gx1, -45, gz1, 20);
+
+  // atiky po celém obvodu, ať je z patra vidět ven do noci a budova drží tvar
+  for (const y of [10, 15, 20]) {
+    for (const x of [gx0, gx1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.15, gz1 - gz0), concrete);
+      wall.position.set(x, y + 0.58, (gz0 + gz1) / 2);
+      group.add(wall);
+    }
+    for (const z of [gz0, gz1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(gx1 - gx0, 1.15, 0.4), concrete);
+      wall.position.set((gx0 + gx1) / 2, y + 0.58, z);
+      group.add(wall);
+    }
+  }
+
+  // fasáda: pásy desek a pilíře po obvodu, ať je z dálky vidět vícepatrový dům.
+  // Cokoli, co by stálo v cestě trati, se vynechá.
+  const nearTrack = (x: number, z: number, y: number) => {
+    for (let i = 0; i < tr.n; i += 2) {
+      if (Math.abs(tr.y[i] - y) > 6) continue;
+      if ((tr.x[i] - x) ** 2 + (tr.z[i] - z) ** 2 < 17 * 17) return true;
+    }
+    return false;
+  };
+  const facade: Inst[] = [];
+  const faces: { x: number; z: number; alongX: boolean; from: number; to: number }[] = [
+    { x: (gx0 + gx1) / 2, z: gz0, alongX: true, from: gx0, to: gx1 },
+    { x: (gx0 + gx1) / 2, z: gz1, alongX: true, from: gx0, to: gx1 },
+    { x: gx0, z: (gz0 + gz1) / 2, alongX: false, from: gz0, to: gz1 },
+    { x: gx1, z: (gz0 + gz1) / 2, alongX: false, from: gz0, to: gz1 },
+  ];
+  for (const f of faces) {
+    for (let t = f.from + 6; t < f.to; t += 12) {
+      const px = f.alongX ? t : f.x, pz = f.alongX ? f.z : t;
+      if (!nearTrack(px, pz, 10)) facade.push({ x: px, y: 10.2, z: pz, sx: f.alongX ? 0.9 : 1.4, sy: 20.4, sz: f.alongX ? 1.4 : 0.9, rot: 0 });
+      for (const lvl of [9.4, 14.4]) {
+        if (nearTrack(px, pz, lvl)) continue;
+        facade.push({ x: px, y: lvl, z: pz, sx: f.alongX ? 11.4 : 0.7, sy: 1.05, sz: f.alongX ? 0.7 : 11.4, rot: 0 });
+      }
+      // světlo zevnitř, ať je zvenku vidět, že v domech něco svítí
+      for (const lvl of [10.6, 15.6]) {
+        if (nearTrack(px, pz, lvl)) continue;
+        glows.push({
+          x: px - (f.alongX ? 0 : 2.5), y: lvl, z: pz - (f.alongX ? 2.5 : 0),
+          size: 2.6, color: new THREE.Color(2.0, 1.6, 1.05), alpha: 0.45,
+        });
       }
     }
   }
-  const garCols: Inst[] = [];
-  for (let gx = -3; gx <= 3; gx++) {
-    for (let gz = -2; gz <= 2; gz++) {
-      garCols.push({ x: gcx + gx * 20, y: 7.7, z: gcz + gz * 24, sx: 1.2, sy: 15.4, sz: 1.2, rot: 0 });
+  group.add(instanced(box, concrete, facade, true));
+
+  // střecha parkovacího domu: klimatizace, větrací komínky a přístřešek výtahu,
+  // ať to nahoře nevypadá jako prázdná betonová plocha
+  const roofUnits: Inst[] = [];
+  const roofVents: { x: number; y: number; z: number }[] = [];
+  for (let rx = 162; rx <= 284; rx += 17) {
+    for (let rz = -218; rz <= -56; rz += 21) {
+      if (nearTrack(rx, rz, 20)) continue;
+      const k = Math.abs(Math.sin(rx * 0.13 + rz * 0.07));
+      if (k < 0.42) continue;
+      roofUnits.push({ x: rx, y: 20.75, z: rz, sx: 3.2, sy: 1.5, sz: 2.4, rot: k * 1.2 });
+      if (k > 0.72) roofVents.push({ x: rx + 4.5, y: 20.6, z: rz + 3.5 });
     }
   }
-  group.add(instanced(box, concrete, garCols, true));
+  group.add(instanced(box, darkMetal, roofUnits, true));
+  if (roofVents.length) {
+    const ventGeo = new THREE.CylinderGeometry(0.6, 0.6, 1.4, 10);
+    const vents = new THREE.InstancedMesh(ventGeo, darkMetal, roofVents.length);
+    const d = new THREE.Object3D();
+    roofVents.forEach((v, i) => { d.position.set(v.x, v.y, v.z); d.updateMatrix(); vents.setMatrixAt(i, d.matrix); });
+    group.add(vents);
+  }
+  // přístřešek schodiště na střeše
+  const hut = new THREE.Mesh(new THREE.BoxGeometry(7, 3.2, 5), concrete);
+  hut.position.set(166, 21.6, -66);
+  hut.castShadow = true;
+  group.add(hut);
+  glows.push({ x: 166, y: 21.2, z: -68.6, size: 2.6, color: warm, alpha: 0.7 });
+
+  // sloupy: mřížka, ale nic nesmí stát v dráze – vyřadí se podle vzdálenosti od trati
+  const cols: Inst[] = [];
+  for (let cx = 158; cx <= 288; cx += 26) {
+    for (let cz = gz0 + 12; cz <= gz1 - 10; cz += 24) {
+      let d = Infinity;
+      for (let i = 0; i < tr.n; i += 2) {
+        const dd = (tr.x[i] - cx) ** 2 + (tr.z[i] - cz) ** 2;
+        if (dd < d) d = dd;
+      }
+      if (d < 13.5 * 13.5) continue;
+      cols.push({ x: cx, y: 10.4, z: cz, sx: 1.1, sy: 20.8, sz: 1.1, rot: 0 });
+    }
+  }
+  group.add(instanced(box, concrete, cols, true));
+
+  // zářivky pod stropy jednotlivých pater (jen tam, kde je vozovka vodorovná)
+  for (let i = 0; i < tr.n; i += 4) {
+    const px = tr.x[i], pz = tr.z[i], py = tr.y[i];
+    if (px < gx0 + 2 || px > gx1 - 2 || pz < gz0 + 2 || pz > gz1 - 2) continue;
+    const ceil = Math.abs(py - 10) < 0.35 ? 13.9 : Math.abs(py - 15) < 0.35 ? 18.9 : 0;
+    if (!ceil) continue;
+    for (const s of [-4, 4]) {
+      glows.push({
+        x: px + tr.nx[i] * s, y: ceil, z: pz + tr.nz[i] * s,
+        size: 2.7, color: new THREE.Color(2.3, 2.0, 1.5), alpha: 0.7,
+      });
+    }
+  }
+
+  // červená světla na rozích střechy
   const beacons: Inst[] = [];
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const bx = gcx + sx * (gw / 2 - 1), bz = gcz + sz * (gd / 2 - 1);
-    beacons.push({ x: bx, y: 16.9, z: bz, sx: 0.35, sy: 3.0, sz: 0.35, rot: 0 });
-    glows.push({ x: bx, y: 18.6, z: bz, size: 3.4, color: red });
+    const bx = sx < 0 ? gx0 + 1 : gx1 - 1, bz = sz < 0 ? gz0 + 1 : gz1 - 1;
+    beacons.push({ x: bx, y: 21.2, z: bz, sx: 0.35, sy: 3.0, sz: 0.35, rot: 0 });
+    glows.push({ x: bx, y: 22.9, z: bz, size: 3.4, color: red });
   }
   group.add(instanced(box, darkMetal, beacons, false));
-  // vjezd do garáže z rampy
-  const entry = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.4, 24), darkMetal);
-  entry.position.set(gcx - gw / 2 + 1, 5.4, gcz + 22);
-  group.add(entry);
+
+  // hrana seskokové rampy: výstražná světla, ať je z dálky vidět, kam trať padá
+  for (const s of [-1, 1]) {
+    glows.push({ x: 344 + s * 9.5, y: 23.8, z: -184, size: 4.2, color: red });
+    glows.push({ x: 344 + s * 10.5, y: 23.1, z: -176, size: 3.0, color: warm });
+  }
+  // šrafovaný práh na hraně můstku
+  let lipI = 0;
+  for (let i = 0; i < tr.n; i++) if (tr.y[i] > tr.y[lipI]) lipI = i;
+  if (tr.y[lipI] > 5) {
+    const stripe = new THREE.Mesh(
+      new THREE.PlaneGeometry(tr.def.width - 1.5, 6).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ map: hazardTexture() }),
+    );
+    stripe.position.set(tr.x[lipI] - tr.tx[lipI] * 2.4, tr.y[lipI] + 0.05, tr.z[lipI] - tr.tz[lipI] * 2.4);
+    stripe.rotation.y = Math.atan2(tr.tx[lipI], tr.tz[lipI]);
+    stripe.renderOrder = 1;
+    group.add(stripe);
+  }
+
+  // --- zdi, strop, potrubí a šipky garážových koridorů (jako v opravdovém parkovacím domě)
+  const inGarage = (i: number) =>
+    tr.x[i] > gx0 + 1 && tr.x[i] < gx1 - 1 && tr.z[i] > gz0 + 1 && tr.z[i] < gz1 - 1 && tr.y[i] > 8.5;
+  const runs: [number, number][] = [];
+  for (let i = 0; i < tr.n; i++) {
+    if (!inGarage(i)) continue;
+    const last = runs[runs.length - 1];
+    if (last && last[1] === i - 1) last[1] = i;
+    else runs.push([i, i]);
+  }
+  const wallMat = new THREE.MeshStandardMaterial({
+    map: garageWallTexture(), roughness: 0.94, metalness: 0.02, side: THREE.DoubleSide,
+    emissive: 0x40382a, emissiveIntensity: 0.35,
+  });
+  // v otočkách zvedneme zdi až do stropu, aby rampa vedla opravdu vnitřkem budovy
+  const wallTop = (i: number) => {
+    const y = tr.y[i];
+    if (y > 10.15 && y < 14.85) return 19.72;
+    if (y > 15.15 && y < 19.85) return 20.92;
+    return y + (y > 8.5 ? 4.15 : 2.6);
+  };
+  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x8b877c, roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide });
+  const ductMat = new THREE.MeshStandardMaterial({ color: 0x3c4046, roughness: 0.7, metalness: 0.4, side: THREE.DoubleSide });
+  const arrowMat = new THREE.MeshBasicMaterial({ map: arrowTexture(), transparent: true, opacity: 0.42, depthWrite: false });
+  const arrowGeo = new THREE.PlaneGeometry(3.4, 7.2).rotateX(-Math.PI / 2);
+
+  for (const [a, b] of runs) {
+    for (const s of [-1, 1]) {
+      const off = s * (tr.wallDist + 0.12);
+      const wall = new THREE.Mesh(trackRibbon(tr, a, b, off, 0.15, off, 4.15, 9, true, wallTop), wallMat);
+      wall.receiveShadow = true;
+      group.add(wall);
+    }
+    // strop, potrubí a šipky jen nad vodorovnými úseky – nad rampami je v desce otvor
+    let k = a;
+    while (k <= b) {
+      const lvl = Math.abs(tr.y[k] - 10) < 0.4 ? 10 : Math.abs(tr.y[k] - 15) < 0.4 ? 15 : 0;
+      if (!lvl) { k++; continue; }
+      let e = k;
+      while (e < b && Math.abs(tr.y[e + 1] - lvl) < 0.4) e++;
+      if (e - k > 3) {
+        group.add(new THREE.Mesh(trackRibbon(tr, k, e, -tr.wallDist, 4.0, tr.wallDist, 4.0, 14), ceilMat));
+        for (const d of [-6.5, 6.5]) {
+          group.add(new THREE.Mesh(trackRibbon(tr, k, e, d - 0.28, 3.72, d + 0.28, 3.72, 10), ductMat));
+        }
+      }
+      for (let i = k + 2; i <= e - 2; i += 9) {
+        const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+        arrow.position.set(tr.x[i], tr.y[i] + 0.05, tr.z[i]);
+        arrow.rotation.y = Math.atan2(tr.tx[i], tr.tz[i]) + Math.PI;
+        arrow.renderOrder = 2;
+        group.add(arrow);
+      }
+      k = e + 1;
+    }
+  }
+
+  // světla v šachtách otoček – ať je uvnitř budovy vidět a rampa není černá díra
+  for (let i = 0; i < tr.n; i += 6) {
+    const y = tr.y[i];
+    const inShaft = (y > 10.4 && y < 14.6) || (y > 15.4 && y < 19.6);
+    if (!inShaft) continue;
+    for (const s of [-1, 1]) {
+      glows.push({
+        x: tr.x[i] + tr.nx[i] * s * (tr.wallDist - 0.5), y: y + 2.7, z: tr.z[i] + tr.nz[i] * s * (tr.wallDist - 0.5),
+        size: 2.4, color: new THREE.Color(2.1, 1.75, 1.2), alpha: 0.6,
+      });
+    }
+  }
 
   // --- hangáry ve vnitřním prostoru letiště
   const hangarRoofMat = new THREE.MeshStandardMaterial({ color: 0x3a404a, roughness: 0.6, metalness: 0.5 });
@@ -706,9 +927,12 @@ function addSupports(group: THREE.Group, tr: Track) {
   group.add(dm);
 
   const cols: Inst[] = [], caps: Inst[] = [];
+  const airport = tr.def.theme === 'airport';
   for (let i = 0; i < tr.n; i += 6) {
     const h = tr.y[i];
     if (h < 0.9) continue;
+    // v parkovacím domě stojí vlastní sloupy – mostní pilíře by vedly prostředkem koridoru
+    if (airport && tr.x[i] > 145 && tr.x[i] < 295 && tr.z[i] > -232 && tr.z[i] < -38) continue;
     const rot = Math.atan2(tr.tx[i], tr.tz[i]);
     const off = tr.halfWidth * 0.72;
     for (const side of [-1, 1]) {

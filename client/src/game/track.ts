@@ -70,6 +70,9 @@ function catmull(p0: number, p1: number, p2: number, p3: number, t: number): num
 export function buildTrack(def: TrackDef): Track {
   const P = def.points;
   const m = P.length;
+  if (def.elevation && def.elevation.length !== m) {
+    throw new Error(`Trať ${def.id}: elevation má ${def.elevation.length} hodnot, ale points ${m}.`);
+  }
   // 1) hustá polyline (půdorys i výška)
   const fine: [number, number][] = [];
   const fineY: number[] = [];

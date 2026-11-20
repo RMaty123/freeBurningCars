@@ -176,8 +176,91 @@ export function wallTexture(theme: ThemeId): THREE.CanvasTexture {
   return tex(c);
 }
 
-/** Fasáda s okny. Stejná textura slouží i jako emissive mapa, takže rozsvícená okna svítí. */
-export function buildingTexture(seed: number, tint: string): THREE.CanvasTexture {
+/**
+ * Stěna garážového koridoru: světlé tvárnice nahoře, tmavý sokl a žlutý pruh u země.
+ * Textura se opakuje podél zdi; nahoru je v mapě horní část obrázku.
+ */
+export function garageWallTexture(): THREE.CanvasTexture {
+  const W = 256, H = 256;
+  const [c, g] = canvas(W, H);
+  const rnd = mulberry(13);
+  g.fillStyle = '#a9a190';
+  g.fillRect(0, 0, W, H);
+  // tvárnice jen v horní části (spodní pruh je tmavý sokl)
+  const bh = 24;
+  for (let row = 0; row * bh < H * 0.62; row++) {
+    const off = row % 2 ? 42 : 0;
+    for (let x = -42 + off; x < W; x += 84) {
+      const v = 175 + rnd() * 40;
+      g.fillStyle = `rgb(${v | 0},${(v * 0.96) | 0},${(v * 0.86) | 0})`;
+      g.fillRect(x + 1, row * bh + 1, 82, bh - 2);
+    }
+  }
+  g.strokeStyle = 'rgba(52,48,40,0.35)';
+  g.lineWidth = 1;
+  for (let y = 0; y <= H * 0.62; y += bh) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  // tmavý sokl se šmouhami
+  const dark = H * 0.6;
+  g.fillStyle = '#2a2d33';
+  g.fillRect(0, dark, W, H - dark);
+  for (let i = 0; i < 300; i++) {
+    g.fillStyle = `rgba(0,0,0,${0.1 + rnd() * 0.25})`;
+    g.fillRect(rnd() * W, dark + rnd() * (H - dark), 2 + rnd() * 16, 1 + rnd() * 8);
+  }
+  // žlutý pruh u podlahy
+  g.fillStyle = '#d8b437';
+  g.fillRect(0, H - 9, W, 6);
+  g.fillStyle = 'rgba(0,0,0,0.5)';
+  g.fillRect(0, H - 3, W, 3);
+  speckle(g, W, H, 2200, rnd, 0.08, 0.16);
+  return tex(c);
+}
+
+/** Velká bílá šipka na podlahu garáže, hrot míří dolů (ve hře po směru jízdy). */
+export function arrowTexture(): THREE.CanvasTexture {
+  const W = 128, H = 256;
+  const [c, g] = canvas(W, H);
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = 'rgba(238,238,228,0.95)';
+  g.beginPath();
+  g.moveTo(W / 2, H - 8);
+  g.lineTo(W - 12, H * 0.5);
+  g.lineTo(W * 0.67, H * 0.5);
+  g.lineTo(W * 0.67, 8);
+  g.lineTo(W * 0.33, 8);
+  g.lineTo(W * 0.33, H * 0.5);
+  g.lineTo(12, H * 0.5);
+  g.closePath();
+  g.fill();
+  return tex(c, false);
+}
+
+/** Výstražné šrafování (žlutá/černá) na hranu seskokové rampy. */
+export function hazardTexture(): THREE.CanvasTexture {
+  const W = 256, H = 64;
+  const [c, g] = canvas(W, H);
+  g.fillStyle = '#1c1b18';
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = '#e8c33a';
+  const s = 34;
+  for (let x = -H; x < W + H; x += s * 2) {
+    g.beginPath();
+    g.moveTo(x, H);
+    g.lineTo(x + s, H);
+    g.lineTo(x + s + H, 0);
+    g.lineTo(x + H, 0);
+    g.closePath();
+    g.fill();
+  }
+  const rnd = mulberry(23);
+  for (let i = 0; i < 260; i++) {
+    g.fillStyle = `rgba(0,0,0,${0.05 + rnd() * 0.2})`;
+    g.fillRect(rnd() * W, rnd() * H, 2 + rnd() * 8, 1 + rnd() * 3);
+  }
+  return tex(c);
+}
+
+/** Fasáda s okny. Stejná textura slouží i jako emissive mapa, takže rozsvícená okna svítí. */export function buildingTexture(seed: number, tint: string): THREE.CanvasTexture {
   const S = 256;
   const [c, g] = canvas(S, S);
   const rnd = mulberry(seed);

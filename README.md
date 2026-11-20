@@ -131,9 +131,11 @@ Poslední trať v nabídce je **testovací plac**: ovál se dvěma kilometrovým
 
 ### Ghost Runway a převýšení
 
-**Ghost Runway** je noční opuštěné letiště. Start leží na vyvýšené příjezdové cestě k terminálu (10 m), trať vystoupá do vícepatrové garáže (18 m), sjezdem spadne na apron a do dlouhé runway na jihu a po západní straně se zase pozvolna vyšplhá zpět k terminálu. Kromě jiného prostředí je to první trať, která má **skutečné převýšení** – auta do kopce ztrácejí rychlost, z kopce se rozjíždějí a karoserie i světlomety se naklápějí podle sklonu.
+**Ghost Runway** je noční opuštěné letiště. Start leží na vyvýšené příjezdové cestě k terminálu (10 m), trať vjede do parkovacího domu a stoupá v něm po patrech: první patro (10 m) na jednu stranu, **180° otočka** uvnitř budovy, druhé patro (15 m) zpátky na druhou stranu, druhá **180° otočka** a třetí patro (20 m) k výjezdu. Z něj trať sjede na rozjezdovou rampu a **seskočí z budovy** — auto se odlepí od vozovky, letí vzduchem a dopadne na apron. Pak už následuje dlouhá runway na jihu a po západní straně pozvolný výjezd zpět k terminálu.
 
-Převýšení je čistě data: v definici trati přibylo pole `elevation` se stejně dlouhým seznamem výšek, jako má `points`. Když chybí, je trať rovná jako dřív. Výška se mezi body vyhladí stejnou Catmull-Rom křivkou jako půdorys, takže rampy nemají zlomy; vozovka, svodidla, pilíře mostních konstrukcí, kamery, střely, miny i efekty si výšku berou z trati. Doporučený sklon je do ~10 %, aby auta nejezdila po schodech.
+Uvnitř garáže jsou zdi s tvárnicemi a žlutým pruhem u země, strop nad každým patrem, potrubí, zářivky a velké bílé šipky na podlaze. Šachty obou otoček mají zdi až do stropu, takže rampa opravdu vede vnitřkem budovy a ne jen po střeše. Zvenku je dům vidět jako vícepatrový parkovací objekt s pásy desek, pilíři a světlem, které prosvítá mezi patry; na střeše stojí klimatizace, komínky a přístřešek schodiště. Hrana seskokové rampy je šrafovaná a osvětlená, aby bylo z dálky vidět, kde trať končí.
+
+Převýšení je opět čistě data: v definici trati je pole `elevation` se stejně dlouhým seznamem výšek, jako má `points`. Když chybí, je trať rovná. Výška se mezi body vyhladí stejnou Catmull-Rom křivkou jako půdorys, takže rampy nemají zlomy; vozovka, svodidla, pilíře, kamery, střely, miny i efekty si výšku berou z trati. Do kopce auto ztrácí, z kopce se rozjíždí a na hraně můstku se odlepí – o délce letu rozhoduje sklon, po kterém na hranu vyjelo. Po dopadu se zvedne prach a zatřese kamerou. Geometrii všech tratí (délku, výšky, sklony a nejmenší vzdálenost protisměrných úseků) vypíše `npm run check:tracks`.
 
 ### Primární zbraně (FIRE 1)
 
@@ -274,6 +276,7 @@ client/src/screen/           obrazovka na PC
     hud.ts, audio.ts         HUD a zvuky
 client/src/controller/       logika ovladače
 scripts/simtest.ts           test simulace bez grafiky
+scripts/trackcheck.ts        rychlá kontrola geometrie tratí (délka, výšky, sklony)
 ```
 
 Hra (fyzika i grafika) běží v prohlížeči na obrazovce; server jen přeposílá zprávy.
@@ -326,6 +329,7 @@ Ovladač → server → obrazovka → simulace. Na každém kroku se škrtalo, c
 | --- | --- |
 | `npm run dev` | vývojový server (Vite, změny v kódu se projeví hned) |
 | `npm run test:sim` | odjede závody AI se všemi auty na všech tratích bez grafiky a zkontroluje, že dojedou |
+| `npm run check:tracks` | vypíše délku, výšky, největší sklon a nejmenší vzdálenost úseků všech tratí |
 | `npm run typecheck` | kontrola typů TypeScriptu |
 | `npm run build` + `npm run prod` | sestavení do `dist/` a spuštění bez Vite |
 

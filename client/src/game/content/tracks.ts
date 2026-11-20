@@ -79,29 +79,48 @@ export const TRACKS: TrackDef[] = [
   },
   {
     /*
-     * Opuštěné letiště v noci. Trať objíždí celý areál:
-     *   start na vyvýšené příjezdové cestě k terminálu (10 m)
-     *   → rampa nahoru do vícepatrové garáže (18 m)
-     *   → sjezd dolů na apron kolem terminálu
-     *   → dlouhá runway na jihu
-     *   → pozvolný výjezd zpátky do terminálu.
+     * Opuštěné letiště v noci. Nejdřív se jede po vyvýšené cestě k terminálu (10 m),
+     * pak trať vjede do parkovacího domu a stoupá v něm po patrech:
+     *   patro 1 (10 m) na jednu stranu → 180° otočka → patro 2 (15 m) zpátky
+     *   → druhá 180° otočka → patro 3 (20 m) → rampa a seskok z budovy dolů
+     *   → runway na jihu → pozvolný výjezd zpátky k terminálu.
      * Výšky jsou v metrech a musí jich být přesně tolik co bodů.
      */
     id: 'airport',
     name: 'GHOST RUNWAY',
-    tagline: 'Noční opuštěné letiště. Garážové rampy nahoru, sjezd dolů a dlouhá runway.',
+    tagline: 'Noční letiště. Garáž po patrech, dvě otočky, seskok z rampy a runway.',
     theme: 'airport',
     width: 22,
     lanes: 3,
     points: [
-      [-80, 0], [40, 0], [150, -4], [240, -40], [275, -115], [240, -180], [170, -195],
-      [125, -170], [110, -105], [110, -40], [110, 30], [110, 120], [105, 220], [95, 320],
-      [50, 390], [-60, 410], [-180, 410], [-280, 390], [-330, 320], [-320, 230], [-290, 150],
-      [-240, 80], [-180, 30],
+      // příjezd k terminálu a vjezd do garáže (10 m)
+      [-80, 0], [40, 0], [130, -2], [162, -12], [176, -38], [180, -85], [180, -140], [180, -185],
+      // 1. otočka: patro 1 → patro 2 (10 → 15 m)
+      [185.9, -199.1], [200, -205], [214.1, -199.1], [220, -185],
+      // patro 2 (15 m) zpátky na druhou stranu budovy
+      [220, -148], [220, -112], [220, -81],
+      // 2. otočka: patro 2 → patro 3 (15 → 20 m)
+      [225.9, -66.9], [240, -61], [254.1, -66.9], [260, -81],
+      // patro 3 (20 m) a výjezd z budovy
+      [260, -125], [260, -170], [260, -205], [270, -232], [300, -242], [330, -232],
+      // rozjezdová rampa, hrana a seskok na zem
+      [344, -210], [344, -184], [344, -140], [344, -95], [344, -55],
+      // jižní apron a dlouhá runway
+      [346, 20], [350, 120], [352, 220], [348, 310], [330, 375], [280, 408], [190, 418],
+      [80, 415], [-40, 412], [-160, 411], [-270, 400],
+      // západní objezd a výjezd zpátky k terminálu
+      [-325, 355], [-332, 300], [-332, 250], [-320, 195], [-292, 145], [-250, 95],
+      [-200, 55], [-150, 25], [-115, 8],
     ],
     elevation: [
-      10, 10, 11, 15, 18, 18, 18,
-      15, 10, 5, 2, 0.5, 0, 0, 0, 0, 0, 0, 0, 2.5, 6, 8.5, 10,
+      10, 10, 10, 10, 10, 10, 10, 10,
+      11.25, 12.5, 13.75, 15,
+      15, 15, 15,
+      16.25, 17.5, 18.75, 20,
+      20, 20, 20.2, 20.6, 21.2, 21.8,
+      22.4, 23, 8, 2, 0.4,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0.5, 1.5, 3, 5, 7, 9, 10, 10, 10,
     ],
   },
   {

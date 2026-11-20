@@ -42,8 +42,14 @@ export interface Car {
   input: CarInput;
 
   x: number; z: number; h: number;
-  /** výška vozovky pod autem (m) */
+  /** výška vozovky pod autem (m) – ve vzduchu výška auta nad zemí */
   y: number;
+  /** svislá rychlost (m/s) – kladná nahoru; ve vzduchu ji řídí gravitace */
+  vy: number;
+  /** letí auto vzduchem? (seskok z rampy, hrana kopce) */
+  air: boolean;
+  /** jak dlouho je ve vzduchu (s) – pro efekt dopadu */
+  airT: number;
   /** podélný sklon pod autem (m/m); kladný = do kopce */
   grade: number;
   vx: number; vz: number;
@@ -183,6 +189,7 @@ export type SimEvent =
   | { t: 'hit'; car: number; x: number; z: number; y?: number }
   | { t: 'spark'; x: number; z: number; y?: number }
   | { t: 'wall'; car: number; x: number; z: number; force: number; y?: number }
+  | { t: 'land'; car: number; x: number; z: number; y: number; force: number }
   | { t: 'crash'; a: number; b: number; x: number; z: number; force: number; y?: number }
   | { t: 'boom'; x: number; z: number; size: number; y?: number }
   | { t: 'launch'; car: number; kind: SecKind }
@@ -293,6 +300,11 @@ const BEAM_SINGLE: readonly number[] = [0];
 const CAR_R = 1.12;       // poloměr kolizních kruhů auta (dva: vpředu a vzadu)
 const CAR_OFF = 1.0;
 
+/** Tíha pro seskoky z rampy (m/s²). O chlup víc než 9,81, aby skoky byly kratší a čitelnější. */
+const AIR_G = 17;
+/** O kolik musí vozovka pod autem utéct, aby se auto odlepilo (m). */
+const AIR_LIFT = 0.035;
+
 /**
  * Arkádové zatáčení: volant funguje naplno jen do rychlosti "steerRef" auta,
  * nad ní účinek klesá – auto nedotáčí a jede rovně. STEER_FALLOFF říká, jak prudce.
@@ -378,6 +390,7 @@ export class Sim {
         x: track.x[ti] + track.nx[ti] * off,
         z: track.z[ti] + track.nz[ti] * off,
         y: track.y[ti],
+        vy: 0, air: false, airT: 0,
         grade: track.grade[ti],
         h: Math.atan2(track.tx[ti], track.tz[ti]),
         vx: 0, vz: 0, speed: 0, slip: 0, steer: 0, yawRate: 0, accel: 0,
@@ -547,6 +560,7 @@ export class Sim {
       c.speed = 0; c.accel = 0; c.nitroOn = false; c.drifting = false;
       const prevDead = c.ti;
       this.keepInside(c, dt, true);
+      c.air = false; c.vy = 0;
       c.y = heightAt(tr, c.ti, c.x, c.z);
       c.grade = tr.grade[c.ti];
       this.lapCheck(c, prevDead); // i vrak, který se dosune přes cíl, má kolo započítané
@@ -603,8 +617,8 @@ export class Sim {
     }
     a -= vf * 0.1;
     if (throttle === 0 && brake === 0) a -= Math.sign(vf) * 2.2;
-    // gravitace podle sklonu: do kopce auto ztrácí, z kopce se rozjíždí
-    if (Math.abs(vf) > 1 || throttle > 0.05 || brake > 0.05) a -= 9.81 * c.grade;
+    // gravitace podle sklonu: do kopce auto ztrácí, z kopce se rozjíždí (ve vzduchu ne)
+    if (!c.air && (Math.abs(vf) > 1 || throttle > 0.05 || brake > 0.05)) a -= 9.81 * c.grade;
     c.accel = a;
 
     // ---- zatáčení (viz yawAt: ve stoje nic, ve vysoké rychlosti nedotáčivost podle steerRef)
@@ -643,8 +657,7 @@ export class Sim {
 
     const prev = c.ti;
     this.keepInside(c, dt, false);
-    c.y = heightAt(tr, c.ti, c.x, c.z);
-    c.grade = tr.grade[c.ti];
+    this.updateHeight(c, dt);
 
     if (!tr.def.open) {
       this.lapCheck(c, prev);
@@ -837,6 +850,76 @@ export class Sim {
         }
       } else if (c.lap === 0) c.lapStart = this.time;
     } else if (d > n / 2) c.lap--;
+  }
+
+  /**
+   * Drží auto na vozovce a řeší seskoky. Když se vozovka pod autem propadne rychleji,
+   * než by auto samo padalo (hrana rampy, prudký zlom), auto se odlepí, letí po balistické
+   * křivce a dopadne tam, kde ho zem dohoní. Svislá rychlost na zemi vychází ze sklonu trati.
+   */
+  private updateHeight(c: Car, dt: number) {
+    const tr = this.track;
+    const g = heightAt(tr, c.ti, c.x, c.z);
+    if (c.air) {
+      c.airT += dt;
+      c.vy -= AIR_G * dt;
+      c.y += c.vy * dt;
+      if (c.y <= g) {
+        const impact = -c.vy;
+        c.y = g;
+        c.air = false;
+        c.vy = 0;
+        // tvrdý dopad trochu přibrzdí, ale nerozbije auto – je to arkádovka
+        if (impact > 10) { c.vx *= 0.94; c.vz *= 0.94; }
+        if (c.airT > 0.18) this.events.push({ t: 'land', car: c.id, x: c.x, z: c.z, y: g, force: impact });
+        c.airT = 0;
+      }
+    } else {
+      // hrana skokanského můstku: trať se za námi zvedala a teď před námi prudce padá
+      if (this.jumpEdge(c, g)) {
+        c.air = true;
+        c.airT = 0;
+        c.vy = this.rampLaunchSpeed(c);
+        c.y = g + Math.max(0, c.vy) * dt;
+      } else {
+        const yFly = c.y + c.vy * dt - 0.5 * AIR_G * dt * dt;
+        if (yFly > g + AIR_LIFT && tr.grade[c.ti] < -0.02) {
+          // hrana: neseme si svislou rychlost z rampy a letíme
+          c.air = true;
+          c.airT = 0;
+          c.y = yFly;
+          c.vy -= AIR_G * dt;
+        } else {
+          c.y = g;
+          c.vy = c.speed * tr.grade[c.ti];
+        }
+      }
+    }
+    // ve vzduchu se karoserie naklápí podle letu, na zemi podle sklonu vozovky
+    c.grade = c.air ? clamp(c.vy / Math.max(8, Math.abs(c.speed)), -0.45, 0.45) : tr.grade[c.ti];
+  }
+
+  /**
+   * Je auto na hraně skokanského můstku? Musí splatit tři věci: právě jede z kopce,
+   * na hranu vyjelo po stoupání a kus za hranou už vozovka o pár metrů chybí.
+   * Tím se seskok pozná i na jiných tratích a nepletou ho mírné hrby.
+   */
+  private jumpEdge(c: Car, g: number): boolean {
+    const tr = this.track;
+    if (Math.abs(c.speed) < 9) return false;
+    if (tr.grade[c.ti] > -0.05) return false;
+    let gUp = 0;
+    for (let k = 1; k <= 18; k++) gUp = Math.max(gUp, tr.grade[wrapIdx(tr, c.ti - k)]);
+    if (gUp < 0.03) return false;
+    return g - tr.y[wrapIdx(tr, c.ti + 12)] > 2.6;
+  }
+
+  /** Svislá rychlost, kterou auto dostane na hraně můstku (podle sklonu rozjezdu). */
+  private rampLaunchSpeed(c: Car): number {
+    const tr = this.track;
+    let gUp = 0;
+    for (let k = 1; k <= 18; k++) gUp = Math.max(gUp, tr.grade[wrapIdx(tr, c.ti - k)]);
+    return Math.min(12, Math.abs(c.speed) * gUp);
   }
 
   /** Svodidla: auto nesmí ven z koridoru trati. */
@@ -1329,6 +1412,7 @@ export class Sim {
     }
     c.x = tr.x[ti] + tr.nx[ti] * off; c.z = tr.z[ti] + tr.nz[ti] * off;
     c.y = tr.y[ti];
+    c.vy = 0; c.air = false; c.airT = 0;
     c.grade = tr.grade[ti];
     c.h = Math.atan2(tr.tx[ti], tr.tz[ti]);
     c.vx = tr.tx[ti] * 14; c.vz = tr.tz[ti] * 14;
@@ -1363,6 +1447,7 @@ export class Sim {
     c.ai.stuckT = 0;
     c.ti = locate(this.track, c.x, c.z, c.ti, 40);
     c.y = heightAt(this.track, c.ti, c.x, c.z);
+    c.vy = 0; c.air = false; c.airT = 0;
     c.grade = this.track.grade[c.ti];
     this.events.push({ t: 'respawn', car: c.id });
   }

@@ -12,7 +12,8 @@
     "build": "vite build",
     "prod": "cross-env NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "test:sim": "tsx scripts/simtest.ts"
+    "test:sim": "tsx scripts/simtest.ts",
+    "check:tracks": "tsx scripts/trackcheck.ts"
   },
   "engines": {
     "node": ">=18"

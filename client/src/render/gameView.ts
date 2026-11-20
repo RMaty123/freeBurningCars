@@ -382,6 +382,16 @@ export class GameView {
           fx.sparks(e.x, (e.y ?? 0) + 0.6, e.z, Math.min(16, 4 + e.force), 6 + e.force * 0.4);
           this.shakeCar(e.car, Math.min(0.7, e.force * 0.04));
           break;
+        case 'land': {
+          // dopad ze seskokové rampy: prach od kol a lehké zatřesení
+          const n = Math.min(14, 3 + Math.round(e.force * 0.4));
+          for (let k = 0; k < n; k++) {
+            const a = (k / n) * Math.PI * 2;
+            fx.dustPuff(e.x + Math.sin(a) * 1.6, e.z + Math.cos(a) * 1.6, Math.sin(a) * 5, Math.cos(a) * 5, e.y);
+          }
+          this.shakeCar(e.car, Math.min(0.9, e.force * 0.05));
+          break;
+        }
         case 'crash':
           fx.sparks(e.x, (e.y ?? 0) + 0.8, e.z, Math.min(20, 5 + e.force), 8 + e.force * 0.4);
           this.shakeCar(e.a, Math.min(0.8, e.force * 0.05));
