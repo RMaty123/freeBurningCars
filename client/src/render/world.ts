@@ -47,12 +47,12 @@ export const THEMES: Record<ThemeId, Theme> = {
   },
   airport: {
     night: true,
-    // noc nad letištěm: skoro černo, u obzoru dohání teplý svit města
-    skyTop: 0x03040b, skyHorizon: 0x2b1a2c, skyBottom: 0x07070c,
-    sunColor: 0x8fa4ff, sunDir: new THREE.Vector3(0.42, 0.66, 0.4).normalize(), sunIntensity: 1.35, sunDisc: 0.35,
-    hemiSky: 0x44507a, hemiGround: 0x120f16, hemiIntensity: 1.15,
-    fog: 0x0d1020, fogNear: 90, fogFar: 720,
-    exposure: 1.12, env: 1.45, dust: 0x777a80,
+    // chladná noc nad letištěm: modrozelený obzor a žádné fialové město pod ním
+    skyTop: 0x010309, skyHorizon: 0x103540, skyBottom: 0x030a10,
+    sunColor: 0xa9c6ff, sunDir: new THREE.Vector3(0.42, 0.66, 0.4).normalize(), sunIntensity: 1.2, sunDisc: 0.28,
+    hemiSky: 0x35586a, hemiGround: 0x0b1014, hemiIntensity: 1.22,
+    fog: 0x0a1721, fogNear: 100, fogFar: 780,
+    exposure: 1.1, env: 1.5, dust: 0x7c8288,
   },
 };
 
@@ -462,6 +462,11 @@ function addCity(group: THREE.Group, tr: Track, rnd: () => number) {
 
 function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   const concrete = new THREE.MeshStandardMaterial({ color: 0x53565c, roughness: 0.95, metalness: 0.03 });
+  // desky parkovacího domu: jiný materiál na podlahu a na spodek (strop nižšího patra).
+  // Spodek lehce svítí, aby vysoký strop nad vozovkou nebyl černá díra.
+  const slabTopMat = new THREE.MeshStandardMaterial({ color: 0x5c5e61, roughness: 0.95, metalness: 0.03 });
+  const slabBottomMat = new THREE.MeshStandardMaterial({ color: 0x7b786e, roughness: 0.95, metalness: 0.02, emissive: 0x4a463c, emissiveIntensity: 1 });
+  const slabMats = [concrete, concrete, slabTopMat, slabBottomMat, concrete, concrete];
   const darkMetal = new THREE.MeshStandardMaterial({ color: 0x232830, roughness: 0.68, metalness: 0.55 });
   const glows: { x: number; y: number; z: number; size: number; color: THREE.Color; alpha?: number }[] = [];
   const pools: Inst[] = [];
@@ -529,29 +534,31 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   glows.push({ x: towerX, y: 44.6, z: towerZ, size: 4.2, color: red });
   glows.push({ x: towerX, y: 33.7, z: towerZ + 6.7, size: 2.4, color: cool });
 
-  // --- parkovací dům, kterým trať projíždí: tři patra, dvě vnitřní otočky a výjezd na střechu
+  // --- parkovací dům, kterým trať projíždí: tři otevřená podlaží, dvě vnitřní otočky
+  // a výjezd na střechu. Patra jsou od sebe 6 m, takže je v hale vysoký strop.
   const gx0 = 150, gx1 = 290, gz0 = -228, gz1 = -42;
+  const L1 = 10, L2 = 16, L3 = 22;
   const slab = (x0: number, x1: number, z0: number, z1: number, y: number) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.8, z1 - z0), concrete);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.8, z1 - z0), slabMats);
     m.position.set((x0 + x1) / 2, y - 0.4, (z0 + z1) / 2);
     m.receiveShadow = true;
     m.castShadow = true;
     group.add(m);
   };
   // desky s otvory nad otočkami – rampa mezi patry tak nikde neprojde stropem
-  for (const y of [10, 15]) {
+  for (const y of [L1, L2]) {
     slab(gx0, gx1, gz0, -222, y);
     slab(gx0, 164, -222, -164, y);
     slab(236, gx1, -222, -164, y);
     slab(gx0, gx1, -164, gz1, y);
   }
-  slab(gx0, gx1, gz0, -118, 20);
-  slab(gx0, 204, -118, -45, 20);
-  slab(276, gx1, -118, -45, 20);
-  slab(gx0, gx1, -45, gz1, 20);
+  slab(gx0, gx1, gz0, -118, L3);
+  slab(gx0, 204, -118, -45, L3);
+  slab(276, gx1, -118, -45, L3);
+  slab(gx0, gx1, -45, gz1, L3);
 
   // atiky po celém obvodu, ať je z patra vidět ven do noci a budova drží tvar
-  for (const y of [10, 15, 20]) {
+  for (const y of [L1, L2, L3]) {
     for (const x of [gx0, gx1]) {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.15, gz1 - gz0), concrete);
       wall.position.set(x, y + 0.58, (gz0 + gz1) / 2);
@@ -565,14 +572,9 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   }
 
   // fasáda: pásy desek a pilíře po obvodu, ať je z dálky vidět vícepatrový dům.
-  // Cokoli, co by stálo v cestě trati, se vynechá.
-  const nearTrack = (x: number, z: number, y: number) => {
-    for (let i = 0; i < tr.n; i += 2) {
-      if (Math.abs(tr.y[i] - y) > 6) continue;
-      if ((tr.x[i] - x) ** 2 + (tr.z[i] - z) ** 2 < 17 * 17) return true;
-    }
-    return false;
-  };
+  // Cokoli, co by stálo v cestě trati, se vynechá – rozhoduje půdorysná vzdálenost,
+  // protože trať vede domem v několika výškách.
+  const nearTrack = (x: number, z: number) => distToTrack(tr, x, z, 4) < 17;
   const facade: Inst[] = [];
   const faces: { x: number; z: number; alongX: boolean; from: number; to: number }[] = [
     { x: (gx0 + gx1) / 2, z: gz0, alongX: true, from: gx0, to: gx1 },
@@ -583,14 +585,14 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   for (const f of faces) {
     for (let t = f.from + 6; t < f.to; t += 12) {
       const px = f.alongX ? t : f.x, pz = f.alongX ? f.z : t;
-      if (!nearTrack(px, pz, 10)) facade.push({ x: px, y: 10.2, z: pz, sx: f.alongX ? 0.9 : 1.4, sy: 20.4, sz: f.alongX ? 1.4 : 0.9, rot: 0 });
-      for (const lvl of [9.4, 14.4]) {
-        if (nearTrack(px, pz, lvl)) continue;
+      if (!nearTrack(px, pz)) facade.push({ x: px, y: (L3 + 1.6) / 2, z: pz, sx: f.alongX ? 0.9 : 1.4, sy: L3 + 1.6, sz: f.alongX ? 1.4 : 0.9, rot: 0 });
+      for (const lvl of [L1 - 0.6, L2 - 0.6, L3 - 0.6]) {
+        if (nearTrack(px, pz)) continue;
         facade.push({ x: px, y: lvl, z: pz, sx: f.alongX ? 11.4 : 0.7, sy: 1.05, sz: f.alongX ? 0.7 : 11.4, rot: 0 });
       }
       // světlo zevnitř, ať je zvenku vidět, že v domech něco svítí
-      for (const lvl of [10.6, 15.6]) {
-        if (nearTrack(px, pz, lvl)) continue;
+      for (const lvl of [L1 + 0.6, L2 + 0.6, L3 + 0.6]) {
+        if (nearTrack(px, pz)) continue;
         glows.push({
           x: px - (f.alongX ? 0 : 2.5), y: lvl, z: pz - (f.alongX ? 2.5 : 0),
           size: 2.6, color: new THREE.Color(2.0, 1.6, 1.05), alpha: 0.45,
@@ -606,11 +608,11 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   const roofVents: { x: number; y: number; z: number }[] = [];
   for (let rx = 162; rx <= 284; rx += 17) {
     for (let rz = -218; rz <= -56; rz += 21) {
-      if (nearTrack(rx, rz, 20)) continue;
+      if (nearTrack(rx, rz)) continue;
       const k = Math.abs(Math.sin(rx * 0.13 + rz * 0.07));
       if (k < 0.42) continue;
-      roofUnits.push({ x: rx, y: 20.75, z: rz, sx: 3.2, sy: 1.5, sz: 2.4, rot: k * 1.2 });
-      if (k > 0.72) roofVents.push({ x: rx + 4.5, y: 20.6, z: rz + 3.5 });
+      roofUnits.push({ x: rx, y: L3 + 0.75, z: rz, sx: 3.2, sy: 1.5, sz: 2.4, rot: k * 1.2 });
+      if (k > 0.72) roofVents.push({ x: rx + 4.5, y: L3 + 0.6, z: rz + 3.5 });
     }
   }
   group.add(instanced(box, darkMetal, roofUnits, true));
@@ -623,69 +625,75 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   }
   // přístřešek schodiště na střeše
   const hut = new THREE.Mesh(new THREE.BoxGeometry(7, 3.2, 5), concrete);
-  hut.position.set(166, 21.6, -66);
+  hut.position.set(166, L3 + 1.6, -66);
   hut.castShadow = true;
   group.add(hut);
-  glows.push({ x: 166, y: 21.2, z: -68.6, size: 2.6, color: warm, alpha: 0.7 });
+  glows.push({ x: 166, y: L3 + 1.2, z: -68.6, size: 2.6, color: warm, alpha: 0.7 });
 
-  // sloupy: mřížka, ale nic nesmí stát v dráze – vyřadí se podle vzdálenosti od trati
+  // sloupy: jen v pruzích mezi drahami, ať je v hale volný průhled; stojí na hranách stání.
+  // V atriu otoček nestojí nic – díra v desce má zůstat otevřená.
   const cols: Inst[] = [];
-  for (let cx = 158; cx <= 288; cx += 26) {
-    for (let cz = gz0 + 12; cz <= gz1 - 10; cz += 24) {
-      let d = Infinity;
-      for (let i = 0; i < tr.n; i += 2) {
-        const dd = (tr.x[i] - cx) ** 2 + (tr.z[i] - cz) ** 2;
-        if (dd < d) d = dd;
-      }
-      if (d < 13.5 * 13.5) continue;
-      cols.push({ x: cx, y: 10.4, z: cz, sx: 1.1, sy: 20.8, sz: 1.1, rot: 0 });
+  const inAtrium = (x: number, z: number) =>
+    (x > 162 && x < 238 && z > -224 && z < -162) || (x > 202 && x < 278 && z > -120 && z < -43);
+  for (const cx of [158, 200, 240, 282]) {
+    for (let cz = -214; cz <= -52; cz += 27) {
+      if (nearTrack(cx, cz) || inAtrium(cx, cz)) continue;
+      cols.push({ x: cx, y: (L3 + 0.6) / 2, z: cz, sx: 1.1, sy: L3 + 0.6, sz: 1.1, rot: 0 });
     }
   }
   group.add(instanced(box, concrete, cols, true));
 
-  // zářivky pod stropy jednotlivých pater (jen tam, kde je vozovka vodorovná)
+  // stropní zářivky ve vysokém stropě – jen nad vodorovnými patry, strop 3. patra je obloha
+  const fixtures: Inst[] = [];
   for (let i = 0; i < tr.n; i += 4) {
     const px = tr.x[i], pz = tr.z[i], py = tr.y[i];
     if (px < gx0 + 2 || px > gx1 - 2 || pz < gz0 + 2 || pz > gz1 - 2) continue;
-    const ceil = Math.abs(py - 10) < 0.35 ? 13.9 : Math.abs(py - 15) < 0.35 ? 18.9 : 0;
-    if (!ceil) continue;
-    for (const s of [-4, 4]) {
+    const lvl = Math.abs(py - L1) < 0.35 ? L1 : Math.abs(py - L2) < 0.35 ? L2 : 0;
+    if (!lvl) continue;
+    const y = lvl + 5.05;
+    const rot = Math.atan2(tr.tx[i], tr.tz[i]);
+    for (const s of [-5.2, 5.2]) {
+      fixtures.push({ x: px + tr.nx[i] * s, y, z: pz + tr.nz[i] * s, sx: 0.3, sy: 0.12, sz: 4.2, rot });
       glows.push({
-        x: px + tr.nx[i] * s, y: ceil, z: pz + tr.nz[i] * s,
-        size: 2.7, color: new THREE.Color(2.3, 2.0, 1.5), alpha: 0.7,
+        x: px + tr.nx[i] * s, y: y - 0.14, z: pz + tr.nz[i] * s,
+        size: 2.3, color: new THREE.Color(2.3, 2.0, 1.5), alpha: 0.65,
       });
     }
   }
+  group.add(instanced(box, new THREE.MeshBasicMaterial({ color: 0xfff2d2, toneMapped: false }), fixtures, false));
 
   // červená světla na rozích střechy
   const beacons: Inst[] = [];
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const bx = sx < 0 ? gx0 + 1 : gx1 - 1, bz = sz < 0 ? gz0 + 1 : gz1 - 1;
-    beacons.push({ x: bx, y: 21.2, z: bz, sx: 0.35, sy: 3.0, sz: 0.35, rot: 0 });
-    glows.push({ x: bx, y: 22.9, z: bz, size: 3.4, color: red });
+    beacons.push({ x: bx, y: L3 + 1.2, z: bz, sx: 0.35, sy: 3.0, sz: 0.35, rot: 0 });
+    glows.push({ x: bx, y: L3 + 2.9, z: bz, size: 3.4, color: red });
   }
   group.add(instanced(box, darkMetal, beacons, false));
 
   // hrana seskokové rampy: výstražná světla, ať je z dálky vidět, kam trať padá
-  for (const s of [-1, 1]) {
-    glows.push({ x: 344 + s * 9.5, y: 23.8, z: -184, size: 4.2, color: red });
-    glows.push({ x: 344 + s * 10.5, y: 23.1, z: -176, size: 3.0, color: warm });
-  }
-  // šrafovaný práh na hraně můstku
   let lipI = 0;
   for (let i = 0; i < tr.n; i++) if (tr.y[i] > tr.y[lipI]) lipI = i;
-  if (tr.y[lipI] > 5) {
+  const lipY = tr.y[lipI];
+  for (const s of [-1, 1]) {
+    glows.push({ x: tr.x[lipI] + s * 9.5, y: lipY + 0.8, z: tr.z[lipI], size: 4.2, color: red });
+    glows.push({ x: tr.x[lipI] + s * 10.5, y: lipY + 0.1, z: tr.z[lipI] + 8, size: 3.0, color: warm });
+  }
+  // šrafovaný práh na hraně můstku
+  if (lipY > 5) {
     const stripe = new THREE.Mesh(
       new THREE.PlaneGeometry(tr.def.width - 1.5, 6).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ map: hazardTexture() }),
     );
-    stripe.position.set(tr.x[lipI] - tr.tx[lipI] * 2.4, tr.y[lipI] + 0.05, tr.z[lipI] - tr.tz[lipI] * 2.4);
+    stripe.position.set(tr.x[lipI] - tr.tx[lipI] * 2.4, lipY + 0.05, tr.z[lipI] - tr.tz[lipI] * 2.4);
     stripe.rotation.y = Math.atan2(tr.tx[lipI], tr.tz[lipI]);
     stripe.renderOrder = 1;
     group.add(stripe);
   }
 
-  // --- zdi, strop, potrubí a šipky garážových koridorů (jako v opravdovém parkovacím domě)
+  // --- otevřená podlaží: nízké zídky, potrubí, šipky, stání a zaparkovaná auta.
+  // V otočkách zůstávají zdi až do stropu (u druhé až nad střechu), aby rampa vedla
+  // opravdu vnitřkem budovy. Na rovinkách je jen zídka a je vidět přes celé patro.
   const inGarage = (i: number) =>
     tr.x[i] > gx0 + 1 && tr.x[i] < gx1 - 1 && tr.z[i] > gz0 + 1 && tr.z[i] < gz1 - 1 && tr.y[i] > 8.5;
   const runs: [number, number][] = [];
@@ -697,38 +705,73 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   }
   const wallMat = new THREE.MeshStandardMaterial({
     map: garageWallTexture(), roughness: 0.94, metalness: 0.02, side: THREE.DoubleSide,
-    emissive: 0x40382a, emissiveIntensity: 0.35,
+    emissive: 0x40382a, emissiveIntensity: 0.4,
   });
-  // v otočkách zvedneme zdi až do stropu, aby rampa vedla opravdu vnitřkem budovy
-  const wallTop = (i: number) => {
+  const shaftTop = (i: number) => {
     const y = tr.y[i];
-    if (y > 10.15 && y < 14.85) return 19.72;
-    if (y > 15.15 && y < 19.85) return 20.92;
-    return y + (y > 8.5 ? 4.15 : 2.6);
+    if (y > L1 + 0.2 && y < L2 - 0.2) return L3 - 0.35;
+    if (y > L2 + 0.2 && y < L3 - 0.2) return L3 + 0.95;
+    return 0;
   };
-  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x8b877c, roughness: 0.95, metalness: 0.03, side: THREE.DoubleSide });
   const ductMat = new THREE.MeshStandardMaterial({ color: 0x3c4046, roughness: 0.7, metalness: 0.4, side: THREE.DoubleSide });
   const arrowMat = new THREE.MeshBasicMaterial({ map: arrowTexture(), transparent: true, opacity: 0.42, depthWrite: false });
   const arrowGeo = new THREE.PlaneGeometry(3.4, 7.2).rotateX(-Math.PI / 2);
 
-  for (const [a, b] of runs) {
+  // na koncích vysokých zdí šachet stojí pilíř, aby zeď nekončila otevřenou hranou
+  const shaftPier = (i: number, top: number) => {
     for (const s of [-1, 1]) {
       const off = s * (tr.wallDist + 0.12);
-      const wall = new THREE.Mesh(trackRibbon(tr, a, b, off, 0.15, off, 4.15, 9, true, wallTop), wallMat);
-      wall.receiveShadow = true;
-      group.add(wall);
+      const h = Math.max(1, top - tr.y[i]) + 0.25;
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.55, h, 1.3), concrete);
+      p.position.set(tr.x[i] + tr.nx[i] * off, tr.y[i] + h / 2 - 0.1, tr.z[i] + tr.nz[i] * off);
+      p.rotation.y = Math.atan2(tr.tx[i], tr.tz[i]);
+      p.castShadow = true;
+      group.add(p);
     }
-    // strop, potrubí a šipky jen nad vodorovnými úseky – nad rampami je v desce otvor
-    let k = a;
-    while (k <= b) {
-      const lvl = Math.abs(tr.y[k] - 10) < 0.4 ? 10 : Math.abs(tr.y[k] - 15) < 0.4 ? 15 : 0;
+  };
+
+  for (const [a0, b0] of runs) {
+    let a = a0;
+    while (a <= b0) {
+      const tall = shaftTop(a) > 0;
+      let b = a;
+      while (b + 1 <= b0 && (shaftTop(b + 1) > 0) === tall) b++;
+      if (tall) {
+        const top = shaftTop(a);
+        for (const s of [-1, 1]) {
+          const off = s * (tr.wallDist + 0.12);
+          const wall = new THREE.Mesh(trackRibbon(tr, a, b, off, 0.15, off, 0, 9, true, () => top), wallMat);
+          wall.receiveShadow = true;
+          group.add(wall);
+        }
+        shaftPier(a, top);
+        shaftPier(b, top);
+      } else {
+        for (const s of [-1, 1]) {
+          const off = s * (tr.wallDist + 0.12);
+          const wall = new THREE.Mesh(trackRibbon(tr, a, b, off, 0.1, off, 1.25, 9, true), wallMat);
+          wall.receiveShadow = true;
+          wall.castShadow = true;
+          group.add(wall);
+        }
+      }
+      a = b + 1;
+    }
+
+    // potrubí pod stropem a šipky na podlaze jen na vodorovných patrech
+    let k = a0;
+    while (k <= b0) {
+      const lvl = Math.abs(tr.y[k] - L1) < 0.4 ? L1 : Math.abs(tr.y[k] - L2) < 0.4 ? L2 : 0;
       if (!lvl) { k++; continue; }
       let e = k;
-      while (e < b && Math.abs(tr.y[e + 1] - lvl) < 0.4) e++;
+      while (e < b0 && Math.abs(tr.y[e + 1] - lvl) < 0.4) e++;
       if (e - k > 3) {
-        group.add(new THREE.Mesh(trackRibbon(tr, k, e, -tr.wallDist, 4.0, tr.wallDist, 4.0, 14), ceilMat));
-        for (const d of [-6.5, 6.5]) {
-          group.add(new THREE.Mesh(trackRibbon(tr, k, e, d - 0.28, 3.72, d + 0.28, 3.72, 10), ductMat));
+        for (const d of [-7.0, 7.0]) {
+          const y0 = lvl + 4.5;
+          group.add(new THREE.Mesh(trackRibbon(tr, k, e, d - 0.5, y0, d + 0.5, y0, 10), ductMat));
+          for (const s of [-1, 1]) {
+            group.add(new THREE.Mesh(trackRibbon(tr, k, e, d + s * 0.5, y0, d + s * 0.5, y0 + 0.55, 10), ductMat));
+          }
         }
       }
       for (let i = k + 2; i <= e - 2; i += 9) {
@@ -742,10 +785,49 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
     }
   }
 
+  // --- zaparkovaná auta a bílá stání na prvních dvou podlažích.
+  // Řady stojí po stranách drah (x = 158/200/240/282) a auta jsou natočená nosem do uličky.
+  const nearTrackAt = (x: number, z: number, y: number) => {
+    for (let i = 0; i < tr.n; i += 3) {
+      if (Math.abs(tr.y[i] - y) > 3.2) continue;
+      const dx = tr.x[i] - x, dz = tr.z[i] - z;
+      if (dx * dx + dz * dz < 15.5 * 15.5) return true;
+    }
+    return false;
+  };
+  const stallGeo = new THREE.PlaneGeometry(5.2, 0.14).rotateX(-Math.PI / 2);
+  const stallMat = new THREE.MeshBasicMaterial({ color: 0xd9d5c6, transparent: true, opacity: 0.32, depthWrite: false });
+  const parkBodyGeo = new THREE.BoxGeometry(1.9, 0.92, 4.3).translate(0, 0.5, 0);
+  const parkCabGeo = new THREE.BoxGeometry(1.66, 0.6, 2.1).translate(0, 1.22, -0.2);
+  const parkBodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0.3 });
+  const parkCabMat = new THREE.MeshStandardMaterial({ color: 0x161d24, roughness: 0.25, metalness: 0.5 });
+  const stalls: Inst[] = [], parkBody: Inst[] = [], parkCab: Inst[] = [];
+  const carColors = [0x8d1f22, 0x1c3a63, 0x3d444d, 0xb9b4a6, 0x2c4a34, 0x6a3c20, 0x9aa2ad];
+  const slabHole = (y: number, x: number, z: number) =>
+    (y === L1 || y === L2) && x > 164 && x < 236 && z > -222 && z < -164;
+  for (const lvl of [L1, L2]) {
+    for (const rx of [158, 200, 240, 282]) {
+      for (let z = -214; z <= -54; z += 5.4) {
+        if (slabHole(lvl, rx, z) || nearTrackAt(rx, z, lvl)) continue;
+        stalls.push({ x: rx, y: lvl + 0.02, z, sx: 1, sy: 1, sz: 1, rot: 0 });
+        const cz = z + 2.7;
+        if (rnd() < 0.45) continue;
+        if (slabHole(lvl, rx, cz) || nearTrackAt(rx, cz, lvl)) continue;
+        const c = carColors[Math.floor(rnd() * carColors.length)];
+        const rot = rnd() < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+        parkBody.push({ x: rx, y: lvl, z: cz, sx: 1, sy: 1, sz: 1, rot, color: new THREE.Color(c) });
+        parkCab.push({ x: rx, y: lvl, z: cz, sx: 1, sy: 1, sz: 1, rot });
+      }
+    }
+  }
+  group.add(instanced(stallGeo, stallMat, stalls, false));
+  group.add(instanced(parkBodyGeo, parkBodyMat, parkBody, true));
+  group.add(instanced(parkCabGeo, parkCabMat, parkCab, false));
+
   // světla v šachtách otoček – ať je uvnitř budovy vidět a rampa není černá díra
-  for (let i = 0; i < tr.n; i += 6) {
+  for (let i = 0; i < tr.n; i += 4) {
     const y = tr.y[i];
-    const inShaft = (y > 10.4 && y < 14.6) || (y > 15.4 && y < 19.6);
+    const inShaft = (y > L1 + 0.4 && y < L2 - 0.4) || (y > L2 + 0.4 && y < L3 - 0.4);
     if (!inShaft) continue;
     for (const s of [-1, 1]) {
       glows.push({
@@ -864,33 +946,75 @@ function addAirport(group: THREE.Group, tr: Track, rnd: () => number) {
   pm.renderOrder = 2;
   group.add(pm);
 
-  // --- vzdálené město a jeho svit
+  // --- obzor letiště: nízké terminály a hangáry, dálková runway, majáky a letadla.
+  // Záměrně žádné výškové budovy – ty patří do Nočního města, letiště má vlastní siluetu.
   const [ccx, ccz] = trackCenter(tr);
-  const cityMat = new THREE.MeshStandardMaterial({ color: 0x0b0d14, roughness: 0.95, metalness: 0.05 });
-  const city: Inst[] = [];
-  for (let i = 0; i < 46; i++) {
-    const a = 0.15 + rnd() * 2.35;
-    const dist = 620 + rnd() * 430;
-    const w = 14 + rnd() * 30, d = 14 + rnd() * 30, h = 16 + rnd() * 78;
+  const farMat = new THREE.MeshStandardMaterial({ color: 0x0a1219, roughness: 0.92, metalness: 0.08 });
+  const far: Inst[] = [];
+  for (let i = 0; i < 18; i++) {
+    const a = 0.2 + (i / 18) * Math.PI * 2 + (rnd() - 0.5) * 0.12;
+    const dist = 560 + rnd() * 330;
+    const w = 70 + rnd() * 130, d = 34 + rnd() * 40, h = 7 + rnd() * 9;
     const bx = ccx + Math.cos(a) * dist, bz = ccz + Math.sin(a) * dist;
-    city.push({ x: bx, y: 0, z: bz, sx: w, sy: h, sz: d, rot: rnd() * 3 });
-    const n = 1 + Math.floor(rnd() * 3);
-    for (let k = 0; k < n; k++) {
+    far.push({ x: bx, y: 0, z: bz, sx: w, sy: h, sz: d, rot: a + Math.PI / 2 + (rnd() - 0.5) * 0.2 });
+    // osvětlený pás oken na straně k trati
+    for (let k = -1; k <= 1; k++) {
       glows.push({
-        x: bx + (rnd() - 0.5) * w, y: 3 + rnd() * h, z: bz + (rnd() - 0.5) * d,
-        size: 2.2 + rnd() * 1.8, color: rnd() < 0.7 ? new THREE.Color(1.6, 0.9, 0.4) : new THREE.Color(0.6, 1.0, 1.6),
-        alpha: 0.5 + rnd() * 0.4,
+        x: bx - Math.sin(a) * k * w * 0.3, y: h * (0.45 + rnd() * 0.2), z: bz + Math.cos(a) * k * w * 0.3,
+        size: 3 + rnd() * 2.5, color: new THREE.Color(1.8, 1.1, 0.5), alpha: 0.5,
       });
     }
   }
-  group.add(instanced(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), cityMat, city, false));
-  for (let i = 0; i < 90; i++) {
-    const a = 0.1 + rnd() * 2.4;
-    glows.push({
-      x: ccx + Math.cos(a) * (980 + rnd() * 120), y: 4 + rnd() * 46, z: ccz + Math.sin(a) * (980 + rnd() * 120),
-      size: 4 + rnd() * 7, color: new THREE.Color(1.3, 0.55, 0.22), alpha: 0.35 + rnd() * 0.35,
-    });
+  group.add(instanced(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), farMat, far, false));
+
+  // vzdálená přistávací dráha na severu: dvě řady bílých světel a modré taxi linky
+  const runZ = ccz - 700;
+  for (let x = ccx - 620; x <= ccx + 620; x += 22) {
+    glows.push({ x, y: 1.2, z: runZ - 24, size: 3.0, color: white, alpha: 0.8 });
+    glows.push({ x, y: 1.2, z: runZ + 24, size: 3.0, color: white, alpha: 0.8 });
+    if (Math.round((x - ccx + 620) / 22) % 2 === 0) glows.push({ x, y: 0.9, z: runZ, size: 1.7, color: white, alpha: 0.55 });
   }
+  for (let z = runZ - 26; z <= runZ + 26; z += 5) {
+    glows.push({ x: ccx - 634, y: 1.3, z, size: 2.6, color: new THREE.Color(0.35, 2.0, 0.7), alpha: 0.8 });
+    glows.push({ x: ccx + 634, y: 1.3, z, size: 2.6, color: new THREE.Color(2.2, 0.3, 0.22), alpha: 0.8 });
+  }
+  // modrá světla podél vzdálené taxi dráhy na východě
+  for (let z = ccz - 560; z <= ccz + 380; z += 26) {
+    glows.push({ x: ccx + 720, y: 1.1, z, size: 2.4, color: new THREE.Color(0.3, 0.7, 2.4), alpha: 0.8 });
+  }
+
+  // maják na obzoru a červená výstražná světla na stožárech
+  const farTowerX = ccx + 540, farTowerZ = ccz - 470;
+  const towShaft = new THREE.Mesh(new THREE.BoxGeometry(15, 64, 15), farMat);
+  towShaft.position.set(farTowerX, 32, farTowerZ);
+  group.add(towShaft);
+  const towCab = new THREE.Mesh(new THREE.BoxGeometry(27, 9, 27), new THREE.MeshBasicMaterial({ color: 0x22323c }));
+  towCab.position.set(farTowerX, 68, farTowerZ);
+  group.add(towCab);
+  glows.push({ x: farTowerX, y: 80, z: farTowerZ, size: 5.5, color: red });
+  glows.push({ x: farTowerX, y: 70, z: farTowerZ, size: 4.0, color: new THREE.Color(0.7, 1.4, 1.8) });
+  for (let i = 0; i < 14; i++) {
+    const a = rnd() * Math.PI * 2, d = 520 + rnd() * 320;
+    glows.push({ x: ccx + Math.cos(a) * d, y: 14 + rnd() * 52, z: ccz + Math.sin(a) * d, size: 3.2, color: red, alpha: 0.75 });
+  }
+
+  // dvě letadla na přiblížení – tmavý obrys a hlavně světla
+  const addFarPlane = (x: number, y: number, z: number, rot: number) => {
+    const fus = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 42, 8).rotateX(Math.PI / 2), farMat);
+    fus.position.set(x, y, z);
+    fus.rotation.y = rot;
+    group.add(fus);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(54, 1, 9), farMat);
+    wing.position.set(x, y, z);
+    wing.rotation.y = rot;
+    group.add(wing);
+    glows.push({ x, y: y - 2.5, z, size: 4.2, color: white, alpha: 0.9 });
+    glows.push({ x: x - Math.cos(rot) * 27, y, z: z + Math.sin(rot) * 27, size: 3.2, color: new THREE.Color(2.6, 0.2, 0.16) });
+    glows.push({ x: x + Math.cos(rot) * 27, y, z: z - Math.sin(rot) * 27, size: 3.2, color: new THREE.Color(0.2, 2.6, 0.4) });
+    glows.push({ x, y: y + 4.5, z, size: 3.0, color: red });
+  };
+  addFarPlane(ccx + 360, 95, ccz - 540, 0.45);
+  addFarPlane(ccx - 610, 150, ccz - 780, -0.25);
 
   // --- hvězdy
   const stars: { x: number; y: number; z: number; size: number; color: THREE.Color; alpha: number }[] = [];

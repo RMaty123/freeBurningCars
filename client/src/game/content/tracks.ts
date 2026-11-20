@@ -81,30 +81,35 @@ export const TRACKS: TrackDef[] = [
     /*
      * Opuštěné letiště v noci. Nejdřív se jede po vyvýšené cestě k terminálu (10 m),
      * pak trať vjede do parkovacího domu a stoupá v něm po patrech:
-     *   patro 1 (10 m) na jednu stranu → 180° otočka → patro 2 (15 m) zpátky
-     *   → druhá 180° otočka → patro 3 (20 m) → rampa a seskok z budovy dolů
+     *   patro 1 (10 m) dlouhá rovinka na jednu stranu → 180° otočka
+     *   → patro 2 (16 m) dlouhá rovinka zpátky → druhá 180° otočka
+     *   → patro 3 (22 m) dlouhá rovinka k výjezdu → rampa a seskok z budovy dolů
      *   → runway na jihu → pozvolný výjezd zpátky k terminálu.
+     * Patra jsou od sebe 6 m, takže je v hale vysoký strop a je vidět přes celé podlaží.
      * Výšky jsou v metrech a musí jich být přesně tolik co bodů.
      */
     id: 'airport',
     name: 'GHOST RUNWAY',
-    tagline: 'Noční letiště. Garáž po patrech, dvě otočky, seskok z rampy a runway.',
+    tagline: 'Noční letiště. Otevřená garáž po patrech, dvě otočky, seskok z rampy a runway.',
     theme: 'airport',
     width: 22,
     lanes: 3,
     points: [
       // příjezd k terminálu a vjezd do garáže (10 m)
-      [-80, 0], [40, 0], [130, -2], [162, -12], [176, -38], [180, -85], [180, -140], [180, -185],
-      // 1. otočka: patro 1 → patro 2 (10 → 15 m)
+      [-80, 0], [40, 0], [130, -2], [158, -10], [174, -30], [180, -58],
+      // dlouhá rovinka v 1. patře
+      [180, -120], [180, -185],
+      // 1. otočka: patro 1 → patro 2 (10 → 16 m)
       [185.9, -199.1], [200, -205], [214.1, -199.1], [220, -185],
-      // patro 2 (15 m) zpátky na druhou stranu budovy
-      [220, -148], [220, -112], [220, -81],
-      // 2. otočka: patro 2 → patro 3 (15 → 20 m)
+      // dlouhá rovinka ve 2. patře zpátky na druhou stranu budovy
+      [220, -140], [220, -100], [220, -81],
+      // 2. otočka: patro 2 → patro 3 (16 → 22 m)
       [225.9, -66.9], [240, -61], [254.1, -66.9], [260, -81],
-      // patro 3 (20 m) a výjezd z budovy
-      [260, -125], [260, -170], [260, -205], [270, -232], [300, -242], [330, -232],
+      // dlouhá rovinka ve 3. patře a výjezd z budovy
+      [260, -130], [260, -175], [260, -205],
+      [268, -225], [282, -236], [300, -240], [318, -236], [332, -225], [344, -208],
       // rozjezdová rampa, hrana a seskok na zem
-      [344, -210], [344, -184], [344, -140], [344, -95], [344, -55],
+      [344, -184], [344, -135], [344, -90], [344, -45],
       // jižní apron a dlouhá runway
       [346, 20], [350, 120], [352, 220], [348, 310], [330, 375], [280, 408], [190, 418],
       [80, 415], [-40, 412], [-160, 411], [-270, 400],
@@ -113,12 +118,14 @@ export const TRACKS: TrackDef[] = [
       [-200, 55], [-150, 25], [-115, 8],
     ],
     elevation: [
-      10, 10, 10, 10, 10, 10, 10, 10,
-      11.25, 12.5, 13.75, 15,
-      15, 15, 15,
-      16.25, 17.5, 18.75, 20,
-      20, 20, 20.2, 20.6, 21.2, 21.8,
-      22.4, 23, 8, 2, 0.4,
+      10, 10, 10, 10, 10, 10,
+      10, 10,
+      11.5, 13, 14.5, 16,
+      16, 16, 16,
+      17.5, 19, 20.5, 22,
+      22, 22, 22,
+      22.5, 23, 23.6, 24.2, 24.7, 25.1,
+      25.6, 9.5, 2.6, 0.4,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0.5, 1.5, 3, 5, 7, 9, 10, 10, 10,
     ],
